@@ -79,5 +79,8 @@ class SmartAddTest {
     fun normalizeServer() {
         assertEquals("http://a.example.com:8080", SmartAdd.normalizeServer("a.example.com:8080/"))
         assertEquals("https://a.example.com", SmartAdd.normalizeServer("HTTPS://a.example.com/player_api.php"))
+        assertEquals("http://a.example.com/panel", SmartAdd.normalizeServer("http://a.example.com/panel/"))
+        assertEquals("http://a.example.com/panel", SmartAdd.normalizeServer("http://a.example.com/panel/get.php?username=x"))
+        assertEquals("http://a.example.com:80", SmartAdd.normalizeServer("a.example.com:80/live/u/p/1.ts"))
     }
 }

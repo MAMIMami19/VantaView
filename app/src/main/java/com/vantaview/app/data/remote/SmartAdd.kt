@@ -45,13 +45,22 @@ object SmartAdd {
         return SmartAddResult.None
     }
 
-    /** "example.com:8080/player_api.php" becomes "http://example.com:8080". */
+    /**
+     * "example.com:8080/player_api.php" becomes "http://example.com:8080".
+     * A real sub-path ("example.com/panel") is kept, because some servers live under one.
+     */
     fun normalizeServer(input: String): String {
-        var s = input.trim().trimEnd('/')
+        var s = input.trim().substringBefore('?').substringBefore('#')
         if (!s.startsWith("http://", true) && !s.startsWith("https://", true)) s = "http://$s"
-        val scheme = s.substringBefore("://")
+        val scheme = s.substringBefore("://").lowercase()
         val rest = s.substringAfter("://")
-        return scheme.lowercase() + "://" + rest.substringBefore('/')
+        val host = rest.substringBefore('/')
+        var path = if ('/' in rest) rest.substringAfter('/') else ""
+        val endpoints = Regex(
+            "(?i)(^|/)(player_api\\.php|get\\.php|xmltv\\.php|panel_api\\.php|c|stalker_portal|live|movie|series)(/.*)?$"
+        )
+        path = path.replace(endpoints, "").trim('/')
+        return "$scheme://$host" + if (path.isNotEmpty()) "/$path" else ""
     }
 
     private fun query(q: String): Map<String, String> =

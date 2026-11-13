@@ -38,6 +38,9 @@ sealed interface SyncState {
 /** What the player needs to open a channel. */
 data class PlayTarget(val url: String, val altUrl: String?, val headers: Map<String, String>)
 
+private const val USER_TOKEN = "{{vv_user}}"
+private const val PASS_TOKEN = "{{vv_pass}}"
+
 @Singleton
 class ProviderRepository @Inject constructor(
     private val db: VantaDb,
@@ -142,20 +145,35 @@ class ProviderRepository @Inject constructor(
                 else "No channels were found in this playlist"
             )
         }
+        return saveM3uResult(p, result, hideCredentials = null)
+    }
+
+    /**
+     * Saves parsed playlist entries. When hideCredentials is set, the login inside each stream
+     * address is swapped for placeholders, so it is not stored in plain text in channel rows.
+     */
+    private suspend fun saveM3uResult(
+        p: ProviderEntity,
+        result: com.vantaview.app.data.remote.M3uResult,
+        hideCredentials: Pair<String, String>?,
+    ): SyncState.Done {
         setState(p.id, SyncState.Running("Saving ${result.entries.size} channels"))
         val groups = LinkedHashMap<String, Int>()
         result.entries.forEach { e -> e.group?.let { g -> groups.getOrPut(g) { groups.size } } }
         val categories = groups.map { (name, pos) -> CategoryEntity(providerId = p.id, remoteId = name, name = name, position = pos) }
         val channels = result.entries.mapIndexed { i, e ->
+            val stored = hideCredentials?.let { (u, pw) ->
+                "xtreamurl:" + e.url.replace("/$u/", "/$USER_TOKEN/").replace("/$pw/", "/$PASS_TOKEN/")
+            } ?: e.url
             ChannelEntity(
                 providerId = p.id,
-                remoteId = sha1(e.url),
+                remoteId = sha1(stored),
                 name = e.name,
                 sortKey = e.name.lowercase(),
                 number = e.number ?: (i + 1),
                 logo = e.logo,
                 categoryRemoteId = e.group,
-                streamUrl = e.url,
+                streamUrl = stored,
                 epgChannelId = e.tvgId,
                 headersJson = if (e.headers.isEmpty()) null else JSONObject(e.headers as Map<*, *>).toString(),
             )
@@ -202,6 +220,18 @@ class ProviderRepository @Inject constructor(
 
     private fun streamId(o: JSONObject): String = o.optString("stream_id").ifBlank { o.optString("id") }
 
+    /**
+     * App identities tried in turn. Some providers only answer apps they recognise, and many block
+     * the HTTP library's default identity.
+     */
+    private val xtreamAgents: List<String?> = listOf(
+        userAgent,
+        "IPTVSmartersPro",
+        "VLC/3.0.20 LibVLC/3.0.20",
+        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+        null,
+    )
+
     private suspend fun syncXtream(p: ProviderEntity): SyncState.Done {
         setState(p.id, SyncState.Running("Signing in"))
         val login = JSONObject(text(xtreamApi(p)))
@@ -209,12 +239,10 @@ class ProviderRepository @Inject constructor(
         val auth = info?.optString("auth")
         if (auth == null || auth == "0") throw IllegalStateException("The provider refused the username or password")
         val status = info?.optString("status").orEmpty().ifBlank { "unknown" }
-
-        var lastReply = ""
+        val notes = ArrayList<String>()
 
         // Tries the whole list first, then one category at a time (some servers only answer that way).
         fun load(ua: String?): Pair<List<CategoryEntity>, List<JSONObject>> {
-            setState(p.id, SyncState.Running("Loading categories"))
             val cats = runCatching { jsonItems(text(xtreamApi(p, "get_live_categories"), ua)) }.getOrDefault(emptyList())
             val categories = cats.mapIndexedNotNull { i, o ->
                 val id = o.optString("category_id")
@@ -226,13 +254,8 @@ class ProviderRepository @Inject constructor(
                     position = i,
                 )
             }
-
-            setState(p.id, SyncState.Running("Loading channels"))
-            val all = runCatching {
-                val body = text(xtreamApi(p, "get_live_streams"), ua)
-                lastReply = body.take(120)
-                jsonItems(body)
-            }.getOrElse { lastReply = it.message.orEmpty(); emptyList() }
+            val all = runCatching { jsonItems(text(xtreamApi(p, "get_live_streams"), ua)) }
+                .getOrDefault(emptyList())
                 .filter { streamId(it).isNotBlank() }
             if (all.isNotEmpty() || categories.isEmpty()) return categories to all
 
@@ -250,45 +273,66 @@ class ProviderRepository @Inject constructor(
             return categories to perCategory
         }
 
-        var (categories, streams) = load(userAgent)
-        if (streams.isEmpty()) {
-            // Some servers hide their lists from apps they don't recognise; try once more without our app name.
-            val second = load(null)
-            if (second.second.isNotEmpty()) { categories = second.first; streams = second.second }
-            else if (categories.isEmpty()) categories = second.first
+        var categories: List<CategoryEntity> = emptyList()
+        var streams: List<JSONObject> = emptyList()
+        for ((i, ua) in xtreamAgents.withIndex()) {
+            setState(p.id, SyncState.Running("Loading channels (attempt ${i + 1} of ${xtreamAgents.size + 1})"))
+            val (c, s) = load(ua)
+            if (c.size > categories.size) categories = c
+            if (s.isNotEmpty()) { categories = c; streams = s; break }
+        }
+        if (streams.isEmpty()) notes += "the channel list came back empty"
+
+        if (streams.isNotEmpty()) {
+            val seen = HashSet<String>()
+            val channels = streams.mapIndexedNotNull { i, o ->
+                val id = streamId(o)
+                if (!seen.add(id)) return@mapIndexedNotNull null
+                val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
+                ChannelEntity(
+                    providerId = p.id,
+                    remoteId = id,
+                    name = name,
+                    sortKey = name.lowercase(),
+                    number = o.optInt("num", i + 1),
+                    logo = o.optString("stream_icon").ifBlank { null },
+                    categoryRemoteId = o.optString("category_id").ifBlank { null },
+                    streamUrl = "xtream:$id",
+                    epgChannelId = o.optString("epg_channel_id").ifBlank { null },
+                )
+            }
+            setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
+            db.content().replaceLive(p.id, categories, channels)
+            return SyncState.Done(channels.size, 0)
         }
 
-        if (streams.isEmpty()) {
-            val secret = crypto.decrypt(p.passwordEnc)
-            val shown = lastReply.replace(p.username, "•••").let { if (secret.isNotEmpty()) it.replace(secret, "•••") else it }
-                .replace("\n", " ").trim()
-            throw IllegalStateException(
-                "Signed in (account status: $status), but the server sent no live channels. " +
-                    "Live categories found: ${categories.size}. " +
-                    "Server reply began: \"${shown.ifBlank { "(empty)" }}\""
-            )
+        // Last resort: the same account's M3U download (get.php), which some servers still serve.
+        setState(p.id, SyncState.Running("Trying the provider's playlist download"))
+        val pass = crypto.decrypt(p.passwordEnc)
+        val m3uUrl = "${p.baseUrl}/get.php?username=${URLEncoder.encode(p.username, "UTF-8")}" +
+            "&password=${URLEncoder.encode(pass, "UTF-8")}&type=m3u_plus&output=ts"
+        for (ua in xtreamAgents) {
+            val result = runCatching {
+                val b = Request.Builder().url(m3uUrl)
+                if (ua != null) b.header("User-Agent", ua)
+                http.newCall(b.build()).execute().use { r ->
+                    if (!r.isSuccessful) throw IllegalStateException("error ${r.code}")
+                    r.body!!.charStream().buffered().useLines { M3uParser.parse(it) }
+                }
+            }
+            val parsed = result.getOrNull()
+            if (parsed == null) { notes += "playlist download: ${result.exceptionOrNull()?.message ?: "failed"}"; continue }
+            if (parsed.entries.isEmpty()) { notes += "playlist download had no live channels"; continue }
+            val saved = saveM3uResult(p, parsed, hideCredentials = p.username to pass)
+            return saved
         }
 
-        val seen = HashSet<String>()
-        val channels = streams.mapIndexedNotNull { i, o ->
-            val id = streamId(o)
-            if (!seen.add(id)) return@mapIndexedNotNull null
-            val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
-            ChannelEntity(
-                providerId = p.id,
-                remoteId = id,
-                name = name,
-                sortKey = name.lowercase(),
-                number = o.optInt("num", i + 1),
-                logo = o.optString("stream_icon").ifBlank { null },
-                categoryRemoteId = o.optString("category_id").ifBlank { null },
-                streamUrl = "xtream:$id",
-                epgChannelId = o.optString("epg_channel_id").ifBlank { null },
-            )
-        }
-        setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
-        db.content().replaceLive(p.id, categories, channels)
-        return SyncState.Done(channels.size, 0)
+        throw IllegalStateException(
+            "Signed in (account status: $status), but this provider sent no live channels to VantaView. " +
+                "Live categories found: ${categories.size}. Tried ${xtreamAgents.size} app identities and " +
+                "the playlist download (" + notes.distinct().joinToString("; ") + "). " +
+                "If another app shows channels with the same login, the provider may limit which apps it serves."
+        )
     }
 
     /** Turns a stored channel into a real address (and a second one to try) just before playback. */
@@ -304,6 +348,13 @@ class ProviderRepository @Inject constructor(
             val id = channel.streamUrl.removePrefix("xtream:")
             val base = "${p.baseUrl}/live/${p.username}/${crypto.decrypt(p.passwordEnc)}/$id"
             PlayTarget("$base.ts", "$base.m3u8", headers)
+        } else if (channel.streamUrl.startsWith("xtreamurl:")) {
+            val p = db.providers().get(channel.providerId) ?: throw IllegalStateException("Playlist not found")
+            val url = channel.streamUrl.removePrefix("xtreamurl:")
+                .replace(USER_TOKEN, p.username)
+                .replace(PASS_TOKEN, crypto.decrypt(p.passwordEnc))
+            val m3u8 = if (url.endsWith(".ts")) url.removeSuffix(".ts") + ".m3u8" else null
+            PlayTarget(url, m3u8, headers)
         } else {
             PlayTarget(channel.streamUrl, null, headers)
         }
