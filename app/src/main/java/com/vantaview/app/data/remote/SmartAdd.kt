@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vantaview.app.data.remote
+
+/** What Smart Add found in a pasted provider message. */
+sealed interface SmartAddResult {
+    data class Xtream(val server: String, val username: String, val password: String) : SmartAddResult
+    data class M3u(val url: String) : SmartAddResult
+    data object None : SmartAddResult
+}
+
+object SmartAdd {
+    private val urlRegex = Regex("https?://[^\\s\"'<>]+", RegexOption.IGNORE_CASE)
+    private val getPhp = Regex("^(https?://[^/\\s]+)/(?:get|player_api|xmltv)\\.php\\?(.+)$", RegexOption.IGNORE_CASE)
+    private val pathLogin = Regex("^(https?://[^/\\s]+)/(?:live|movie|series)/([^/\\s]+)/([^/\\s]+)/.+$", RegexOption.IGNORE_CASE)
+    private val hostLabel = Regex("(?im)^\\W*(?:host|server|url|portal|dns|link|address)\\s*(?:url)?\\s*[:=]\\s*(\\S+)")
+    private val userLabel = Regex("(?im)^\\W*(?:username|user\\s*name|user|login)\\s*[:=]\\s*(\\S+)")
+    private val passLabel = Regex("(?im)^\\W*(?:password|pass|pwd)\\s*[:=]\\s*(\\S+)")
+
+    fun parse(text: String): SmartAddResult {
+        val urls = urlRegex.findAll(text).map { it.value.trimEnd('.', ',', ')', ';') }.toList()
+
+        for (u in urls) {
+            getPhp.find(u)?.let { m ->
+                val q = query(m.groupValues[2])
+                val user = q["username"]
+                val pass = q["password"]
+                if (!user.isNullOrBlank() && !pass.isNullOrBlank()) {
+                    return SmartAddResult.Xtream(m.groupValues[1], user, pass)
+                }
+            }
+            pathLogin.find(u)?.let { m ->
+                return SmartAddResult.Xtream(m.groupValues[1], m.groupValues[2], m.groupValues[3])
+            }
+        }
+
+        val user = userLabel.find(text)?.groupValues?.get(1)
+        val pass = passLabel.find(text)?.groupValues?.get(1)
+        if (!user.isNullOrBlank() && !pass.isNullOrBlank()) {
+            val host = hostLabel.find(text)?.groupValues?.get(1) ?: urls.firstOrNull()
+            if (!host.isNullOrBlank()) return SmartAddResult.Xtream(normalizeServer(host), user, pass)
+        }
+
+        urls.firstOrNull { it.contains("m3u", true) }?.let { return SmartAddResult.M3u(it) }
+        urls.firstOrNull()?.let { return SmartAddResult.M3u(it) }
+        return SmartAddResult.None
+    }
+
+    /** "example.com:8080/player_api.php" becomes "http://example.com:8080". */
+    fun normalizeServer(input: String): String {
+        var s = input.trim().trimEnd('/')
+        if (!s.startsWith("http://", true) && !s.startsWith("https://", true)) s = "http://$s"
+        val scheme = s.substringBefore("://")
+        val rest = s.substringAfter("://")
+        return scheme.lowercase() + "://" + rest.substringBefore('/')
+    }
+
+    private fun query(q: String): Map<String, String> =
+        q.split('&').mapNotNull { kv ->
+            val k = kv.substringBefore('=')
+            if (k.isBlank() || '=' !in kv) null
+            else k.lowercase() to runCatching { java.net.URLDecoder.decode(kv.substringAfter('='), "UTF-8") }
+                .getOrDefault(kv.substringAfter('='))
+        }.toMap()
+}
