@@ -52,14 +52,20 @@ class AddonJsonTest {
               {"name":"A 720p","title":"Film.720p.mkv\n1.2 GB","url":"https://cdn.example.com/a.mkv"},
               {"name":"B","title":"Film 2160p HDR","url":"https://cdn.example.com/b.mkv",
                "behaviorHints":{"proxyHeaders":{"request":{"Referer":"https://site.example/"}},"videoSize":4294967296}},
-              {"name":"Torrent 1080p","infoHash":"abcdef"},
+              {"name":"Torrent 1080p","title":"Film.1080p.mkv","infoHash":"0123456789abcdef0123456789abcdef01234567","fileIdx":2,
+               "sources":["tracker:udp://tracker.example:80/announce","dht:0123456789abcdef0123456789abcdef01234567"]},
+              {"name":"Bad hash","infoHash":"abcdef"},
               {"name":"Web","externalUrl":"https://example.com"},
               {"name":"C 1080p","url":"https://cdn.example.com/c.m3u8"}
             ]}
             """.trimIndent()
         )
-        val list = AddonJson.streams(json, "Test", 0)
-        assertEquals(3, list.size)
+        val all = AddonJson.streams(json, "Test", 0)
+        assertEquals(4, all.size)
+        val torrent = all.single { it.isTorrent }
+        assertEquals(2, torrent.fileIdx)
+        assertEquals(listOf("udp://tracker.example:80/announce"), torrent.trackers)
+        val list = all.filter { !it.isTorrent }
         val ranked = AddonJson.rank(list)
         assertEquals(listOf(2160, 1080, 720), ranked.map { it.quality })
         assertEquals("https://site.example/", ranked[0].headers["Referer"])

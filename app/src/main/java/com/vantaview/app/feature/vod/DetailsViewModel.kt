@@ -20,7 +20,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** A stream list waiting for the user to pick one ("Choose stream"). */
-data class StreamChoice(val title: String, val subtitle: String?, val streams: List<AddonStream>)
+data class StreamChoice(
+    val title: String,
+    val subtitle: String?,
+    val streams: List<AddonStream>,
+    val season: Int? = null,
+    val episode: Int? = null,
+)
 
 data class DetailsUi(
     val loading: Boolean = true,
@@ -38,6 +44,7 @@ class DetailsViewModel @Inject constructor(
     private val repo: AddonRepository,
     private val session: VodSession,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
+    private val debrid: com.vantaview.app.data.debrid.DebridManager,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
@@ -85,17 +92,24 @@ class DetailsViewModel @Inject constructor(
         _ui.update { it.copy(finding = streamId, message = null) }
         viewModelScope.launch {
             val hasSource = repo.hasStreamSource(type, streamId)
-            val streams = if (hasSource) runCatching { repo.streams(type, streamId) }.getOrDefault(emptyList()) else emptyList()
+            val raw = if (hasSource) runCatching { repo.streams(type, streamId) }.getOrDefault(emptyList()) else emptyList()
+            // Torrent results only stay when a debrid account is connected; cached ones are moved up.
+            val streams = runCatching { debrid.annotate(raw) }.getOrDefault(raw.filter { !it.isTorrent })
+            val season = video?.season?.takeIf { it > 0 }
+            val episode = video?.episode?.takeIf { video.season > 0 }
             when {
                 !hasSource -> _ui.update {
                     it.copy(finding = null, message = "None of your add-ons supply streams for this. Add a stream add-on on the Sources page.")
                 }
-                streams.isEmpty() -> _ui.update {
-                    it.copy(finding = null, message = "Your add-ons found no playable streams. Torrent-only results and external links can't be played in VantaView.")
+                streams.isEmpty() && raw.any { it.isTorrent } -> _ui.update {
+                    it.copy(finding = null, message = "Your add-ons only found torrent results. Connect a debrid account on Sources → Debrid to play them.")
                 }
-                choose -> _ui.update { it.copy(finding = null, choice = StreamChoice(title, subtitle, streams)) }
+                streams.isEmpty() -> _ui.update {
+                    it.copy(finding = null, message = "Your add-ons found no playable streams. External links can't be played in VantaView.")
+                }
+                choose -> _ui.update { it.copy(finding = null, choice = StreamChoice(title, subtitle, streams, season, episode)) }
                 else -> {
-                    session.current = VodRequest(title, subtitle, streams, 0)
+                    session.current = VodRequest(title, subtitle, streams, 0, season, episode)
                     _ui.update { it.copy(finding = null) }
                     _play.send(Unit)
                 }
@@ -105,7 +119,7 @@ class DetailsViewModel @Inject constructor(
 
     fun pick(index: Int) {
         val c = _ui.value.choice ?: return
-        session.current = VodRequest(c.title, c.subtitle, c.streams, index)
+        session.current = VodRequest(c.title, c.subtitle, c.streams, index, c.season, c.episode, chosen = true)
         _ui.update { it.copy(choice = null) }
         viewModelScope.launch { _play.send(Unit) }
     }

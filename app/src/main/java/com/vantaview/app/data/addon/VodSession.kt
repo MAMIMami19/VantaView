@@ -10,6 +10,11 @@ data class VodRequest(
     val subtitle: String?,
     val streams: List<AddonStream>,
     val startIndex: Int = 0,
+    /** Season and episode, used to pick the right file from a season pack. */
+    val season: Int? = null,
+    val episode: Int? = null,
+    /** True when the user picked this stream themselves (uncached torrents may then be downloaded). */
+    val chosen: Boolean = false,
 )
 
 /** Hands a film or episode from the details page to the player. */

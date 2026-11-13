@@ -92,7 +92,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (controls || ui.failed != null) {
+        if (controls || ui.failed != null || ui.preparing != null) {
             Row(
                 Modifier.fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
@@ -121,6 +121,14 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            ui.preparing?.let { p ->
+                Text(
+                    p, color = Vanta.Cyan, fontSize = 17.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.background(Color(0xAA000000), RoundedCornerShape(8.dp)).padding(12.dp),
+                )
+                if (ui.streams.size > 1) FocusCard(onClick = { picking = true }) { Text("Choose another stream", color = Vanta.Text) }
+            }
             ui.failed?.let { f ->
                 Text(f, color = Vanta.Error, fontSize = 17.sp, modifier = Modifier.background(Color(0xAA000000), RoundedCornerShape(8.dp)).padding(10.dp))
                 if (ui.streams.size > 1) FocusCard(onClick = { picking = true }) { Text("Choose another stream", color = Vanta.Text) }

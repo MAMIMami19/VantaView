@@ -198,7 +198,13 @@ private fun AppNav(
                 "sources?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.StringType; defaultValue = "playlists" }),
             ) { e ->
-                SourcesScreen(if (e.arguments?.getString("tab") == "addons") SourcesTab.ADDONS else SourcesTab.PLAYLISTS)
+                SourcesScreen(
+                    when (e.arguments?.getString("tab")) {
+                        "addons" -> SourcesTab.ADDONS
+                        "debrid" -> SourcesTab.DEBRID
+                        else -> SourcesTab.PLAYLISTS
+                    }
+                )
             }
             composable(
                 "details/{type}?id={id}&name={name}&poster={poster}",

@@ -138,7 +138,10 @@ data class MetaDetail(
     val videos: List<Video>,
 )
 
-/** One playable stream from an add-on. Only direct links are kept. */
+/**
+ * One stream from an add-on: a direct link ([url]), or a torrent ([infoHash]) that is played through
+ * the user's debrid account.
+ */
 data class AddonStream(
     val url: String,
     val addonName: String,
@@ -147,7 +150,17 @@ data class AddonStream(
     val quality: Int,
     val sizeBytes: Long?,
     val addonOrder: Int,
-)
+    val infoHash: String? = null,
+    val fileIdx: Int? = null,
+    val filename: String? = null,
+    val trackers: List<String> = emptyList(),
+    /** Cached state on each connected debrid service (torrents only). */
+    val cache: Map<com.vantaview.app.data.debrid.DebridService, com.vantaview.app.data.debrid.Availability> = emptyMap(),
+) {
+    val isTorrent: Boolean get() = infoHash != null
+    /** Identity used to drop duplicates. */
+    val key: String get() = if (infoHash != null) "bt:${infoHash.lowercase()}:${fileIdx ?: -1}" else url
+}
 
 object AddonJson {
     private fun strings(a: JSONArray?) = a?.let { arr -> (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() } }.orEmpty()
@@ -217,11 +230,19 @@ object AddonJson {
         (n * if (m.groupValues[2].equals("GB", true)) 1_073_741_824.0 else 1_048_576.0).toLong()
     }
 
-    /** Reads an add-on's stream list, keeping only direct links (torrent-only and external links are left out). */
+    private val hashRegex = Regex("^([0-9a-fA-F]{40}|[A-Za-z2-7]{32})$")
+
+    /**
+     * Reads an add-on's stream list: direct links, and torrents (kept for playing through a debrid account).
+     * External links and YouTube ids are left out.
+     */
     fun streams(json: JSONObject, addonName: String, addonOrder: Int): List<AddonStream> {
         val arr = json.optJSONArray("streams") ?: return emptyList()
         return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { s ->
-            val url = s.optString("url").takeIf { it.startsWith("http://") || it.startsWith("https://") } ?: return@mapNotNull null
+            val direct = s.optString("url").takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            val hash = s.optString("infoHash").trim().takeIf { direct == null && hashRegex.matches(it) }
+            if (direct == null && hash == null) return@mapNotNull null
+            val url = direct.orEmpty()
             val hints = s.optJSONObject("behaviorHints")
             val headers = hints?.optJSONObject("proxyHeaders")?.optJSONObject("request")
                 ?.let { h -> h.keys().asSequence().toList().associateWith { h.optString(it) } }.orEmpty()
@@ -236,6 +257,12 @@ object AddonJson {
                 quality = qualityOf(all),
                 sizeBytes = hints?.optLong("videoSize")?.takeIf { it > 0 } ?: sizeOf(all),
                 addonOrder = addonOrder,
+                infoHash = hash?.lowercase(),
+                fileIdx = if (hash != null && s.has("fileIdx")) s.optInt("fileIdx") else null,
+                filename = hints?.optString("filename")?.ifBlank { null },
+                trackers = s.optJSONArray("sources")?.let { a ->
+                    (0 until a.length()).map { a.optString(it) }.filter { it.startsWith("tracker:") }.map { it.removePrefix("tracker:") }
+                }.orEmpty(),
             )
         }
     }

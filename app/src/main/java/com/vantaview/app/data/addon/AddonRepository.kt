@@ -162,7 +162,7 @@ class AddonRepository @Inject constructor(
                 }?.let { AddonJson.streams(it, a.manifest.name, order) }.orEmpty()
             }
         }
-        AddonJson.rank(jobs.awaitAll().flatten().distinctBy { it.url })
+        AddonJson.rank(jobs.awaitAll().flatten().distinctBy { it.key })
     }
 
     // ---- Restore: Stremio account import and backup files ----

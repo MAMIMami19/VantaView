@@ -25,6 +25,18 @@ fun qualityLabel(s: AddonStream): String = when {
     else -> "?"
 }
 
+/** "TB cached", "RD check on play", "Download first" for torrent results; null for direct links. */
+fun debridLabel(s: AddonStream): String? {
+    if (!s.isTorrent) return null
+    val cached = s.cache.filterValues { it == com.vantaview.app.data.debrid.Availability.CACHED }.keys
+    val unknown = s.cache.filterValues { it == com.vantaview.app.data.debrid.Availability.UNKNOWN }.keys
+    return when {
+        cached.isNotEmpty() -> "⚡ " + cached.joinToString("/") { it.short } + " cached"
+        unknown.isNotEmpty() -> unknown.joinToString("/") { it.short } + " · checked on play"
+        else -> "⬇ Download first"
+    }
+}
+
 fun sizeLabel(s: AddonStream): String? = s.sizeBytes?.let { b ->
     if (b >= 1_073_741_824L) "%.1f GB".format(b / 1_073_741_824.0) else "%d MB".format(b / 1_048_576L)
 }
@@ -48,7 +60,7 @@ fun StreamListDialog(
                     FocusCard(onClick = { onPick(i) }, selected = i == current, modifier = Modifier.fillMaxWidth()) {
                         Column {
                             Text(
-                                listOfNotNull(qualityLabel(s), sizeLabel(s), s.addonName).joinToString("  ·  "),
+                                listOfNotNull(qualityLabel(s), sizeLabel(s), debridLabel(s), s.addonName).joinToString("  ·  "),
                                 color = if (i == current) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             )
                             Text(s.label, color = Vanta.TextDim, fontSize = 12.sp, maxLines = 3)

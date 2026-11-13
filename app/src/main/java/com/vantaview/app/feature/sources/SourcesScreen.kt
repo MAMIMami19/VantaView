@@ -44,7 +44,7 @@ import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
 
-enum class SourcesTab(val label: String) { PLAYLISTS("Playlists"), ADDONS("Add-ons") }
+enum class SourcesTab(val label: String) { PLAYLISTS("Playlists"), ADDONS("Add-ons"), DEBRID("Debrid") }
 
 @Composable
 fun SourcesScreen(startTab: SourcesTab) {
@@ -69,6 +69,7 @@ fun SourcesScreen(startTab: SourcesTab) {
             when (tab) {
                 SourcesTab.PLAYLISTS -> PlaylistsContent()
                 SourcesTab.ADDONS -> AddonsContent()
+                SourcesTab.DEBRID -> DebridContent()
             }
             Spacer(Modifier.height(24.dp))
         }
