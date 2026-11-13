@@ -65,3 +65,15 @@ data class ChannelRow(
     @Embedded val channel: ChannelEntity,
     val isFav: Boolean,
 )
+
+/** An installed Stremio-compatible add-on (works the same in Stremio and Nuvio). */
+@Entity(tableName = "addon", indices = [Index(value = ["manifestUrl"], unique = true)])
+data class AddonEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val manifestUrl: String,
+    val name: String,
+    val manifestJson: String,
+    val enabled: Boolean = true,
+    val position: Int = 0,
+    val addedAt: Long = System.currentTimeMillis(),
+)

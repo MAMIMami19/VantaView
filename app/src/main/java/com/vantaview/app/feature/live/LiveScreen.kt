@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,10 +49,14 @@ import com.vantaview.app.data.db.ChannelRow
 import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
-import com.vantaview.app.ui.VantaLogo
 
 @Composable
-fun LiveScreen(onPlay: (Long) -> Unit, onPlaylists: () -> Unit, vm: LiveViewModel = hiltViewModel()) {
+fun LiveScreen(
+    onPlay: (Long) -> Unit,
+    onAddPlaylist: () -> Unit,
+    onAddAddon: () -> Unit,
+    vm: LiveViewModel = hiltViewModel(),
+) {
     val providers by vm.providers.collectAsStateWithLifecycle()
     val active by vm.active.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
@@ -62,12 +66,11 @@ fun LiveScreen(onPlay: (Long) -> Unit, onPlaylists: () -> Unit, vm: LiveViewMode
     val sync by vm.sync.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg).safeDrawingPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
         val wide = maxWidth >= 720.dp
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
             // Top bar
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                VantaLogo(size = 32.dp)
                 Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Box {
                     var open by remember { mutableStateOf(false) }
@@ -84,8 +87,25 @@ fun LiveScreen(onPlay: (Long) -> Unit, onPlaylists: () -> Unit, vm: LiveViewMode
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                FocusCard(onClick = vm::refresh) { Text("Refresh", color = Vanta.Text) }
-                FocusCard(onClick = onPlaylists) { Text("Playlists", color = Vanta.Text) }
+                if (providers.isNotEmpty()) FocusCard(onClick = vm::refresh) { Text("Refresh", color = Vanta.Text) }
+            }
+            if (providers.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("No playlists yet", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Add an IPTV playlist for live channels, or install add-ons for films and series.",
+                            color = Vanta.TextDim,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.widthIn(max = 460.dp),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            com.vantaview.app.ui.GradientButton("Add a playlist", onClick = onAddPlaylist)
+                            FocusCard(onClick = onAddAddon, contentAlignment = Alignment.Center) { Text("Add an add-on", color = Vanta.Text) }
+                        }
+                    }
+                }
+                return@Column
             }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(

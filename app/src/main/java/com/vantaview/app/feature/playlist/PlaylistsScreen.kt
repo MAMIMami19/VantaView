@@ -39,25 +39,14 @@ import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
 import com.vantaview.app.ui.VantaLogo
 
+/** Playlist list and add-playlist form, shown on the Sources page. */
 @Composable
-fun PlaylistsScreen(onOpenLive: () -> Unit, vm: PlaylistsViewModel = hiltViewModel()) {
+fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
     val providers by vm.providers.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
     val form by vm.form.collectAsStateWithLifecycle()
-    val anyReady = providers.any { it.channelCount > 0 || sync[it.id] is SyncState.Done }
 
-    Box(Modifier.fillMaxSize().background(Vanta.Bg).safeDrawingPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier.widthIn(max = 720.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                VantaLogo(size = 36.dp)
-                Spacer(Modifier.width(10.dp))
-                Text("Playlists", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                GradientButton("Open Live TV", onClick = onOpenLive, enabled = anyReady)
-            }
-
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             providers.forEach { p -> ProviderCard(p, sync[p.id], onRefresh = { vm.refresh(p.id) }, onDelete = { vm.delete(p.id) }) }
             if (providers.isEmpty()) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
@@ -107,8 +96,6 @@ fun PlaylistsScreen(onOpenLive: () -> Unit, vm: PlaylistsViewModel = hiltViewMod
             }
 
             form.message?.let { Text(it, color = if (form.isError) Vanta.Error else Vanta.Cyan) }
-            Spacer(Modifier.height(24.dp))
-        }
     }
 }
 

@@ -93,3 +93,27 @@ interface ContentDao {
     @Query("DELETE FROM favourite WHERE providerId = :providerId AND remoteId = :remoteId")
     suspend fun removeFavourite(providerId: Long, remoteId: String)
 }
+
+@Dao
+interface AddonDao {
+    @Query("SELECT * FROM addon ORDER BY position, addedAt")
+    fun observeAll(): Flow<List<AddonEntity>>
+
+    @Query("SELECT * FROM addon ORDER BY position, addedAt")
+    suspend fun all(): List<AddonEntity>
+
+    @Query("SELECT COUNT(*) FROM addon")
+    suspend fun count(): Int
+
+    @Query("SELECT * FROM addon WHERE manifestUrl = :url")
+    suspend fun byUrl(url: String): AddonEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(addon: AddonEntity): Long
+
+    @Query("UPDATE addon SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
+    @Query("DELETE FROM addon WHERE id = :id")
+    suspend fun delete(id: Long)
+}
