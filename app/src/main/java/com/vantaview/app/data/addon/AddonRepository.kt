@@ -241,31 +241,14 @@ class AddonRepository @Inject constructor(
             .toString(2)
     }
 
-    /** Reads a VantaView add-on backup, or a plain list of install links (one per line). */
+    /**
+     * Reads an add-on backup: VantaView's own, Stremio Account Bootstrapper's Stremio ({result:{addons:[…]}})
+     * or Nuvio ([{url, name, enabled, sort_order}]) backups, or a plain list of install links (one per line).
+     */
     suspend fun readBackup(text: String): List<RemoteAddon> {
         val installed = db.addons().allFor(session.id).map { it.manifestUrl }.toSet()
-        val trimmed = text.trim()
-        val pairs: List<Pair<String, String>> = when {
-            trimmed.startsWith("{") -> {
-                val o = runCatching { JSONObject(trimmed) }.getOrNull() ?: throw IllegalArgumentException("That file isn't a VantaView add-on backup")
-                val arr = o.optJSONArray("addons") ?: throw IllegalArgumentException("That file has no add-ons in it")
-                (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { a ->
-                    val u = a.optString("manifestUrl").ifBlank { a.optString("transportUrl") }.ifBlank { return@mapNotNull null }
-                    u to a.optString("name").ifBlank { a.optJSONObject("manifest")?.optString("name").orEmpty() }
-                }
-            }
-            trimmed.startsWith("[") -> {
-                val arr = runCatching { org.json.JSONArray(trimmed) }.getOrNull() ?: throw IllegalArgumentException("That file couldn't be read")
-                (0 until arr.length()).mapNotNull { i ->
-                    when (val v = arr.get(i)) {
-                        is JSONObject -> v.optString("manifestUrl").ifBlank { v.optString("transportUrl") }.ifBlank { null }
-                            ?.let { it to v.optJSONObject("manifest")?.optString("name").orEmpty() }
-                        else -> v.toString().takeIf { it.startsWith("http") || it.startsWith("stremio://") }?.let { it to "" }
-                    }
-                }
-            }
-            else -> trimmed.lines().map { it.trim() }.filter { it.startsWith("http") || it.startsWith("stremio://") }.map { it to "" }
-        }
+        // Add-ons that only run inside Stremio itself (Local Files on 127.0.0.1) can't be used here.
+        val pairs = parseBackup(text).filter { (u, _) -> !u.contains("127.0.0.1") && !u.contains("localhost") }
         if (pairs.isEmpty()) throw IllegalArgumentException("No add-on links were found in that file")
         return pairs.map { (u, n) ->
             val url = Manifest.normalizeUrl(u)
