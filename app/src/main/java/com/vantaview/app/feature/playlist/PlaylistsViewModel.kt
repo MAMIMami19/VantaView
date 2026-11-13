@@ -36,6 +36,7 @@ data class PlaylistForm(
 class PlaylistsViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val session: ProfileSession,
+    private val countries: com.vantaview.app.data.country.CountryStore,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
         repo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -85,7 +86,10 @@ class PlaylistsViewModel @Inject constructor(
 
     fun refresh(id: Long) = repo.sync(id)
 
+    fun editCountries(id: Long) { countries.editRequest.value = id }
+
     fun delete(id: Long) {
+        countries.forget(id)
         viewModelScope.launch { repo.delete(id) }
     }
 }

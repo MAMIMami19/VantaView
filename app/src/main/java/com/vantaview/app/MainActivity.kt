@@ -239,5 +239,6 @@ private fun AppNav(
                 VodPlayerScreen(onBack = { nav.popBackStack() })
             }
         }
+        if (profile != null) com.vantaview.app.feature.country.CountryChooserHost()
     }
 }

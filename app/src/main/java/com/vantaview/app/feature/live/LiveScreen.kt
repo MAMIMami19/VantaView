@@ -65,6 +65,7 @@ fun LiveScreen(
     val query by vm.query.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
     val isKids by vm.isKids.collectAsStateWithLifecycle()
+    val countryLabel by vm.countryLabel.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
@@ -85,6 +86,11 @@ fun LiveScreen(
                         providers.forEach { p ->
                             DropdownMenuItem(text = { Text(p.name) }, onClick = { vm.selectProvider(p.id); open = false })
                         }
+                    }
+                }
+                countryLabel?.let { label ->
+                    FocusCard(onClick = vm::editCountries) {
+                        Text("Countries: $label", color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Spacer(Modifier.weight(1f))

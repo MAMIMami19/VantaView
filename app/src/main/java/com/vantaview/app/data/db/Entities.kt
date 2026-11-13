@@ -103,3 +103,6 @@ data class KidsCategoryEntity(
     val providerId: Long,
     val categoryRemoteId: String,
 )
+
+/** A channel's category, name and guide id, used to work out its country. */
+data class CountryRow(val categoryRemoteId: String?, val name: String, val epgChannelId: String?)

@@ -59,6 +59,26 @@ interface ContentDao {
     )
     fun observeChannels(providerId: Long, category: String?, query: String, favOnly: Int): Flow<List<ChannelRow>>
 
+    /** Channels whose category is in [cats] (and, when [withNone] is 1, channels with no category). */
+    @Query(
+        """
+        SELECT c.*, (f.remoteId IS NOT NULL) AS isFav
+        FROM channel c
+        LEFT JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
+        WHERE c.providerId = :providerId
+          AND (c.categoryRemoteId IN (:cats) OR (:withNone = 1 AND c.categoryRemoteId IS NULL))
+          AND (:query = '' OR c.name LIKE '%' || :query || '%')
+          AND (:favOnly = 0 OR f.remoteId IS NOT NULL)
+        ORDER BY c.number, c.sortKey
+        LIMIT 3000
+        """
+    )
+    fun observeChannelsIn(providerId: Long, cats: List<String>, withNone: Int, query: String, favOnly: Int): Flow<List<ChannelRow>>
+
+    /** Just what's needed to sort a playlist's channels by country, with no limit. */
+    @Query("SELECT categoryRemoteId, name, epgChannelId FROM channel WHERE providerId = :providerId")
+    suspend fun countryRows(providerId: Long): List<CountryRow>
+
     @Query("SELECT * FROM channel WHERE id = :id")
     suspend fun channel(id: Long): ChannelEntity?
 

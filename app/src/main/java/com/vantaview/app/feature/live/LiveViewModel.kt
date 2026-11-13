@@ -3,6 +3,9 @@ package com.vantaview.app.feature.live
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vantaview.app.data.country.CountryDetect
+import com.vantaview.app.data.country.CountryScan
+import com.vantaview.app.data.country.CountryStore
 import com.vantaview.app.data.db.CategoryEntity
 import com.vantaview.app.data.db.ChannelRow
 import com.vantaview.app.data.db.ProfileEntity
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -42,6 +46,7 @@ class LiveViewModel @Inject constructor(
     private val db: VantaDb,
     private val repo: ProviderRepository,
     private val session: ProfileSession,
+    private val countries: CountryStore,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
@@ -72,20 +77,60 @@ class LiveViewModel @Inject constructor(
     private val allCategories = activeId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList<CategoryEntity>()) else db.content().observeCategories(id) }
 
+    /** Countries in the active playlist (re-read after each sync). */
+    private val scan: StateFlow<CountryScan?> = active
+        .distinctUntilChanged { a, b -> a?.id == b?.id && a?.lastSyncAt == b?.lastSyncAt }
+        .flatMapLatest { p -> if (p == null) flowOf(null) else flow { emit(null); emit(countries.scan(p)) } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Countries this profile shows for the active playlist; null = all. */
+    private val chosen = combine(session.current, activeId, countries.changes) { prof, id, _ ->
+        if (id == null) null else countries.chosen(prof, id)
+    }.distinctUntilChanged()
+
+    private val device = CountryDetect.deviceCountry()
+
     val categories: StateFlow<List<CategoryEntity>> =
-        combine(allCategories, allowed) { cats, allow -> if (allow == null) cats else KidsFilter.categories(cats, allow) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        combine(allCategories, allowed, scan, chosen) { cats, allow, sc, pick ->
+            val kidsOk = if (allow == null) cats else KidsFilter.categories(cats, allow)
+            if (sc == null) kidsOk
+            else kidsOk
+                .filter { pick == null || sc.countryOf(it.remoteId) in pick }
+                // This device's country first; otherwise keep the provider's order.
+                .sortedBy { if (device != null && sc.countryOf(it.remoteId) == device) 0 else 1 }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Short label for the Countries button, or null when the playlist has fewer than two countries. */
+    val countryLabel: StateFlow<String?> = combine(scan, chosen, profile) { sc, pick, p ->
+        when {
+            sc == null || sc.countries.size < 2 || p?.isKids == true -> null
+            pick == null -> "All countries"
+            else -> pick.filter { it != CountryDetect.OTHER }.let { l ->
+                if (l.size <= 3) l.joinToString(", ").ifEmpty { "Other" } else "${l.size} countries"
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun editCountries() { active.value?.let { countries.editRequest.value = it.id } }
 
     val channels: StateFlow<List<ChannelRow>> =
-        combine(activeId, filter, query.debounce(250)) { id, f, q -> Triple(id, f, q.trim()) }
-            .flatMapLatest { (id, f, q) ->
-                if (id == null) flowOf(emptyList<ChannelRow>())
-                else db.content().observeChannels(
-                    providerId = id,
-                    category = (f as? Filter.Category)?.remoteId,
-                    query = q,
-                    favOnly = if (f is Filter.Favourites) 1 else 0,
-                )
+        combine(combine(activeId, filter, query.debounce(250)) { id, f, q -> Triple(id, f, q.trim()) }, scan, chosen) { t, sc, pick ->
+            Triple(t, sc, pick)
+        }
+            .flatMapLatest { (t, sc, pick) ->
+                val (id, f, q) = t
+                val fav = if (f is Filter.Favourites) 1 else 0
+                when {
+                    id == null -> flowOf(emptyList<ChannelRow>())
+                    f is Filter.Category || pick == null || sc == null ->
+                        db.content().observeChannels(id, (f as? Filter.Category)?.remoteId, q, fav)
+                    else -> {
+                        // Only the categories of the chosen countries.
+                        val cats = sc.categoryCountry.filterValues { it in pick }.keys.toList()
+                        if (cats.size > 900) db.content().observeChannels(id, null, q, fav)
+                        else db.content().observeChannelsIn(id, cats, if (CountryDetect.OTHER in pick) 1 else 0, q, fav)
+                    }
+                }
             }
             .let { rows ->
                 combine(rows, allCategories, allowed) { list, cats, allow ->

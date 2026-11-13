@@ -47,7 +47,7 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
     val form by vm.form.collectAsStateWithLifecycle()
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            providers.forEach { p -> ProviderCard(p, sync[p.id], onRefresh = { vm.refresh(p.id) }, onDelete = { vm.delete(p.id) }) }
+            providers.forEach { p -> ProviderCard(p, sync[p.id], onRefresh = { vm.refresh(p.id) }, onCountries = { vm.editCountries(p.id) }, onDelete = { vm.delete(p.id) }) }
             if (providers.isEmpty()) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
             }
@@ -122,7 +122,7 @@ private fun Field(
 }
 
 @Composable
-private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> Unit, onDelete: () -> Unit) {
+private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> Unit, onCountries: () -> Unit, onDelete: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().background(Vanta.Surface, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -133,6 +133,10 @@ private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> 
                 Text(if (p.kind == "XTREAM") "Xtream Codes" else "M3U playlist", color = Vanta.TextDim, fontSize = 13.sp)
             }
             Spacer(Modifier.width(8.dp))
+            if (p.channelCount > 0) {
+                FocusCard(onClick = onCountries) { Text("Countries", color = Vanta.Text) }
+                Spacer(Modifier.width(8.dp))
+            }
             FocusCard(onClick = onRefresh) { Text("Refresh", color = Vanta.Text) }
             Spacer(Modifier.width(8.dp))
             FocusCard(onClick = onDelete) { Text("Remove", color = Vanta.Error) }
