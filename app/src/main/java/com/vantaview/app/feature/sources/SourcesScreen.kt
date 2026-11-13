@@ -113,6 +113,8 @@ private fun AddonsContent(vm: AddonsViewModel = hiltViewModel()) {
             }
         }
 
+        RestorePanel(vm)
+
         Spacer(Modifier.height(4.dp))
         Text("Installed (${addons.size})", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         if (addons.isEmpty()) Text("No add-ons yet.", color = Vanta.TextDim)

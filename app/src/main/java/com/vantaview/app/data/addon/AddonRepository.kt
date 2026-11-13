@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
@@ -161,6 +163,114 @@ class AddonRepository @Inject constructor(
             }
         }
         AddonJson.rank(jobs.awaitAll().flatten().distinctBy { it.url })
+    }
+
+    // ---- Restore: Stremio account import and backup files ----
+
+    /** An add-on found in a Stremio account or a backup file. */
+    data class RemoteAddon(val url: String, val name: String, val description: String, val alreadyInstalled: Boolean)
+
+    private fun postJson(url: String, body: JSONObject): JSONObject {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", userAgent)
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        return http.newCall(request).execute().use { r -> JSONObject(r.body?.string().orEmpty().ifBlank { "{}" }) }
+    }
+
+    /**
+     * Signs in to Stremio once and returns the add-ons installed on that account.
+     * The email, password and session key are not stored.
+     */
+    suspend fun stremioAccountAddons(email: String, password: String): List<RemoteAddon> = withContext(Dispatchers.IO) {
+        require(email.isNotBlank() && password.isNotBlank()) { "Enter your Stremio email and password" }
+        val login = try {
+            postJson(
+                "https://api.strem.io/api/login",
+                JSONObject().put("type", "Login").put("email", email.trim()).put("password", password).put("facebook", false),
+            )
+        } catch (e: Exception) {
+            throw IllegalStateException("Couldn't reach Stremio (${e.message ?: "network error"})")
+        }
+        login.optJSONObject("error")?.let { err ->
+            throw IllegalStateException(err.optString("message").ifBlank { "Stremio didn't accept that email or password" })
+        }
+        val authKey = login.optJSONObject("result")?.optString("authKey").orEmpty()
+        if (authKey.isBlank()) throw IllegalStateException("Stremio didn't accept that email or password")
+
+        val got = postJson(
+            "https://api.strem.io/api/addonCollectionGet",
+            JSONObject().put("type", "AddonCollectionGet").put("authKey", authKey).put("update", true),
+        )
+        got.optJSONObject("error")?.let { err ->
+            throw IllegalStateException(err.optString("message").ifBlank { "Couldn't read your Stremio add-ons" })
+        }
+        val arr = got.optJSONObject("result")?.optJSONArray("addons") ?: throw IllegalStateException("No add-ons found on that account")
+        val installed = db.addons().allFor(session.id).map { it.manifestUrl }.toSet()
+        (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { a ->
+            val raw = a.optString("transportUrl")
+            // Add-ons that only run inside Stremio itself (such as Local Files on 127.0.0.1) can't be used here.
+            if (!raw.startsWith("http") || raw.contains("127.0.0.1") || raw.contains("localhost")) return@mapNotNull null
+            val url = Manifest.normalizeUrl(raw)
+            val m = a.optJSONObject("manifest")
+            RemoteAddon(
+                url = url,
+                name = m?.optString("name").orEmpty().ifBlank { url.substringAfter("://").substringBefore('/') },
+                description = m?.optString("description").orEmpty(),
+                alreadyInstalled = url in installed,
+            )
+        }.distinctBy { it.url }
+    }
+
+    /**
+     * The add-on list as a backup file. Install links can contain personal keys (debrid, API keys),
+     * so the file should be kept private.
+     */
+    suspend fun backupJson(): String {
+        val list = org.json.JSONArray()
+        db.addons().allFor(session.id).forEach { a ->
+            list.put(JSONObject().put("manifestUrl", a.manifestUrl).put("name", a.name).put("enabled", a.enabled))
+        }
+        return JSONObject()
+            .put("app", "VantaView")
+            .put("kind", "addons")
+            .put("version", 1)
+            .put("exportedAt", System.currentTimeMillis())
+            .put("addons", list)
+            .toString(2)
+    }
+
+    /** Reads a VantaView add-on backup, or a plain list of install links (one per line). */
+    suspend fun readBackup(text: String): List<RemoteAddon> {
+        val installed = db.addons().allFor(session.id).map { it.manifestUrl }.toSet()
+        val trimmed = text.trim()
+        val pairs: List<Pair<String, String>> = when {
+            trimmed.startsWith("{") -> {
+                val o = runCatching { JSONObject(trimmed) }.getOrNull() ?: throw IllegalArgumentException("That file isn't a VantaView add-on backup")
+                val arr = o.optJSONArray("addons") ?: throw IllegalArgumentException("That file has no add-ons in it")
+                (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { a ->
+                    val u = a.optString("manifestUrl").ifBlank { a.optString("transportUrl") }.ifBlank { return@mapNotNull null }
+                    u to a.optString("name").ifBlank { a.optJSONObject("manifest")?.optString("name").orEmpty() }
+                }
+            }
+            trimmed.startsWith("[") -> {
+                val arr = runCatching { org.json.JSONArray(trimmed) }.getOrNull() ?: throw IllegalArgumentException("That file couldn't be read")
+                (0 until arr.length()).mapNotNull { i ->
+                    when (val v = arr.get(i)) {
+                        is JSONObject -> v.optString("manifestUrl").ifBlank { v.optString("transportUrl") }.ifBlank { null }
+                            ?.let { it to v.optJSONObject("manifest")?.optString("name").orEmpty() }
+                        else -> v.toString().takeIf { it.startsWith("http") || it.startsWith("stremio://") }?.let { it to "" }
+                    }
+                }
+            }
+            else -> trimmed.lines().map { it.trim() }.filter { it.startsWith("http") || it.startsWith("stremio://") }.map { it to "" }
+        }
+        if (pairs.isEmpty()) throw IllegalArgumentException("No add-on links were found in that file")
+        return pairs.map { (u, n) ->
+            val url = Manifest.normalizeUrl(u)
+            RemoteAddon(url, n.ifBlank { url.substringAfter("://").substringBefore('/') }, "", url in installed)
+        }.distinctBy { it.url }
     }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
