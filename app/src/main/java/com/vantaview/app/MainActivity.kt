@@ -122,7 +122,8 @@ private fun AppNav(
     val section = when {
         route == null -> null
         route == "live" -> Section.LIVE
-        route.startsWith("catalog/") -> if (entry?.arguments?.getString("type") == "series") Section.SERIES else Section.MOVIES
+        route == "movies" -> Section.MOVIES
+        route == "series" -> Section.SERIES
         route.startsWith("sources") -> Section.SOURCES
         else -> null
     }
@@ -179,17 +180,19 @@ private fun AppNav(
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                 )
             }
-            composable("catalog/{type}", arguments = listOf(navArgument("type") { type = NavType.StringType })) { e ->
-                val isSeries = e.arguments?.getString("type") == "series"
-                CatalogScreen(
-                    title = if (isSeries) "TV Series" else "Movies",
-                    onOpen = { m ->
-                        nav.navigate(
-                            "details/${Uri.encode(m.type)}?id=${Uri.encode(m.id)}&name=${Uri.encode(m.name)}&poster=${Uri.encode(m.poster.orEmpty())}"
-                        )
-                    },
-                    onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
-                )
+            // Movies and TV Series are separate destinations so each keeps its own page and state.
+            listOf("movies" to "movie", "series" to "series").forEach { (route, kind) ->
+                composable(route, arguments = listOf(navArgument("type") { type = NavType.StringType; defaultValue = kind })) {
+                    CatalogScreen(
+                        title = if (kind == "series") "TV Series" else "Movies",
+                        onOpen = { m ->
+                            nav.navigate(
+                                "details/${Uri.encode(m.type)}?id=${Uri.encode(m.id)}&name=${Uri.encode(m.name)}&poster=${Uri.encode(m.poster.orEmpty())}"
+                            )
+                        },
+                        onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
+                    )
+                }
             }
             composable(
                 "sources?tab={tab}",

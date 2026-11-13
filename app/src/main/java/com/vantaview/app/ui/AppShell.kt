@@ -40,8 +40,8 @@ import kotlinx.coroutines.launch
 
 enum class Section(val route: String, val label: String, val icon: ImageVector) {
     LIVE("live", "Live TV", Icons.Filled.PlayArrow),
-    MOVIES("catalog/movie", "Movies", Icons.Filled.Star),
-    SERIES("catalog/series", "TV Series", Icons.Filled.List),
+    MOVIES("movies", "Movies", Icons.Filled.Star),
+    SERIES("series", "TV Series", Icons.Filled.List),
     SOURCES("sources", "Sources", Icons.Filled.Settings),
 }
 
