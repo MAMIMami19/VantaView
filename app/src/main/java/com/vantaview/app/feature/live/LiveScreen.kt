@@ -49,6 +49,7 @@ import com.vantaview.app.data.db.ChannelRow
 import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.VantaLogo
 
 @Composable
 fun LiveScreen(onPlay: (Long) -> Unit, onPlaylists: () -> Unit, vm: LiveViewModel = hiltViewModel()) {
@@ -66,6 +67,7 @@ fun LiveScreen(onPlay: (Long) -> Unit, onPlaylists: () -> Unit, vm: LiveViewMode
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
             // Top bar
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                VantaLogo(size = 32.dp)
                 Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Box {
                     var open by remember { mutableStateOf(false) }

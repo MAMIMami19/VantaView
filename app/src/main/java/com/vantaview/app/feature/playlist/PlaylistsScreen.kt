@@ -37,6 +37,7 @@ import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.VantaLogo
 
 @Composable
 fun PlaylistsScreen(onOpenLive: () -> Unit, vm: PlaylistsViewModel = hiltViewModel()) {
@@ -51,6 +52,8 @@ fun PlaylistsScreen(onOpenLive: () -> Unit, vm: PlaylistsViewModel = hiltViewMod
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                VantaLogo(size = 36.dp)
+                Spacer(Modifier.width(10.dp))
                 Text("Playlists", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 GradientButton("Open Live TV", onClick = onOpenLive, enabled = anyReady)
             }

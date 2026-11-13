@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.VantaLogo
 
 @Composable
 fun TermsScreen(onAgree: () -> Unit, onDisagree: () -> Unit) {
@@ -41,7 +42,9 @@ fun TermsScreen(onAgree: () -> Unit, onDisagree: () -> Unit) {
             Modifier.widthIn(max = 640.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("VantaView", color = Vanta.Cyan, fontSize = 34.sp, fontWeight = FontWeight.Black)
+            VantaLogo(size = 112.dp)
+            Spacer(Modifier.height(8.dp))
+            Text("VantaView", color = Vanta.Text, fontSize = 34.sp, fontWeight = FontWeight.Black)
             Text("IPTV & VOD", color = Vanta.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(24.dp))
             Text("Terms of use", color = Vanta.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
