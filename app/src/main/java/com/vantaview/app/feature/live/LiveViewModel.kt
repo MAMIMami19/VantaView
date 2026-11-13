@@ -80,7 +80,7 @@ class LiveViewModel @Inject constructor(
     /** Countries in the active playlist (re-read after each sync). */
     private val scan: StateFlow<CountryScan?> = active
         .distinctUntilChanged { a, b -> a?.id == b?.id && a?.lastSyncAt == b?.lastSyncAt }
-        .flatMapLatest { p -> if (p == null) flowOf(null) else flow { emit(null); emit(countries.scan(p)) } }
+        .flatMapLatest { p -> if (p == null) flowOf(null) else flow<CountryScan?> { emit(null); emit(countries.scan(p)) } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Countries this profile shows for the active playlist; null = all. */
