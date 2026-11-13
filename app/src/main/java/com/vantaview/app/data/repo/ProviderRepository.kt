@@ -171,50 +171,121 @@ class ProviderRepository @Inject constructor(
         return "${p.baseUrl}/player_api.php?username=$user&password=$pass" + (action?.let { "&action=$it" } ?: "")
     }
 
-    private fun text(url: String): String {
-        val request = Request.Builder().url(url).header("User-Agent", userAgent).build()
-        return http.newCall(request).execute().use { response ->
+    /** Fetches a page as text. A null userAgent sends the HTTP library's own default one. */
+    private fun text(url: String, ua: String? = userAgent): String {
+        val builder = Request.Builder().url(url)
+        if (ua != null) builder.header("User-Agent", ua)
+        return http.newCall(builder.build()).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("The server answered with error ${response.code}")
             response.body?.string().orEmpty()
         }
     }
 
+    /**
+     * Xtream servers answer list calls in different shapes: usually an array, sometimes an object
+     * keyed by number. Both are read here; anything else gives an empty list.
+     */
+    private fun jsonItems(body: String): List<JSONObject> {
+        val t = body.trim().removePrefix("\uFEFF").trim()
+        return when {
+            t.startsWith("[") -> {
+                val a = JSONArray(t)
+                (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+            }
+            t.startsWith("{") -> {
+                val o = JSONObject(t)
+                o.keys().asSequence().mapNotNull { o.optJSONObject(it) }.toList()
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun streamId(o: JSONObject): String = o.optString("stream_id").ifBlank { o.optString("id") }
+
     private suspend fun syncXtream(p: ProviderEntity): SyncState.Done {
         setState(p.id, SyncState.Running("Signing in"))
         val login = JSONObject(text(xtreamApi(p)))
-        val auth = login.optJSONObject("user_info")?.optString("auth")
+        val info = login.optJSONObject("user_info")
+        val auth = info?.optString("auth")
         if (auth == null || auth == "0") throw IllegalStateException("The provider refused the username or password")
+        val status = info?.optString("status").orEmpty().ifBlank { "unknown" }
 
-        setState(p.id, SyncState.Running("Loading categories"))
-        val cats = runCatching { JSONArray(text(xtreamApi(p, "get_live_categories"))) }.getOrDefault(JSONArray())
-        val categories = (0 until cats.length()).mapNotNull { cats.optJSONObject(it) }.mapIndexed { i, o ->
-            CategoryEntity(
-                providerId = p.id,
-                remoteId = o.optString("category_id"),
-                name = o.optString("category_name").ifBlank { "Category ${i + 1}" },
-                position = i,
+        var lastReply = ""
+
+        // Tries the whole list first, then one category at a time (some servers only answer that way).
+        fun load(ua: String?): Pair<List<CategoryEntity>, List<JSONObject>> {
+            setState(p.id, SyncState.Running("Loading categories"))
+            val cats = runCatching { jsonItems(text(xtreamApi(p, "get_live_categories"), ua)) }.getOrDefault(emptyList())
+            val categories = cats.mapIndexedNotNull { i, o ->
+                val id = o.optString("category_id")
+                if (id.isBlank()) null
+                else CategoryEntity(
+                    providerId = p.id,
+                    remoteId = id,
+                    name = o.optString("category_name").ifBlank { "Category ${i + 1}" },
+                    position = i,
+                )
+            }
+
+            setState(p.id, SyncState.Running("Loading channels"))
+            val all = runCatching {
+                val body = text(xtreamApi(p, "get_live_streams"), ua)
+                lastReply = body.take(120)
+                jsonItems(body)
+            }.getOrElse { lastReply = it.message.orEmpty(); emptyList() }
+                .filter { streamId(it).isNotBlank() }
+            if (all.isNotEmpty() || categories.isEmpty()) return categories to all
+
+            val perCategory = ArrayList<JSONObject>()
+            categories.forEachIndexed { i, c ->
+                setState(p.id, SyncState.Running("Loading channels, category ${i + 1} of ${categories.size}"))
+                val url = xtreamApi(p, "get_live_streams") + "&category_id=" + URLEncoder.encode(c.remoteId, "UTF-8")
+                runCatching { jsonItems(text(url, ua)) }.getOrDefault(emptyList())
+                    .filter { streamId(it).isNotBlank() }
+                    .forEach { o ->
+                        if (o.optString("category_id").isBlank()) o.put("category_id", c.remoteId)
+                        perCategory += o
+                    }
+            }
+            return categories to perCategory
+        }
+
+        var (categories, streams) = load(userAgent)
+        if (streams.isEmpty()) {
+            // Some servers hide their lists from apps they don't recognise; try once more without our app name.
+            val second = load(null)
+            if (second.second.isNotEmpty()) { categories = second.first; streams = second.second }
+            else if (categories.isEmpty()) categories = second.first
+        }
+
+        if (streams.isEmpty()) {
+            val secret = crypto.decrypt(p.passwordEnc)
+            val shown = lastReply.replace(p.username, "•••").let { if (secret.isNotEmpty()) it.replace(secret, "•••") else it }
+                .replace("\n", " ").trim()
+            throw IllegalStateException(
+                "Signed in (account status: $status), but the server sent no live channels. " +
+                    "Live categories found: ${categories.size}. " +
+                    "Server reply began: \"${shown.ifBlank { "(empty)" }}\""
             )
         }
 
-        setState(p.id, SyncState.Running("Loading channels"))
-        val streams = JSONArray(text(xtreamApi(p, "get_live_streams")))
-        val channels = (0 until streams.length()).mapNotNull { streams.optJSONObject(it) }.mapIndexedNotNull { i, o ->
-            val streamId = o.optString("stream_id")
-            if (streamId.isBlank()) return@mapIndexedNotNull null
+        val seen = HashSet<String>()
+        val channels = streams.mapIndexedNotNull { i, o ->
+            val id = streamId(o)
+            if (!seen.add(id)) return@mapIndexedNotNull null
             val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
             ChannelEntity(
                 providerId = p.id,
-                remoteId = streamId,
+                remoteId = id,
                 name = name,
                 sortKey = name.lowercase(),
                 number = o.optInt("num", i + 1),
                 logo = o.optString("stream_icon").ifBlank { null },
                 categoryRemoteId = o.optString("category_id").ifBlank { null },
-                streamUrl = "xtream:$streamId",
+                streamUrl = "xtream:$id",
                 epgChannelId = o.optString("epg_channel_id").ifBlank { null },
             )
         }
-        if (channels.isEmpty()) throw IllegalStateException("This account has no live channels")
         setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
         db.content().replaceLive(p.id, categories, channels)
         return SyncState.Done(channels.size, 0)
