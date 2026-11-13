@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vantaview.app.feature.home
+
+import android.content.Context
+import androidx.annotation.OptIn
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.vantaview.app.data.addon.AddonRepository
+import com.vantaview.app.data.addon.MetaDetail
+import com.vantaview.app.data.addon.Video
+import com.vantaview.app.data.db.ChannelEntity
+import com.vantaview.app.data.db.ProfileEntity
+import com.vantaview.app.data.db.VantaDb
+import com.vantaview.app.data.history.HistoryEntry
+import com.vantaview.app.data.history.WatchHistory
+import com.vantaview.app.data.profile.KidsFilter
+import com.vantaview.app.data.profile.ProfileRepository
+import com.vantaview.app.data.profile.ProfileSession
+import com.vantaview.app.data.repo.ProviderRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import java.time.Instant
+import javax.inject.Inject
+
+/** A section tile: name, a line under it, and up to four images for the mosaic. */
+data class Tile(val title: String, val subtitle: String, val images: List<String>)
+
+enum class Badge { NEW_SEASON, COMING_SOON }
+
+/** One card in Continue watching. [playVideoId] null means "open the details page" (nothing to play yet). */
+data class ContinueItem(
+    val entry: HistoryEntry,
+    val line: String,
+    val progress: Float?,
+    val badge: Badge?,
+    val playVideoId: String?,
+)
+
+/** The "New season" pop-up. */
+data class NewSeason(val entry: HistoryEntry, val season: Int, val episodes: Int, val first: Video)
+
+data class Preview(val channel: ChannelEntity, val muted: Boolean = true, val error: String? = null)
+
+@OptIn(UnstableApi::class)
+@kotlin.OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val db: VantaDb,
+    private val providers: ProviderRepository,
+    private val addons: AddonRepository,
+    private val history: WatchHistory,
+    private val session: ProfileSession,
+    private val okHttp: OkHttpClient,
+    profiles: ProfileRepository,
+) : ViewModel() {
+    val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val providerIds = providers.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val favourites: StateFlow<List<ChannelEntity>> = providerIds
+        .flatMapLatest { list -> if (list.isEmpty()) flowOf(emptyList<ChannelEntity>()) else db.content().observeFavouriteChannels(list.map { it.id }) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _tiles = MutableStateFlow<List<Pair<String, Tile>>>(emptyList())
+    /** Keyed by section route: "live", "movies", "series". */
+    val tiles: StateFlow<List<Pair<String, Tile>>> = _tiles
+
+    private val _continue = MutableStateFlow<List<ContinueItem>>(emptyList())
+    val continueWatching: StateFlow<List<ContinueItem>> = _continue
+
+    private val _newSeason = MutableStateFlow<NewSeason?>(null)
+    val newSeason: StateFlow<NewSeason?> = _newSeason
+
+    private val _preview = MutableStateFlow<Preview?>(null)
+    val preview: StateFlow<Preview?> = _preview
+
+    /** Muted live preview of the last channel watched. */
+    val player: ExoPlayer = ExoPlayer.Builder(context).build().apply { volume = 0f }
+
+    private val metaCache = HashMap<String, MetaDetail?>()
+
+    init {
+        viewModelScope.launch {
+            combine(providerIds, addons.observe(), profile) { p, a, pr -> Triple(p, a, pr) }.collect { buildTiles() }
+        }
+        viewModelScope.launch {
+            combine(history.entries, profile) { e, _ -> e }.collect { buildContinue(it) }
+        }
+        viewModelScope.launch { session.current.collect { loadPreview() } }
+    }
+
+    // ---- Tiles ----
+
+    private suspend fun buildTiles() {
+        val kids = profile.value?.isKids == true
+        val ids = providerIds.value.map { it.id }
+        val out = ArrayList<Pair<String, Tile>>()
+        if (ids.isNotEmpty()) {
+            val count = db.content().observeChannelCount(ids).first()
+            out += "live" to Tile("LIVE TV", "$count channels", runCatching { db.content().sampleLogos(ids) }.getOrDefault(emptyList()))
+        } else {
+            out += "live" to Tile("LIVE TV", "Add a playlist", emptyList())
+        }
+        for ((route, type, title) in listOf(Triple("movies", "movie", "MOVIES"), Triple("series", "series", "TV SERIES"))) {
+            val rows = runCatching { if (kids) addons.kidsCatalogs(type) else addons.catalogs(type) }.getOrDefault(emptyList())
+            val posters = rows.firstOrNull()?.let { r -> runCatching { addons.loadCatalog(r) }.getOrDefault(emptyList()) }
+                ?.mapNotNull { it.poster }?.take(4).orEmpty()
+            out += route to Tile(
+                title,
+                if (rows.isEmpty()) "Add an add-on" else "${rows.size} catalogue" + if (rows.size == 1) "" else "s",
+                posters,
+            )
+        }
+        _tiles.value = out
+    }
+
+    // ---- Continue watching and New season ----
+
+    private fun released(v: Video): Boolean =
+        v.released == null || runCatching { Instant.parse(v.released) <= Instant.now() }.getOrDefault(true)
+
+    private suspend fun meta(e: HistoryEntry): MetaDetail? =
+        metaCache.getOrPut(e.metaId) { runCatching { addons.meta("series", e.metaId) }.getOrNull() }
+
+    private suspend fun buildContinue(entries: List<HistoryEntry>) {
+        // A quick first pass from history alone, then the series are filled in from their add-on details.
+        _continue.value = entries.take(20).mapNotNull { quick(it) }
+        val items = ArrayList<ContinueItem>()
+        var popup: NewSeason? = null
+        for (e in entries.take(20)) {
+            if (e.type != "series") { quick(e)?.let { items += it }; continue }
+            val m = meta(e)
+            if (m == null) { quick(e)?.let { items += it }; continue }
+            val videos = m.videos.filter { it.season > 0 }
+            val i = videos.indexOfFirst { it.id == e.videoId }
+            val maxReleased = videos.filter(::released).maxOfOrNull { it.season } ?: 0
+            val watchedUpTo = maxOf(e.knownSeason, e.season ?: 0)
+
+            // New season: a season this profile hadn't seen released when it last watched.
+            if (popup == null && maxReleased > watchedUpTo && watchedUpTo > 0 && !history.newSeasonSeen(e.metaId, maxReleased)) {
+                val eps = videos.filter { it.season == maxReleased && released(it) }
+                eps.firstOrNull()?.let { popup = NewSeason(e, maxReleased, eps.size, it) }
+            }
+
+            if (!e.finished) { quick(e)?.let { items += it }; continue }
+            val next = if (i >= 0) videos.getOrNull(i + 1) else null
+            when {
+                next == null -> Unit
+                released(next) && next.season > watchedUpTo ->
+                    items += ContinueItem(e, "S${next.season} E${next.episode} · New", null, Badge.NEW_SEASON, next.id)
+                released(next) ->
+                    items += ContinueItem(e, "S${next.season} E${next.episode} · Up next", null, null, next.id)
+                next.season != e.season ->
+                    items += ContinueItem(e, "Season ${next.season} · Coming soon", null, Badge.COMING_SOON, null)
+                else ->
+                    items += ContinueItem(e, "S${next.season} E${next.episode} · Coming ${next.released?.take(10).orEmpty()}", null, Badge.COMING_SOON, null)
+            }
+        }
+        _continue.value = items
+        if (_newSeason.value == null) _newSeason.value = popup
+    }
+
+    /** Card from history alone: films and episodes left part-way through. */
+    private fun quick(e: HistoryEntry): ContinueItem? {
+        if (e.finished) return null
+        val left = com.vantaview.app.feature.vod.minutesLeft(e.remainingMs)
+        val line = if (e.type == "series") "S${e.season ?: 0} E${e.episode ?: 0} · $left" else left
+        return ContinueItem(e, line, e.fraction.takeIf { it > 0f }, null, e.videoId)
+    }
+
+    fun dismissNewSeason() {
+        _newSeason.value?.let { history.markNewSeasonSeen(it.entry.metaId, it.season) }
+        _newSeason.value = null
+    }
+
+    fun removeFromContinue(e: HistoryEntry) = history.remove(e.type, e.metaId)
+
+    // ---- Live preview ----
+
+    private suspend fun loadPreview() {
+        player.stop()
+        val id = session.lastChannel()
+        val ch = if (id > 0) db.content().channel(id) else null
+        val mine = ch != null && db.providers().allFor(session.id).any { it.id == ch.providerId }
+        if (ch == null || !mine) { _preview.value = null; return }
+        if (profile.value?.isKids == true && (ch.isAdult || KidsFilter.looksAdult(ch.name))) { _preview.value = null; return }
+        _preview.value = Preview(ch)
+        startPreview()
+    }
+
+    fun startPreview() {
+        val ch = _preview.value?.channel ?: return
+        viewModelScope.launch {
+            try {
+                val t = providers.resolveStream(ch)
+                val ua = t.headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value ?: "VantaView"
+                val http = OkHttpDataSource.Factory(okHttp).setUserAgent(ua)
+                    .setDefaultRequestProperties(t.headers.filterKeys { !it.equals("User-Agent", true) })
+                val url = t.altUrl ?: t.url
+                val item = MediaItem.Builder().setUri(url).apply {
+                    if (url.substringBefore('?').endsWith(".m3u8", true)) setMimeType(MimeTypes.APPLICATION_M3U8)
+                }.build()
+                player.setMediaSource(DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http)).createMediaSource(item))
+                player.prepare()
+                player.playWhenReady = true
+            } catch (e: Exception) {
+                _preview.update { it?.copy(error = "Preview unavailable") }
+            }
+        }
+    }
+
+    fun stopPreview() = player.stop()
+
+    fun toggleMute() {
+        _preview.update { p -> p?.copy(muted = !p.muted) }
+        player.volume = if (_preview.value?.muted == false) 1f else 0f
+    }
+
+    override fun onCleared() = player.release()
+}

@@ -45,6 +45,7 @@ import com.vantaview.app.ui.Vanta
 fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.play.collect { onPlay() } }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.refreshProgress() }
 
     val meta = ui.meta
     val name = meta?.name?.ifBlank { null } ?: vm.fallbackName
@@ -85,9 +86,29 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                     }
                 }
             }
+            if (isSeries) vm.continueVideo()?.let { v ->
+                item {
+                    val p = ui.progress
+                    val code = "S${v.season} E${v.episode}"
+                    val label = when {
+                        ui.finding == v.id -> "Finding streams…"
+                        p != null && p.videoId == v.id && p.resumable -> "▶  Resume $code · ${minutesLeft(p.remainingMs)}"
+                        else -> "▶  Play $code"
+                    }
+                    GradientButton(label, onClick = { vm.play(v, false) }, enabled = ui.finding == null)
+                }
+            }
             if (!isSeries) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    GradientButton(if (ui.finding != null) "Finding streams…" else "▶  Play", onClick = { vm.play(null, false) }, enabled = ui.finding == null)
+                    val p = ui.progress?.takeIf { it.resumable }
+                    GradientButton(
+                        when {
+                            ui.finding != null -> "Finding streams…"
+                            p != null -> "▶  Resume · ${minutesLeft(p.remainingMs)}"
+                            else -> "▶  Play"
+                        },
+                        onClick = { vm.play(null, false) }, enabled = ui.finding == null,
+                    )
                     FocusCard(onClick = { vm.play(null, true) }) { Text("Choose stream", color = Vanta.Text) }
                 }
             }
@@ -117,7 +138,16 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                 }
                 val episodes = meta.videos.filter { ui.season == null || it.season == ui.season }
                 if (episodes.isEmpty()) item { Text("No episodes listed.", color = Vanta.TextDim) }
-                items(episodes, key = { it.id }) { v -> EpisodeRow(v, finding = ui.finding == v.id, onPlay = { vm.play(v, false) }, onChoose = { vm.play(v, true) }) }
+                items(episodes, key = { it.id }) { v ->
+                    val p = ui.progress?.takeIf { it.videoId == v.id }
+                    val note = when {
+                        p == null -> null
+                        p.finished -> "✓ Watched"
+                        p.resumable -> "Resume · ${minutesLeft(p.remainingMs)}"
+                        else -> null
+                    }
+                    EpisodeRow(v, finding = ui.finding == v.id, note = note, onPlay = { vm.play(v, false) }, onChoose = { vm.play(v, true) })
+                }
             }
         }
     }
@@ -131,7 +161,7 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
 }
 
 @Composable
-private fun EpisodeRow(v: Video, finding: Boolean, onPlay: () -> Unit, onChoose: () -> Unit) {
+private fun EpisodeRow(v: Video, finding: Boolean, note: String?, onPlay: () -> Unit, onChoose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FocusCard(onClick = onPlay, modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -145,8 +175,12 @@ private fun EpisodeRow(v: Video, finding: Boolean, onPlay: () -> Unit, onChoose:
                         color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        if (finding) "Finding streams…" else (v.overview ?: v.released?.take(10) ?: ""),
-                        color = if (finding) Vanta.Cyan else Vanta.TextDim, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        when {
+                            finding -> "Finding streams…"
+                            note != null -> note
+                            else -> v.overview ?: v.released?.take(10) ?: ""
+                        },
+                        color = if (finding || note != null) Vanta.Cyan else Vanta.TextDim, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -155,4 +189,9 @@ private fun EpisodeRow(v: Video, finding: Boolean, onPlay: () -> Unit, onChoose:
             Text("⋯", color = Vanta.Text, fontSize = 18.sp)
         }
     }
+}
+
+fun minutesLeft(ms: Long): String {
+    val m = (ms / 60_000).coerceAtLeast(1)
+    return if (m >= 60) "${m / 60} h ${m % 60} min left" else "$m min left"
 }

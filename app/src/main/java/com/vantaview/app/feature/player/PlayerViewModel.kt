@@ -51,6 +51,7 @@ class PlayerViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val okHttp: OkHttpClient,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     private val channelId: Long = savedState.get<Long>("channelId") ?: 0L
@@ -155,6 +156,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun start(channel: ChannelEntity) {
+        session.setLastChannel(channel.id)
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel()
         player.stop()
         attempts = 0

@@ -96,6 +96,24 @@ interface ContentDao {
         channels.chunked(500).forEach { insertChannels(it) }
     }
 
+    /** Favourite channels across the given playlists, newest first. */
+    @Query(
+        """
+        SELECT c.* FROM channel c
+        JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
+        WHERE c.providerId IN (:providerIds)
+        ORDER BY f.addedAt DESC
+        LIMIT 40
+        """
+    )
+    fun observeFavouriteChannels(providerIds: List<Long>): Flow<List<ChannelEntity>>
+
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId IN (:providerIds)")
+    fun observeChannelCount(providerIds: List<Long>): Flow<Int>
+
+    @Query("SELECT logo FROM channel WHERE providerId IN (:providerIds) AND logo IS NOT NULL AND logo != '' ORDER BY number LIMIT 4")
+    suspend fun sampleLogos(providerIds: List<Long>): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addFavourite(fav: FavouriteEntity)
 

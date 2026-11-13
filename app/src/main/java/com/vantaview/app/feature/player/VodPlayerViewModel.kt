@@ -45,6 +45,7 @@ class VodPlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val okHttp: OkHttpClient,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
+    private val history: com.vantaview.app.data.history.WatchHistory,
     session: VodSession,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(VodUi())
@@ -59,9 +60,11 @@ class VodPlayerViewModel @Inject constructor(
     private var season: Int? = null
     private var episode: Int? = null
     private var resolveJob: kotlinx.coroutines.Job? = null
+    private var request: com.vantaview.app.data.addon.VodRequest? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
+            if (state == Player.STATE_ENDED) saveProgress()
             if (state == Player.STATE_READY) {
                 startedOk = true
                 _ui.update { it.copy(failed = null) }
@@ -90,7 +93,15 @@ class VodPlayerViewModel @Inject constructor(
             _ui.value = VodUi(title = req.title, subtitle = req.subtitle, streams = req.streams, index = req.startIndex)
             season = req.season
             episode = req.episode
-            playIndex(req.startIndex.coerceIn(0, req.streams.lastIndex), 0, explicit = req.chosen)
+            request = req
+            playIndex(req.startIndex.coerceIn(0, req.streams.lastIndex), req.startPositionMs, explicit = req.chosen)
+            // Save progress every 10 seconds while playing.
+            viewModelScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(10_000)
+                    if (player.isPlaying) saveProgress()
+                }
+            }
         }
     }
 
@@ -104,7 +115,24 @@ class VodPlayerViewModel @Inject constructor(
 
     fun clearNotice() = _ui.update { it.copy(notice = null) }
 
-    fun pause() { player.playWhenReady = false }
+    fun pause() { player.playWhenReady = false; saveProgress() }
+
+    /** Records where this profile got to, for Continue watching and resume. */
+    private fun saveProgress() {
+        val r = request ?: return
+        if (r.metaId.isBlank()) return
+        val dur = player.duration
+        val pos = player.currentPosition
+        if (dur == C.TIME_UNSET || dur <= 0 || pos <= 0) return
+        history.record(
+            com.vantaview.app.data.history.HistoryEntry(
+                type = r.type, metaId = r.metaId, videoId = r.videoId, title = r.title,
+                poster = r.poster, background = r.background, season = r.season, episode = r.episode,
+                episodeTitle = r.episodeTitle, positionMs = pos, durationMs = dur,
+                updatedAt = System.currentTimeMillis(), knownSeason = r.knownSeason,
+            )
+        )
+    }
 
     /**
      * Plays stream [index]. A torrent is first turned into a link through the debrid accounts; when it isn't
@@ -160,6 +188,7 @@ class VodPlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        saveProgress()
         resolveJob?.cancel()
         player.removeListener(listener)
         player.release()

@@ -26,6 +26,7 @@ data class StreamChoice(
     val streams: List<AddonStream>,
     val season: Int? = null,
     val episode: Int? = null,
+    val video: Video? = null,
 )
 
 data class DetailsUi(
@@ -37,6 +38,8 @@ data class DetailsUi(
     val choice: StreamChoice? = null,
     /** Not suitable for the Kids profile in use. */
     val blocked: Boolean = false,
+    /** Where this profile got to in this film or series. */
+    val progress: com.vantaview.app.data.history.HistoryEntry? = null,
 )
 
 @HiltViewModel
@@ -45,12 +48,15 @@ class DetailsViewModel @Inject constructor(
     private val session: VodSession,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
+    private val history: com.vantaview.app.data.history.WatchHistory,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
     val id: String = savedState.get<String>("id").orEmpty()
     val fallbackName: String = savedState.get<String>("name").orEmpty()
     val fallbackPoster: String? = savedState.get<String>("poster")?.ifBlank { null }
+    /** Opened from Continue watching: play this straight away ("movie", or an episode's video id). */
+    private val autoplay: String? = savedState.get<String>("play")?.ifBlank { null }
 
     private val _ui = MutableStateFlow(DetailsUi())
     val ui: StateFlow<DetailsUi> = _ui
@@ -68,8 +74,15 @@ class DetailsViewModel @Inject constructor(
                 _ui.update { it.copy(loading = false, blocked = true) }
                 return@launch
             }
-            val firstSeason = meta?.videos?.map { it.season }?.distinct()?.sorted()?.let { s -> s.firstOrNull { it > 0 } ?: s.firstOrNull() }
-            _ui.update { it.copy(loading = false, meta = meta, season = firstSeason) }
+            val progress = history.get(type, id)
+            val seasons = meta?.videos?.map { it.season }?.distinct()?.sorted().orEmpty()
+            val firstSeason = progress?.season?.takeIf { it in seasons } ?: seasons.firstOrNull { it > 0 } ?: seasons.firstOrNull()
+            _ui.update { it.copy(loading = false, meta = meta, season = firstSeason, progress = progress) }
+            when {
+                autoplay == null -> Unit
+                autoplay == "movie" || type != "series" -> play(null, false)
+                else -> meta?.videos?.firstOrNull { it.id == autoplay }?.let { play(it, false) }
+            }
         }
     }
 
@@ -77,11 +90,47 @@ class DetailsViewModel @Inject constructor(
 
     fun selectSeason(s: Int) = _ui.update { it.copy(season = s) }
 
+    /** Called when the page comes back into view (e.g. after the player) to show the latest progress. */
+    fun refreshProgress() = _ui.update { it.copy(progress = history.get(type, id)) }
+
+    /** For a series: the episode to resume, or the one after the last finished one. */
+    fun continueVideo(): Video? {
+        val p = _ui.value.progress ?: return null
+        val videos = _ui.value.meta?.videos.orEmpty()
+        val i = videos.indexOfFirst { it.id == p.videoId }
+        if (i < 0) return null
+        return if (p.finished) videos.drop(i + 1).firstOrNull { it.season > 0 } else videos[i]
+    }
+
     fun dismissChoice() = _ui.update { it.copy(choice = null) }
 
     fun clearMessage() = _ui.update { it.copy(message = null) }
 
     /** Plays the film ([video] null) or an episode. With [choose], shows the stream list instead of auto-playing. */
+    /** Highest season that has released episodes. */
+    private fun releasedSeason(): Int {
+        val now = java.time.Instant.now()
+        return _ui.value.meta?.videos.orEmpty().filter { v ->
+            v.season > 0 && (v.released == null || runCatching { java.time.Instant.parse(v.released) <= now }.getOrDefault(true))
+        }.maxOfOrNull { it.season } ?: 0
+    }
+
+    /** Where to start: the saved position if this exact film or episode was left part-way through. */
+    private fun startAt(videoId: String): Long =
+        _ui.value.progress?.takeIf { it.videoId == videoId && it.resumable }?.positionMs ?: 0L
+
+    private fun request(streams: List<AddonStream>, index: Int, video: Video?, subtitle: String?, chosen: Boolean): VodRequest {
+        val meta = _ui.value.meta
+        val vid = video?.id ?: id
+        return VodRequest(
+            title = title, subtitle = subtitle, streams = streams, startIndex = index,
+            season = video?.season?.takeIf { it > 0 }, episode = video?.episode?.takeIf { video.season > 0 },
+            chosen = chosen, type = type, metaId = id, videoId = vid,
+            poster = meta?.poster ?: fallbackPoster, background = meta?.background,
+            episodeTitle = video?.title?.ifBlank { null }, knownSeason = releasedSeason(), startPositionMs = startAt(vid),
+        )
+    }
+
     fun play(video: Video?, choose: Boolean) {
         if (_ui.value.finding != null || _ui.value.blocked) return
         val streamId = video?.id ?: id
@@ -107,9 +156,9 @@ class DetailsViewModel @Inject constructor(
                 streams.isEmpty() -> _ui.update {
                     it.copy(finding = null, message = "Your add-ons found no playable streams. External links can't be played in VantaView.")
                 }
-                choose -> _ui.update { it.copy(finding = null, choice = StreamChoice(title, subtitle, streams, season, episode)) }
+                choose -> _ui.update { it.copy(finding = null, choice = StreamChoice(title, subtitle, streams, season, episode, video)) }
                 else -> {
-                    session.current = VodRequest(title, subtitle, streams, 0, season, episode)
+                    session.current = request(streams, 0, video, subtitle, chosen = false)
                     _ui.update { it.copy(finding = null) }
                     _play.send(Unit)
                 }
@@ -119,7 +168,7 @@ class DetailsViewModel @Inject constructor(
 
     fun pick(index: Int) {
         val c = _ui.value.choice ?: return
-        session.current = VodRequest(c.title, c.subtitle, c.streams, index, c.season, c.episode, chosen = true)
+        session.current = request(c.streams, index, c.video, c.subtitle, chosen = true)
         _ui.update { it.copy(choice = null) }
         viewModelScope.launch { _play.send(Unit) }
     }

@@ -26,6 +26,10 @@ class ProfileSession @Inject constructor(@ApplicationContext context: Context) {
     fun lastProvider(): Long = sp.getLong("last_provider_$id", 0L)
     fun setLastProvider(providerId: Long) = sp.edit().putLong("last_provider_$id", providerId).apply()
 
+    /** Last live channel watched, per profile (shown in Home's preview). */
+    fun lastChannel(): Long = sp.getLong("last_channel_$id", 0L)
+    fun setLastChannel(channelId: Long) = sp.edit().putLong("last_channel_$id", channelId).apply()
+
     /** The parent PIN that guards leaving a Kids profile and changing profiles. */
     var parentPinHash: String?
         get() = sp.getString("parent_pin_hash", null)

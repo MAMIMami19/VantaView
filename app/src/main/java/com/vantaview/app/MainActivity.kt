@@ -27,6 +27,7 @@ import androidx.navigation.navArgument
 import com.vantaview.app.data.Prefs
 import com.vantaview.app.data.addon.AddonRepository
 import com.vantaview.app.data.repo.ProviderRepository
+import com.vantaview.app.feature.home.HomeScreen
 import com.vantaview.app.feature.live.LiveScreen
 import com.vantaview.app.feature.player.PlayerScreen
 import com.vantaview.app.feature.profiles.ChooseProfileScreen
@@ -64,11 +65,8 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Where to land: Live TV if there are playlists, Movies if there are only add-ons, else Live TV's empty state. */
-private suspend fun landing(providers: ProviderRepository, addons: AddonRepository): String = when {
-    providers.count() > 0 -> Section.LIVE.route
-    addons.count() > 0 -> Section.MOVIES.route
-    else -> Section.LIVE.route
-}
+@Suppress("UNUSED_PARAMETER")
+private suspend fun landing(providers: ProviderRepository, addons: AddonRepository): String = Section.HOME.route
 
 /** Switches section. [restore] brings back the section as it was left (off when opening a specific tab). */
 /**
@@ -121,6 +119,7 @@ private fun AppNav(
     val route = entry?.destination?.route
     val section = when {
         route == null -> null
+        route == "home" -> Section.HOME
         route == "live" -> Section.LIVE
         route == "movies" -> Section.MOVIES
         route == "series" -> Section.SERIES
@@ -173,6 +172,18 @@ private fun AppNav(
                     onBack = { nav.popBackStack() },
                 )
             }
+            composable("home") {
+                HomeScreen(
+                    onSection = { route -> nav.goTo(route) },
+                    onOpenTitle = { type, id, name, poster, play ->
+                        nav.navigate(
+                            "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
+                                "&poster=${Uri.encode(poster.orEmpty())}&play=${Uri.encode(play.orEmpty())}"
+                        )
+                    },
+                    onPlayChannel = { id -> nav.navigate("player/$id") },
+                )
+            }
             composable("live") {
                 LiveScreen(
                     onPlay = { id -> nav.navigate("player/$id") },
@@ -207,12 +218,13 @@ private fun AppNav(
                 )
             }
             composable(
-                "details/{type}?id={id}&name={name}&poster={poster}",
+                "details/{type}?id={id}&name={name}&poster={poster}&play={play}",
                 arguments = listOf(
                     navArgument("type") { type = NavType.StringType },
                     navArgument("id") { type = NavType.StringType; defaultValue = "" },
                     navArgument("name") { type = NavType.StringType; defaultValue = "" },
                     navArgument("poster") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("play") { type = NavType.StringType; defaultValue = "" },
                 ),
             ) {
                 DetailsScreen(onPlay = { nav.navigate("vod") }, onBack = { nav.popBackStack() })
