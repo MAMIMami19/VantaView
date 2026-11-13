@@ -263,7 +263,7 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChang
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked, onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = Vanta.Cyan, checkedThumbColor = Vanta.Bg),
+            colors = SwitchDefaults.colors(checkedTrackColor = Vanta.Accent, checkedThumbColor = androidx.compose.ui.graphics.Color.White),
         )
     }
 }

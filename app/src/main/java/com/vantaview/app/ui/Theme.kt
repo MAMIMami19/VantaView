@@ -38,15 +38,19 @@ object Vanta {
         Color(0xFF7C4DFF), Color(0xFF2979FF), Color(0xFF00E5FF),
         Color(0xFF00E676), Color(0xFFFFEA00), Color(0xFFFF9100),
     )
-    val GradientBrush: Brush get() = Brush.linearGradient(Gradient)
+    /** Main accent: a solid violet from the logo's V (buttons, focus rings, progress, avatar ring). */
+    val Accent = Color(0xFF6E54E6)
+    /** The full logo gradient, kept for the logo itself; the UI uses the solid [Accent] instead. */
+    val LogoBrush: Brush get() = Brush.linearGradient(Gradient)
+    val GradientBrush: Brush get() = androidx.compose.ui.graphics.SolidColor(Accent)
 }
 
 @Composable
 fun VantaTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Vanta.Cyan,
-            onPrimary = Color.Black,
+            primary = Vanta.Accent,
+            onPrimary = Color.White,
             secondary = Color(0xFF7C4DFF),
             background = Vanta.Bg,
             onBackground = Vanta.Text,
@@ -80,7 +84,7 @@ fun FocusCard(
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
             .background(if (selected || focused) Vanta.SurfaceHigh else Vanta.Surface)
-            .then(if (focused) Modifier.border(2.dp, Vanta.GradientBrush, shape) else Modifier)
+            .then(if (focused) Modifier.border(3.dp, Vanta.GradientBrush, shape) else Modifier)
             .clickable(onClick = onClick)
             .padding(padding),
         contentAlignment = contentAlignment,
@@ -102,6 +106,6 @@ fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
             .padding(horizontal = 22.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (enabled) Color.Black else Vanta.TextDim, fontWeight = FontWeight.Bold)
+        Text(text, color = if (enabled) Color.White else Vanta.TextDim, fontWeight = FontWeight.Bold)
     }
 }
