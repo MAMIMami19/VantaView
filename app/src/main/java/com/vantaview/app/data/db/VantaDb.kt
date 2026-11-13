@@ -9,15 +9,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         ProviderEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class,
-        AddonEntity::class,
+        AddonEntity::class, ProfileEntity::class, KidsCategoryEntity::class,
     ],
-    version = 2,
+    // Version 3 (profiles) starts the test database afresh: playlists and add-ons are added again.
+    version = 3,
     exportSchema = false,
 )
 abstract class VantaDb : RoomDatabase() {
     abstract fun providers(): ProviderDao
     abstract fun content(): ContentDao
     abstract fun addons(): AddonDao
+    abstract fun profiles(): ProfileDao
 
     companion object {
         /** Version 2 adds installed add-ons; playlists and favourites are kept. */

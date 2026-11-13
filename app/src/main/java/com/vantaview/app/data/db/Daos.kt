@@ -11,14 +11,20 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProviderDao {
-    @Query("SELECT * FROM provider ORDER BY createdAt")
-    fun observeAll(): Flow<List<ProviderEntity>>
+    @Query("SELECT * FROM provider WHERE profileId = :profileId ORDER BY createdAt")
+    fun observeFor(profileId: Long): Flow<List<ProviderEntity>>
+
+    @Query("SELECT * FROM provider WHERE profileId = :profileId ORDER BY createdAt")
+    suspend fun allFor(profileId: Long): List<ProviderEntity>
 
     @Query("SELECT * FROM provider WHERE id = :id")
     suspend fun get(id: Long): ProviderEntity?
 
-    @Query("SELECT COUNT(*) FROM provider")
-    suspend fun count(): Int
+    @Query("SELECT COUNT(*) FROM provider WHERE profileId = :profileId")
+    suspend fun countFor(profileId: Long): Int
+
+    @Query("UPDATE provider SET profileId = :profileId WHERE profileId = 0")
+    suspend fun adoptOrphans(profileId: Long)
 
     @Insert
     suspend fun insert(provider: ProviderEntity): Long
@@ -34,6 +40,9 @@ interface ProviderDao {
 interface ContentDao {
     @Query("SELECT * FROM category WHERE providerId = :providerId ORDER BY position")
     fun observeCategories(providerId: Long): Flow<List<CategoryEntity>>
+
+    @Query("SELECT * FROM category WHERE providerId = :providerId ORDER BY position")
+    suspend fun categories(providerId: Long): List<CategoryEntity>
 
     @Query(
         """
@@ -96,17 +105,23 @@ interface ContentDao {
 
 @Dao
 interface AddonDao {
-    @Query("SELECT * FROM addon ORDER BY position, addedAt")
-    fun observeAll(): Flow<List<AddonEntity>>
+    @Query("SELECT * FROM addon WHERE profileId = :profileId ORDER BY position, addedAt")
+    fun observeFor(profileId: Long): Flow<List<AddonEntity>>
 
-    @Query("SELECT * FROM addon ORDER BY position, addedAt")
-    suspend fun all(): List<AddonEntity>
+    @Query("SELECT * FROM addon WHERE profileId = :profileId ORDER BY position, addedAt")
+    suspend fun allFor(profileId: Long): List<AddonEntity>
 
-    @Query("SELECT COUNT(*) FROM addon")
-    suspend fun count(): Int
+    @Query("SELECT COUNT(*) FROM addon WHERE profileId = :profileId")
+    suspend fun countFor(profileId: Long): Int
 
-    @Query("SELECT * FROM addon WHERE manifestUrl = :url")
-    suspend fun byUrl(url: String): AddonEntity?
+    @Query("SELECT * FROM addon WHERE profileId = :profileId AND manifestUrl = :url")
+    suspend fun byUrl(profileId: Long, url: String): AddonEntity?
+
+    @Query("UPDATE addon SET profileId = :profileId WHERE profileId = 0")
+    suspend fun adoptOrphans(profileId: Long)
+
+    @Query("DELETE FROM addon WHERE profileId = :profileId")
+    suspend fun deleteFor(profileId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(addon: AddonEntity): Long
@@ -116,4 +131,43 @@ interface AddonDao {
 
     @Query("DELETE FROM addon WHERE id = :id")
     suspend fun delete(id: Long)
+}
+
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM profile ORDER BY createdAt")
+    fun observeAll(): Flow<List<ProfileEntity>>
+
+    @Query("SELECT * FROM profile ORDER BY createdAt")
+    suspend fun all(): List<ProfileEntity>
+
+    @Query("SELECT * FROM profile WHERE id = :id")
+    suspend fun get(id: Long): ProfileEntity?
+
+    @Query("SELECT * FROM profile WHERE id = :id")
+    fun observe(id: Long): Flow<ProfileEntity?>
+
+    @Insert
+    suspend fun insert(p: ProfileEntity): Long
+
+    @Update
+    suspend fun update(p: ProfileEntity)
+
+    @Query("DELETE FROM profile WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM kids_category WHERE profileId = :profileId")
+    fun observeKidsCategories(profileId: Long): Flow<List<KidsCategoryEntity>>
+
+    @Query("SELECT * FROM kids_category WHERE profileId = :profileId")
+    suspend fun kidsCategories(profileId: Long): List<KidsCategoryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addKidsCategory(k: KidsCategoryEntity)
+
+    @Query("DELETE FROM kids_category WHERE profileId = :profileId AND providerId = :providerId AND categoryRemoteId = :remoteId")
+    suspend fun removeKidsCategory(profileId: Long, providerId: Long, remoteId: String)
+
+    @Query("DELETE FROM kids_category WHERE profileId = :profileId")
+    suspend fun clearKidsCategories(profileId: Long)
 }

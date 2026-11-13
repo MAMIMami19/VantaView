@@ -13,6 +13,10 @@ data class CatalogDef(
     val searchable: Boolean,
     /** True when the catalog only works with an extra value (such as a search term), so it can't be a row. */
     val needsExtra: Boolean,
+    /** Genre filter values the catalog accepts (used for family rows on Kids profiles). */
+    val genres: List<String> = emptyList(),
+    /** Names of extras the catalog can't work without. */
+    val requiredExtras: List<String> = emptyList(),
 )
 
 data class ResourceDef(val name: String, val types: List<String>?, val idPrefixes: List<String>?)
@@ -48,12 +52,17 @@ data class Manifest(
                     val extras = c.optJSONArray("extra")?.let { e -> (0 until e.length()).mapNotNull { e.optJSONObject(it) } }.orEmpty()
                     val legacyRequired = strings(c.optJSONArray("extraRequired")).orEmpty()
                     val names = extras.map { it.optString("name") } + strings(c.optJSONArray("extraSupported")).orEmpty()
+                    val genreOptions = extras.firstOrNull { it.optString("name") == "genre" }
+                        ?.let { strings(it.optJSONArray("options")) }.orEmpty()
+                        .ifEmpty { strings(c.optJSONArray("genres")).orEmpty() }
                     CatalogDef(
                         type = c.optString("type"),
                         id = c.optString("id"),
                         name = c.optString("name").ifBlank { c.optString("id") },
                         searchable = "search" in names,
                         needsExtra = extras.any { it.optBoolean("isRequired") } || legacyRequired.isNotEmpty(),
+                        genres = genreOptions,
+                        requiredExtras = extras.filter { it.optBoolean("isRequired") }.map { it.optString("name") } + legacyRequired,
                     )
                 }
             }.orEmpty()
@@ -99,6 +108,7 @@ data class MetaPreview(
     val poster: String?,
     val year: String?,
     val rating: String?,
+    val genres: List<String> = emptyList(),
 )
 
 data class Video(
@@ -151,6 +161,7 @@ object AddonJson {
             poster = o.optString("poster").takeIf { it.startsWith("http") },
             year = o.optString("releaseInfo").ifBlank { o.optString("year") }.ifBlank { null },
             rating = o.optString("imdbRating").ifBlank { null },
+            genres = strings(o.optJSONArray("genres")).ifEmpty { strings(o.optJSONArray("genre")) },
         )
     }
 

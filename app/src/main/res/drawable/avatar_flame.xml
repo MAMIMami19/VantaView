@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Profile avatar "flame", from the signed-off profile mockup. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,3c4,5 6,8 6,11a6,6 0,0 1,-12 0c0,-3 2,-5 3,-6 0,3 3,4 3,4s-2,-4 0,-9z"
+        android:strokeColor="#FFF2F4FA"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

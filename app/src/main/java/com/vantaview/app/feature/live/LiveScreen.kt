@@ -64,6 +64,7 @@ fun LiveScreen(
     val filter by vm.filter.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
+    val isKids by vm.isKids.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
@@ -94,12 +95,13 @@ fun LiveScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("No playlists yet", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            "Add an IPTV playlist for live channels, or install add-ons for films and series.",
+                            if (isKids) "Ask a grown-up to add a playlist to this profile."
+                            else "Add an IPTV playlist for live channels, or install add-ons for films and series.",
                             color = Vanta.TextDim,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.widthIn(max = 460.dp),
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (!isKids) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             com.vantaview.app.ui.GradientButton("Add a playlist", onClick = onAddPlaylist)
                             FocusCard(onClick = onAddAddon, contentAlignment = Alignment.Center) { Text("Add an add-on", color = Vanta.Text) }
                         }

@@ -7,9 +7,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** A playlist the user added. kind is "M3U" or "XTREAM". */
-@Entity(tableName = "provider")
+@Entity(tableName = "provider", indices = [Index("profileId")])
 data class ProviderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The profile this playlist belongs to. */
+    val profileId: Long = 0,
     val name: String,
     val kind: String,
     val baseUrl: String,
@@ -52,6 +54,8 @@ data class ChannelEntity(
     val streamUrl: String,
     val epgChannelId: String? = null,
     val headersJson: String? = null,
+    /** Marked adult by the provider (Xtream "is_adult"), hidden on Kids profiles. */
+    val isAdult: Boolean = false,
 )
 
 @Entity(tableName = "favourite", primaryKeys = ["providerId", "remoteId"])
@@ -67,13 +71,35 @@ data class ChannelRow(
 )
 
 /** An installed Stremio-compatible add-on (works the same in Stremio and Nuvio). */
-@Entity(tableName = "addon", indices = [Index(value = ["manifestUrl"], unique = true)])
+@Entity(tableName = "addon", indices = [Index(value = ["profileId", "manifestUrl"], unique = true)])
 data class AddonEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val profileId: Long = 0,
     val manifestUrl: String,
     val name: String,
     val manifestJson: String,
     val enabled: Boolean = true,
     val position: Int = 0,
     val addedAt: Long = System.currentTimeMillis(),
+)
+
+/** A person using the app. Favourites, playlists and add-ons belong to a profile. */
+@Entity(tableName = "profile")
+data class ProfileEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Index into the built-in avatar set. */
+    val avatar: Int,
+    val isKids: Boolean,
+    val pinHash: String? = null,
+    val pinSalt: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+/** Live TV categories a parent has allowed for a Kids profile. */
+@Entity(tableName = "kids_category", primaryKeys = ["profileId", "providerId", "categoryRemoteId"])
+data class KidsCategoryEntity(
+    val profileId: Long,
+    val providerId: Long,
+    val categoryRemoteId: String,
 )

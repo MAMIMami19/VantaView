@@ -29,12 +29,15 @@ data class DetailsUi(
     val finding: String? = null,
     val message: String? = null,
     val choice: StreamChoice? = null,
+    /** Not suitable for the Kids profile in use. */
+    val blocked: Boolean = false,
 )
 
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
     private val repo: AddonRepository,
     private val session: VodSession,
+    private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
@@ -52,6 +55,12 @@ class DetailsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val meta = runCatching { repo.meta(type, id) }.getOrNull()
+            if (profiles.isKids() && meta != null && meta.genres.isNotEmpty() &&
+                !com.vantaview.app.data.profile.KidsFilter.hasFamilyGenre(meta.genres)
+            ) {
+                _ui.update { it.copy(loading = false, blocked = true) }
+                return@launch
+            }
             val firstSeason = meta?.videos?.map { it.season }?.distinct()?.sorted()?.let { s -> s.firstOrNull { it > 0 } ?: s.firstOrNull() }
             _ui.update { it.copy(loading = false, meta = meta, season = firstSeason) }
         }
@@ -67,7 +76,7 @@ class DetailsViewModel @Inject constructor(
 
     /** Plays the film ([video] null) or an episode. With [choose], shows the stream list instead of auto-playing. */
     fun play(video: Video?, choose: Boolean) {
-        if (_ui.value.finding != null) return
+        if (_ui.value.finding != null || _ui.value.blocked) return
         val streamId = video?.id ?: id
         val subtitle = video?.let { v ->
             val code = if (v.season > 0) "S${v.season} E${v.episode}" else "Episode ${v.episode}"

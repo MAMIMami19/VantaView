@@ -3,7 +3,7 @@ package com.vantaview.app.feature.playlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vantaview.app.data.Prefs
+import com.vantaview.app.data.profile.ProfileSession
 import com.vantaview.app.data.db.ProviderEntity
 import com.vantaview.app.data.remote.SmartAdd
 import com.vantaview.app.data.remote.SmartAddResult
@@ -35,7 +35,7 @@ data class PlaylistForm(
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
     private val repo: ProviderRepository,
-    private val prefs: Prefs,
+    private val session: ProfileSession,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
         repo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -75,7 +75,7 @@ class PlaylistsViewModel @Inject constructor(
                     SourceTab.XTREAM -> repo.addXtream(f.name, f.server, f.username, f.password)
                     SourceTab.SMART -> { detect(); return@launch }
                 }
-                prefs.lastProviderId = id
+                session.setLastProvider(id)
                 _form.value = PlaylistForm(tab = f.tab, message = "Playlist added. Loading channels…")
             } catch (e: Exception) {
                 _form.update { it.copy(message = e.message ?: "Could not add the playlist", isError = true) }

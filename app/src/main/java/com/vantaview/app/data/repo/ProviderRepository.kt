@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +47,7 @@ class ProviderRepository @Inject constructor(
     private val db: VantaDb,
     private val http: OkHttpClient,
     private val crypto: CredentialCrypto,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
     @AppScope private val scope: CoroutineScope,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
@@ -53,9 +55,26 @@ class ProviderRepository @Inject constructor(
     private val _syncStates = MutableStateFlow<Map<Long, SyncState>>(emptyMap())
     val syncStates: StateFlow<Map<Long, SyncState>> = _syncStates
 
-    fun observe(): Flow<List<ProviderEntity>> = db.providers().observeAll()
+    /** Playlists of the profile in use. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observe(): Flow<List<ProviderEntity>> =
+        session.current.flatMapLatest { db.providers().observeFor(it) }
 
-    suspend fun count(): Int = db.providers().count()
+    suspend fun count(): Int = db.providers().countFor(session.id)
+
+    /** Copies every playlist of one profile to another and loads the copies. */
+    suspend fun copyAll(from: Long, to: Long) {
+        db.providers().allFor(from).forEach { p ->
+            val id = db.providers().insert(
+                p.copy(id = 0, profileId = to, createdAt = System.currentTimeMillis(), lastSyncAt = 0, channelCount = 0, lastError = null)
+            )
+            sync(id)
+        }
+    }
+
+    suspend fun deleteAllFor(profileId: Long) {
+        db.providers().allFor(profileId).forEach { delete(it.id) }
+    }
 
     suspend fun addM3u(name: String, url: String): Long {
         val clean = M3uParser.rawGithub(url)
@@ -63,7 +82,7 @@ class ProviderRepository @Inject constructor(
             "The playlist link must start with http:// or https://"
         }
         val id = db.providers().insert(
-            ProviderEntity(name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = clean)
+            ProviderEntity(profileId = session.id, name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = clean)
         )
         sync(id)
         return id
@@ -75,6 +94,7 @@ class ProviderRepository @Inject constructor(
         }
         val id = db.providers().insert(
             ProviderEntity(
+                profileId = session.id,
                 name = name.ifBlank { "My playlist" },
                 kind = "XTREAM",
                 baseUrl = SmartAdd.normalizeServer(server),
@@ -299,6 +319,7 @@ class ProviderRepository @Inject constructor(
                     categoryRemoteId = o.optString("category_id").ifBlank { null },
                     streamUrl = "xtream:$id",
                     epgChannelId = o.optString("epg_channel_id").ifBlank { null },
+                    isAdult = o.optString("is_adult") == "1",
                 )
             }
             setState(p.id, SyncState.Running("Saving ${channels.size} channels"))

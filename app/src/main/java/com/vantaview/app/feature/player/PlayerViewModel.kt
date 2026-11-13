@@ -50,6 +50,7 @@ class PlayerViewModel @Inject constructor(
     private val db: VantaDb,
     private val repo: ProviderRepository,
     private val okHttp: OkHttpClient,
+    private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     private val channelId: Long = savedState.get<Long>("channelId") ?: 0L
@@ -115,6 +116,14 @@ class PlayerViewModel @Inject constructor(
                 return@launch
             }
             siblings = db.content().siblings(channel.providerId, channel.categoryRemoteId)
+            val profile = profiles.current()
+            if (profile?.isKids == true) {
+                val allow = db.profiles().kidsCategories(profile.id)
+                    .filter { it.providerId == channel.providerId }.map { it.categoryRemoteId }.toSet()
+                val adultCats = db.content().categories(channel.providerId)
+                    .filter { com.vantaview.app.data.profile.KidsFilter.looksAdult(it.name) }.map { it.remoteId }.toSet()
+                siblings = siblings.filter { com.vantaview.app.data.profile.KidsFilter.channelAllowed(it, adultCats, allow) }
+            }
             index = siblings.indexOfFirst { it.id == channel.id }.coerceAtLeast(0)
             if (siblings.isEmpty()) siblings = listOf(channel)
             start(siblings[index])

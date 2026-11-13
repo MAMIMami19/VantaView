@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Profile avatar "rocket", from the signed-off profile mockup. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,2c4,3 5,8 3,13H9C7,10 8,5 12,2zM9,15l-3,4M15,15l3,4M12,9h0.01"
+        android:strokeColor="#FFF2F4FA"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

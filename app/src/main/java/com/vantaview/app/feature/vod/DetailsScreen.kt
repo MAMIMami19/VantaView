@@ -67,6 +67,10 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
             item {
                 FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text) }
             }
+            if (ui.blocked) {
+                item { Text("This title isn't available on a Kids profile.", color = Vanta.Text, fontSize = 18.sp) }
+                return@LazyColumn
+            }
             item {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Box(Modifier.width(if (wide) 170.dp else 110.dp).height(if (wide) 255.dp else 165.dp).clip(RoundedCornerShape(12.dp)).background(Vanta.SurfaceHigh)) {

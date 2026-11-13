@@ -49,6 +49,10 @@ fun CatalogScreen(
         Text(title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
 
+        if (ui.loaded && ui.addonCount == 0 && ui.kids) {
+            Message("Ask a grown-up to add add-ons to this profile.")
+            return@Column
+        }
         if (ui.loaded && ui.addonCount == 0) {
             Empty(
                 "No add-ons yet. Install Stremio or Nuvio add-ons on the Sources page and their " +
@@ -82,6 +86,9 @@ fun CatalogScreen(
                     items(results, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, modifier = Modifier) }
                 }
             }
+            ui.loaded && ui.rows.isEmpty() && ui.kids -> Message(
+                "None of this profile's add-ons has a family or kids catalogue for ${if (vm.type == "series") "series" else "films"}."
+            )
             ui.loaded && ui.rows.isEmpty() -> Message(
                 "Your add-ons have no ${if (vm.type == "series") "series" else "film"} catalogues to browse. " +
                     "You can still search above, or add a catalogue add-on such as Cinemeta on the Sources page."

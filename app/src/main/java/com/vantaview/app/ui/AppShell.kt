@@ -50,7 +50,15 @@ enum class Section(val route: String, val label: String, val icon: ImageVector) 
  * same place in the tree, so switching between full-screen pages (player, details) and sections keeps state.
  */
 @Composable
-fun AppShell(current: Section?, onSelect: (Section) -> Unit, content: @Composable () -> Unit) {
+fun AppShell(
+    current: Section?,
+    profile: com.vantaview.app.data.db.ProfileEntity?,
+    onSelect: (Section) -> Unit,
+    onProfiles: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    // Kids profiles can't open Sources.
+    val sections = Section.entries.filter { !(profile?.isKids == true && it == Section.SOURCES) }
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg).safeDrawingPadding()) {
         val wide = maxWidth >= 720.dp
         val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -69,9 +77,11 @@ fun AppShell(current: Section?, onSelect: (Section) -> Unit, content: @Composabl
                                 Text("IPTV & VOD", color = Vanta.TextDim, fontSize = 12.sp)
                             }
                         }
-                        Section.entries.forEach { s ->
+                        sections.forEach { s ->
                             NavItem(s, s == current) { scope.launch { drawer.close() }; onSelect(s) }
                         }
+                        Spacer(Modifier.height(12.dp))
+                        ProfileChip(profile) { scope.launch { drawer.close() }; onProfiles() }
                     }
                 }
             },
@@ -87,7 +97,9 @@ fun AppShell(current: Section?, onSelect: (Section) -> Unit, content: @Composabl
                             Spacer(Modifier.width(8.dp))
                             Text("VantaView", color = Vanta.Text, fontWeight = FontWeight.Black, fontSize = 17.sp)
                         }
-                        Section.entries.forEach { s -> NavItem(s, s == current) { onSelect(s) } }
+                        sections.forEach { s -> NavItem(s, s == current) { onSelect(s) } }
+                        Spacer(Modifier.weight(1f))
+                        ProfileChip(profile, onProfiles)
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
@@ -128,4 +140,20 @@ private fun NavItem(s: Section, selected: Boolean, onClick: () -> Unit) {
         }
     }
     Spacer(Modifier.height(0.dp))
+}
+
+/** Current profile, opens "Who's watching?" to switch. */
+@Composable
+private fun ProfileChip(profile: com.vantaview.app.data.db.ProfileEntity?, onClick: () -> Unit) {
+    if (profile == null) return
+    FocusCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AvatarCircle(profile.avatar, 30.dp)
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(profile.name, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(if (profile.isKids) "Kids · switch" else "Switch profile", color = Vanta.TextDim, fontSize = 12.sp)
+            }
+        }
+    }
 }

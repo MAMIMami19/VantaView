@@ -27,6 +27,7 @@ sealed interface RowState {
 
 data class CatalogUi(
     val loaded: Boolean = false,
+    val kids: Boolean = false,
     val addonCount: Int = 0,
     val rows: List<CatalogRef> = emptyList(),
     val rowStates: Map<String, RowState> = emptyMap(),
@@ -38,6 +39,7 @@ data class CatalogUi(
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val repo: AddonRepository,
+    private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     /** "movie" or "series". */
@@ -50,9 +52,13 @@ class CatalogViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repo.observe().collect { addons ->
-                val rows = repo.catalogs(type)
-                _ui.update { it.copy(loaded = true, addonCount = addons.count { a -> a.entity.enabled }, rows = rows) }
+            kotlinx.coroutines.flow.combine(repo.observe(), profiles.observeCurrent()) { a, p -> a to p }.collect { (addons, p) ->
+                val kids = p?.isKids == true
+                val rows = if (kids) repo.kidsCatalogs(type) else repo.catalogs(type)
+                _ui.update {
+                    it.copy(loaded = true, kids = kids, addonCount = addons.count { a -> a.entity.enabled }, rows = rows,
+                        rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k } })
+                }
                 rows.forEach { load(it) }
             }
         }
@@ -78,6 +84,7 @@ class CatalogViewModel @Inject constructor(
         _ui.update { it.copy(searching = true) }
         searchJob = viewModelScope.launch {
             val r = runCatching { repo.search(type, q) }.getOrDefault(emptyList())
+                .let { list -> if (_ui.value.kids) list.filter { com.vantaview.app.data.profile.KidsFilter.hasFamilyGenre(it.genres) } else list }
             _ui.update { it.copy(searching = false, results = r) }
         }
     }

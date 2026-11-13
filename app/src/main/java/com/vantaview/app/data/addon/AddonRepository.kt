@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -26,28 +27,32 @@ data class InstalledAddon(val entity: AddonEntity, val manifest: Manifest) {
     val base: String get() = entity.manifestUrl.removeSuffix("/manifest.json")
 }
 
-/** A catalog row: which add-on, which catalog. */
-data class CatalogRef(val addon: InstalledAddon, val catalog: CatalogDef) {
-    val key: String get() = "${addon.entity.id}/${catalog.type}/${catalog.id}"
-    val title: String get() = "${catalog.name} · ${addon.manifest.name}"
+/** A catalog row: which add-on, which catalog, and an optional genre filter. */
+data class CatalogRef(val addon: InstalledAddon, val catalog: CatalogDef, val genre: String? = null) {
+    val key: String get() = "${addon.entity.id}/${catalog.type}/${catalog.id}/${genre.orEmpty()}"
+    val title: String get() = listOfNotNull(genre, catalog.name).joinToString(" · ") + " · ${addon.manifest.name}"
 }
 
 @Singleton
 class AddonRepository @Inject constructor(
     private val db: VantaDb,
     private val http: OkHttpClient,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
     private val cache = ConcurrentHashMap<String, Pair<Long, JSONObject>>()
 
-    fun observe(): Flow<List<InstalledAddon>> = db.addons().observeAll().map { list -> list.mapNotNull(::parse) }
+    /** Add-ons of the profile in use. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observe(): Flow<List<InstalledAddon>> =
+        session.current.flatMapLatest { db.addons().observeFor(it) }.map { list -> list.mapNotNull(::parse) }
 
-    suspend fun count(): Int = db.addons().count()
+    suspend fun count(): Int = db.addons().countFor(session.id)
 
     private fun parse(e: AddonEntity): InstalledAddon? =
         runCatching { InstalledAddon(e, Manifest.parse(JSONObject(e.manifestJson))) }.getOrNull()
 
-    suspend fun enabled(): List<InstalledAddon> = db.addons().all().filter { it.enabled }.mapNotNull(::parse)
+    suspend fun enabled(): List<InstalledAddon> = db.addons().allFor(session.id).filter { it.enabled }.mapNotNull(::parse)
 
     /** Downloads the manifest and installs (or updates) the add-on. Throws with a readable message. */
     suspend fun install(input: String): InstalledAddon = withContext(Dispatchers.IO) {
@@ -68,10 +73,11 @@ class AddonRepository @Inject constructor(
         if (manifest.resources.isEmpty() && manifest.catalogs.isEmpty()) {
             throw IllegalArgumentException("This add-on doesn't offer anything VantaView can use")
         }
-        val existing = db.addons().byUrl(url)
-        val position = existing?.position ?: db.addons().all().size
+        val existing = db.addons().byUrl(session.id, url)
+        val position = existing?.position ?: db.addons().allFor(session.id).size
         val entity = AddonEntity(
             id = existing?.id ?: 0,
+            profileId = session.id,
             manifestUrl = url,
             name = manifest.name,
             manifestJson = json.toString(),
@@ -92,8 +98,25 @@ class AddonRepository @Inject constructor(
     suspend fun catalogs(type: String): List<CatalogRef> =
         enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && !it.needsExtra }.map { CatalogRef(a, it) } }
 
+    /**
+     * Rows for a Kids profile: each catalogue filtered to a family genre where it offers one, plus catalogues
+     * that are themselves for children.
+     */
+    suspend fun kidsCatalogs(type: String): List<CatalogRef> = enabled().flatMap { a ->
+        a.manifest.catalogs.filter { it.type == type }.mapNotNull { c ->
+            val family = c.genres.firstOrNull { com.vantaview.app.data.profile.KidsFilter.isFamilyGenre(it) }
+            val onlyGenreRequired = c.requiredExtras.all { it == "genre" }
+            when {
+                family != null && onlyGenreRequired -> CatalogRef(a, c, family)
+                !c.needsExtra && com.vantaview.app.data.profile.KidsFilter.looksFamily(c.name + " " + c.id) -> CatalogRef(a, c)
+                else -> null
+            }
+        }
+    }
+
     suspend fun loadCatalog(ref: CatalogRef): List<MetaPreview> {
-        val url = "${ref.addon.base}/catalog/${enc(ref.catalog.type)}/${enc(ref.catalog.id)}.json"
+        val extra = ref.genre?.let { "/genre=${enc(it)}" }.orEmpty()
+        val url = "${ref.addon.base}/catalog/${enc(ref.catalog.type)}/${enc(ref.catalog.id)}$extra.json"
         return json(url, maxAgeMs = 6 * 3_600_000L)?.optJSONArray("metas")?.let { arr ->
             (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { AddonJson.preview(it, ref.catalog.type) }
         }.orEmpty().distinctBy { it.id }

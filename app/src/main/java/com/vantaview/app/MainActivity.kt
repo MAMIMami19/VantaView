@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,9 @@ import com.vantaview.app.data.addon.AddonRepository
 import com.vantaview.app.data.repo.ProviderRepository
 import com.vantaview.app.feature.live.LiveScreen
 import com.vantaview.app.feature.player.PlayerScreen
+import com.vantaview.app.feature.profiles.ChooseProfileScreen
+import com.vantaview.app.feature.profiles.ProfileEditScreen
+import com.vantaview.app.data.profile.ProfileRepository
 import com.vantaview.app.feature.player.VodPlayerScreen
 import com.vantaview.app.feature.sources.SourcesScreen
 import com.vantaview.app.feature.sources.SourcesTab
@@ -47,12 +51,13 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var prefs: Prefs
     @Inject lateinit var providers: ProviderRepository
     @Inject lateinit var addons: AddonRepository
+    @Inject lateinit var profiles: ProfileRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             VantaTheme {
-                AppNav(prefs, providers, addons, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, onExit = { finish() })
             }
         }
     }
@@ -66,6 +71,18 @@ private suspend fun landing(providers: ProviderRepository, addons: AddonReposito
 }
 
 /** Switches section. [restore] brings back the section as it was left (off when opening a specific tab). */
+/**
+ * After the terms: make the first profile, pick one when there are several, or go straight in with one.
+ */
+private suspend fun afterTerms(profiles: ProfileRepository, providers: ProviderRepository, addons: AddonRepository): String {
+    val all = profiles.all()
+    return when {
+        all.isEmpty() -> "profile/setup"
+        all.size > 1 -> "profiles"
+        else -> { profiles.select(all.first().id); landing(providers, addons) }
+    }
+}
+
 private fun NavHostController.goTo(route: String, restore: Boolean = true) = navigate(route) {
     popUpTo(graph.id) { saveState = restore }
     launchSingleTop = true
@@ -73,13 +90,26 @@ private fun NavHostController.goTo(route: String, restore: Boolean = true) = nav
 }
 
 @Composable
-private fun AppNav(prefs: Prefs, providers: ProviderRepository, addons: AddonRepository, onExit: () -> Unit) {
+private fun AppNav(
+    prefs: Prefs,
+    providers: ProviderRepository,
+    addons: AddonRepository,
+    profiles: ProfileRepository,
+    onExit: () -> Unit,
+) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
     var start by remember { mutableStateOf<String?>(null) }
 
-    // First launch: terms, then straight into the app (no forced setup).
-    LaunchedEffect(Unit) { start = if (!prefs.termsAccepted) "terms" else landing(providers, addons) }
+    // First launch: terms, then "Who's watching?" (create a profile), then Sources. No playlist is required.
+    LaunchedEffect(Unit) { start = if (!prefs.termsAccepted) "terms" else afterTerms(profiles, providers, addons) }
+    val profile by profiles.observeCurrent().collectAsState(initial = null)
+
+    /** Clears the back stack and opens the right place for the profile now in use. */
+    fun enterApp() = scope.launch {
+        val next = landing(providers, addons)
+        nav.navigate(next) { popUpTo(nav.graph.id) { inclusive = true } }
+    }
 
     val startRoute = start
     if (startRoute == null) {
@@ -97,18 +127,49 @@ private fun AppNav(prefs: Prefs, providers: ProviderRepository, addons: AddonRep
         else -> null
     }
 
-    AppShell(current = section, onSelect = { nav.goTo(it.route) }) {
+    AppShell(
+        current = section,
+        profile = profile,
+        onSelect = { nav.goTo(it.route) },
+        onProfiles = { nav.navigate("profiles") },
+    ) {
         NavHost(navController = nav, startDestination = startRoute) {
             composable("terms") {
                 TermsScreen(
                     onAgree = {
                         prefs.termsAccepted = true
                         scope.launch {
-                            val next = landing(providers, addons)
+                            val next = afterTerms(profiles, providers, addons)
                             nav.navigate(next) { popUpTo(nav.graph.id) { inclusive = true } }
                         }
                     },
                     onDisagree = onExit,
+                )
+            }
+            composable("profile/setup") {
+                ProfileEditScreen(
+                    profileId = 0L,
+                    first = true,
+                    onDone = { id ->
+                        profiles.select(id)
+                        nav.navigate("sources?tab=playlists") { popUpTo(nav.graph.id) { inclusive = true } }
+                    },
+                    onBack = null,
+                )
+            }
+            composable("profiles") {
+                ChooseProfileScreen(
+                    onChosen = { enterApp() },
+                    onEdit = { id -> nav.navigate("profile/edit/$id") },
+                    onAdd = { nav.navigate("profile/edit/0") },
+                )
+            }
+            composable("profile/edit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                ProfileEditScreen(
+                    profileId = e.arguments?.getLong("id") ?: 0L,
+                    first = false,
+                    onDone = { nav.popBackStack() },
+                    onBack = { nav.popBackStack() },
                 )
             }
             composable("live") {
