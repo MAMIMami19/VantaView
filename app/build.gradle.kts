@@ -14,8 +14,8 @@ android {
         applicationId = "com.vantaview.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.1.0-test" + (System.getenv("GITHUB_RUN_NUMBER")?.let { ".$it" } ?: "")
+        versionCode = (System.getenv("VV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = System.getenv("VV_VERSION") ?: ("0.1.0-test" + (System.getenv("GITHUB_RUN_NUMBER")?.let { ".$it" } ?: ""))
     }
 
     signingConfigs {

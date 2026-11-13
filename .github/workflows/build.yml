@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Version code = commits on main x 10, so newer builds always install over older ones (releases add 1).
+      - run: echo "VV_VERSION_CODE=$(( $(git rev-list --count HEAD) * 10 ))" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -37,5 +41,4 @@ jobs:
           files: VantaView-test.apk
           body: |
             Test build ${{ github.run_number }} from commit ${{ github.sha }}.
-            Early slice: terms, add playlist (M3U / Xtream), Live TV list, player.
             Signed with a shared test key. Source: this repository (GPL-3.0-or-later).
