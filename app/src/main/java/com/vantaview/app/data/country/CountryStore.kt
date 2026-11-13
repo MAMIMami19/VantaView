@@ -14,15 +14,14 @@ import javax.inject.Singleton
 
 /** The countries found in one playlist. */
 data class CountryScan(
-    /** Category remote id → country code (or [CountryDetect.OTHER]). */
-    val categoryCountry: Map<String, String>,
+    /** Category remote id → the countries its channels come from. */
+    val categoryCountries: Map<String, Set<String>>,
     /** Country code → channel count, biggest first. Includes OTHER when some channels have no country. */
     val counts: Map<String, Int>,
 ) {
     /** Real countries, leaving out OTHER. */
     val countries: List<String> get() = counts.keys.filter { it != CountryDetect.OTHER }
-    fun countryOf(categoryRemoteId: String?): String =
-        categoryRemoteId?.let { categoryCountry[it] } ?: CountryDetect.OTHER
+    fun inCategory(categoryRemoteId: String): Set<String> = categoryCountries[categoryRemoteId].orEmpty()
 }
 
 /**
@@ -70,21 +69,28 @@ class CountryStore @Inject constructor(
         e.apply(); cache.remove(providerId)
     }
 
-    /** Groups a playlist's categories by country. Cached until the playlist syncs again. */
+    /** Works out every channel's country (only where missing, so after a sync) and counts them. Cached per sync. */
     suspend fun scan(provider: ProviderEntity): CountryScan = withContext(Dispatchers.Default) {
         cache[provider.id]?.takeIf { it.first == provider.lastSyncAt }?.let { return@withContext it.second }
-        val cats = db.content().categories(provider.id)
-        val channels = db.content().countryRows(provider.id)
-        val byCat = channels.groupBy { it.categoryRemoteId }
-        val catCountry = cats.associate { c ->
-            c.remoteId to CountryDetect.forCategory(c.name, byCat[c.remoteId].orEmpty().map { it.name to it.epgChannelId })
+        val dao = db.content()
+        if (dao.countryMissing(provider.id) > 0) {
+            val names = dao.categories(provider.id).associate { it.remoteId to it.name }
+            val byCode = HashMap<String, MutableList<Long>>()
+            dao.countryRows(provider.id).groupBy { it.categoryRemoteId }.forEach { (cat, rows) ->
+                val codes = CountryDetect.assign(cat?.let { names[it] }, rows.map { it.name to it.epgChannelId })
+                rows.forEachIndexed { k, r -> byCode.getOrPut(codes[k]) { mutableListOf() }.add(r.id) }
+            }
+            byCode.forEach { (code, ids) -> ids.chunked(900).forEach { dao.setCountry(code, it) } }
         }
+        val tally = dao.countryTally(provider.id)
         val counts = HashMap<String, Int>()
-        channels.forEach { ch ->
-            val code = ch.categoryRemoteId?.let { catCountry[it] } ?: CountryDetect.OTHER
-            counts[code] = (counts[code] ?: 0) + 1
+        val perCat = HashMap<String, MutableSet<String>>()
+        tally.forEach { t ->
+            val code = t.code ?: CountryDetect.OTHER
+            counts[code] = (counts[code] ?: 0) + t.n
+            t.category?.let { perCat.getOrPut(it) { mutableSetOf() }.add(code) }
         }
-        val scan = CountryScan(catCountry, counts.entries.sortedByDescending { it.value }.associate { it.key to it.value })
+        val scan = CountryScan(perCat, counts.entries.sortedByDescending { it.value }.associate { it.key to it.value })
         cache[provider.id] = provider.lastSyncAt to scan
         scan
     }

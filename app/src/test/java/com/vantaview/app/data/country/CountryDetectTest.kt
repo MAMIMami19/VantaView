@@ -42,13 +42,26 @@ class CountryDetectTest {
         assertNull(CountryDetect.fromGuideId(null))
     }
 
-    @Test fun categoryFallsBackToItsChannels() {
-        val uk = List(8) { "UK: Channel $it" to null } + List(2) { "Channel $it" to null }
-        assertEquals("UK", CountryDetect.forCategory("Entertainment", uk))
-        val mixed = List(5) { "UK: A$it" to null } + List(5) { "US: B$it" to null }
-        assertEquals(CountryDetect.OTHER, CountryDetect.forCategory("Sports", mixed))
-        assertEquals(CountryDetect.OTHER, CountryDetect.forCategory("Misc", emptyList()))
-        assertEquals("FR", CountryDetect.forCategory("Docs", listOf("Arte" to "arte.fr", "France 5" to "france5.fr")))
+    @Test fun iptvOrgGuideIds() {
+        assertEquals("UK", CountryDetect.fromGuideId("BBCOne.uk@SD"))
+        assertEquals("US", CountryDetect.fromGuideId("CNNInternational.us@HD"))
+        assertEquals("DE", CountryDetect.fromGuideId("DasErste.de"))
+    }
+
+    @Test fun categoryNameWins() {
+        assertEquals(listOf("UK", "UK"), CountryDetect.assign("UK | Sports", listOf("A" to null, "B" to "x.us")))
+    }
+
+    @Test fun mixedGenreCategoryUsesEachChannel() {
+        // iptv-org style: "News" holds channels from many countries, tagged by guide id.
+        val news = listOf("BBC News" to "BBCNews.uk@SD", "CNN" to "CNN.us@SD", "Tagesschau" to "Tagesschau24.de", "Mystery" to null)
+        assertEquals(listOf("UK", "US", "DE", CountryDetect.OTHER), CountryDetect.assign("News", news))
+    }
+
+    @Test fun untaggedChannelsFollowTheCategoryMajority() {
+        val ent = List(8) { "UK: Channel $it" to null } + List(2) { "Channel $it" to null }
+        assertEquals(List(10) { "UK" }, CountryDetect.assign("Entertainment", ent))
+        assertEquals(emptyList<String>(), CountryDetect.assign("Empty", emptyList()))
     }
 
     @Test fun device() {

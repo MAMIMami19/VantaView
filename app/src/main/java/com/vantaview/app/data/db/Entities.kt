@@ -56,6 +56,8 @@ data class ChannelEntity(
     val headersJson: String? = null,
     /** Marked adult by the provider (Xtream "is_adult"), hidden on Kids profiles. */
     val isAdult: Boolean = false,
+    /** Country code worked out after each sync (see CountryDetect); null until then. */
+    val country: String? = null,
 )
 
 @Entity(tableName = "favourite", primaryKeys = ["providerId", "remoteId"])
@@ -105,4 +107,7 @@ data class KidsCategoryEntity(
 )
 
 /** A channel's category, name and guide id, used to work out its country. */
-data class CountryRow(val categoryRemoteId: String?, val name: String, val epgChannelId: String?)
+data class CountryRow(val id: Long, val categoryRemoteId: String?, val name: String, val epgChannelId: String?)
+
+/** How many channels of each country a category has. */
+data class CountryTally(val category: String?, val code: String?, val n: Int)

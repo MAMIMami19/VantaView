@@ -81,18 +81,22 @@ object CountryDetect {
 
     /** The country at the end of a guide id such as "bbcone.uk" or "cnn.us". */
     fun fromGuideId(id: String?): String? {
-        val tail = id?.substringAfterLast('.', "")?.trim()?.uppercase() ?: return null
+        val tail = id?.substringBefore('@')?.substringAfterLast('.', "")?.trim()?.uppercase() ?: return null
         if (tail.length != 2) return null
         return aliases[tail]?.takeIf { it.length == 2 || it == "UK" }
     }
 
-    /** The country of a category: its own name first, otherwise the country most of its channels share. */
-    fun forCategory(name: String, channels: List<Pair<String, String?>>): String {
-        fromName(name)?.let { return it }
-        val tagged = channels.mapNotNull { (n, guide) -> fromName(n) ?: fromGuideId(guide) }
-        if (tagged.isEmpty()) return OTHER
-        val (top, n) = tagged.groupingBy { it }.eachCount().maxBy { it.value }
-        return if (n * 10 >= channels.size * 6) top else OTHER
+    /**
+     * Each channel's country, in the same order as [channels] (name, guide id). A country in the category name
+     * wins; otherwise the channel's own name or guide id; otherwise the country most of the category shares.
+     */
+    fun assign(categoryName: String?, channels: List<Pair<String, String?>>): List<String> {
+        fromName(categoryName)?.let { c -> return List(channels.size) { c } }
+        val own = channels.map { (n, guide) -> fromName(n) ?: fromGuideId(guide) }
+        val tagged = own.filterNotNull()
+        val common = if (tagged.isEmpty()) null else tagged.groupingBy { it }.eachCount().maxBy { it.value }
+            .takeIf { it.value * 10 >= channels.size * 6 }?.key
+        return own.map { it ?: common ?: OTHER }
     }
 
     /** The country this device is set to, as a provider-style code (GB becomes UK). */

@@ -95,9 +95,9 @@ class LiveViewModel @Inject constructor(
             val kidsOk = if (allow == null) cats else KidsFilter.categories(cats, allow)
             if (sc == null) kidsOk
             else kidsOk
-                .filter { pick == null || sc.countryOf(it.remoteId) in pick }
-                // This device's country first; otherwise keep the provider's order.
-                .sortedBy { if (device != null && sc.countryOf(it.remoteId) == device) 0 else 1 }
+                .filter { c -> pick == null || sc.inCategory(c.remoteId).any { it in pick } }
+                // Categories with this device's country first; otherwise keep the provider's order.
+                .sortedBy { if (device != null && device in sc.inCategory(it.remoteId)) 0 else 1 }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Short label for the Countries button, or null when the playlist has fewer than two countries. */
@@ -120,16 +120,12 @@ class LiveViewModel @Inject constructor(
             .flatMapLatest { (t, sc, pick) ->
                 val (id, f, q) = t
                 val fav = if (f is Filter.Favourites) 1 else 0
+                val cat = (f as? Filter.Category)?.remoteId
                 when {
                     id == null -> flowOf(emptyList<ChannelRow>())
-                    f is Filter.Category || pick == null || sc == null ->
-                        db.content().observeChannels(id, (f as? Filter.Category)?.remoteId, q, fav)
-                    else -> {
-                        // Only the categories of the chosen countries.
-                        val cats = sc.categoryCountry.filterValues { it in pick }.keys.toList()
-                        if (cats.size > 900) db.content().observeChannels(id, null, q, fav)
-                        else db.content().observeChannelsIn(id, cats, if (CountryDetect.OTHER in pick) 1 else 0, q, fav)
-                    }
+                    pick == null || sc == null -> db.content().observeChannels(id, cat, q, fav)
+                    // Only channels from the chosen countries.
+                    else -> db.content().observeChannelsIn(id, cat, pick.toList(), q, fav)
                 }
             }
             .let { rows ->
