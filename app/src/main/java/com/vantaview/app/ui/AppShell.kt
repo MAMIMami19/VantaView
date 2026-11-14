@@ -154,7 +154,9 @@ fun AppShell(
                             // The list scrolls when the screen is short (a phone on its side); the profile stays at the bottom.
                             Column(
                                 Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(
+                                    if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 640) 4.dp else 8.dp
+                                ),
                             ) {
                                 sections.forEach { s ->
                                     NavItem(s, s == current, if (s == current) Modifier.focusRequester(railFocus) else Modifier) { onSelect(s) }
@@ -210,7 +212,12 @@ fun AppShell(
 
 @Composable
 private fun NavItem(s: Section, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    FocusCard(onClick = onClick, selected = selected, modifier = modifier.fillMaxWidth()) {
+    // Short screens (a TV is 540 dp tall) get slimmer items so the whole sidebar fits.
+    val short = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 640
+    FocusCard(
+        onClick = onClick, selected = selected, modifier = modifier.fillMaxWidth(),
+        padding = PaddingValues(horizontal = 14.dp, vertical = if (short) 7.dp else 10.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(s.icon, contentDescription = null, tint = if (selected) Vanta.Cyan else Vanta.TextDim)
             Spacer(Modifier.width(12.dp))

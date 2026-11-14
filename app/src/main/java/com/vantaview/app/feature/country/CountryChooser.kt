@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -154,11 +155,15 @@ private fun CountryChooser(
             listOfNotNull(CountryDetect.OTHER.takeIf { it in p.scan.counts })
     }
     val wide = LocalConfiguration.current.screenWidthDp >= 720
+    // TVs are only 540 dp tall: keep the list short enough that Save stays on screen.
+    val listMax = (LocalConfiguration.current.screenHeightDp - 270).coerceIn(140, 360).dp
+    val first = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(100); runCatching { first.requestFocus() } }
     val total = p.scan.counts.values.sum()
     Column(
         Modifier.padding(16.dp).widthIn(max = 760.dp).fillMaxWidth()
             .background(Vanta.Surface, RoundedCornerShape(24.dp)).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(if (wide) 10.dp else 14.dp),
     ) {
         Text(
             if (p.firstTime) "${p.provider.name} added · ${"%,d".format(total)} channels in ${p.scan.countries.size} countries"
@@ -172,13 +177,16 @@ private fun CountryChooser(
         )
         LazyVerticalGrid(
             columns = GridCells.Fixed(if (wide) 2 else 1),
-            modifier = Modifier.heightIn(max = 360.dp),
+            modifier = Modifier.heightIn(max = listMax),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(codes, key = { it }) { code ->
                 val on = code in p.selected
-                FocusCard(onClick = { onToggle(code) }, selected = on, modifier = Modifier.fillMaxWidth()) {
+                FocusCard(
+                    onClick = { onToggle(code) }, selected = on,
+                    modifier = Modifier.fillMaxWidth().then(if (code == codes.firstOrNull()) Modifier.focusRequester(first) else Modifier),
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             CountryDetect.displayName(code) + if (code == device) "  ·  this device" else "",

@@ -45,36 +45,39 @@ key DPAD_CENTER; sleep 3; shot profile-setup
 tap_text "Profile name"; adb shell input text Tester; key BACK; sleep 1; shot profile-typed
 tap_text "Continue"; sleep 3; shot sources
 tap_text "Add free channels"; sleep 25; shot countries
-# Country chooser with the remote: pick United Kingdom, then go down to Save.
+# Country chooser: it should open with a country focused; pick United Kingdom, then Save.
 tap_text "United Kingdom"; sleep 1; shot countries-picked
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do key DPAD_DOWN; done; shot countries-bottom
 tap_text "Save"; sleep 8; shot after-countries
-# Sidebar with the remote: Left opens it; go to each section.
-key BACK; sleep 2; shot back-from-sources
-for section in "Home" "Live TV" "TV Guide" "Search" "Library" "Settings"; do
-  key DPAD_LEFT DPAD_LEFT; sleep 1
-  tap_text "$section"; sleep 5; shot "section-$section"
+home() { for i in 1 2 3 4; do key BACK; sleep 1; dump; grep -q "Good morning\|Good afternoon\|Good evening" $OUT/ui.xml && break; done; }
+home; shot home
+# Every section from the sidebar.
+for section in "Search" "Live TV" "TV Guide" "Movies" "Library" "Sources" "Settings"; do
+  home; tap_text "$section"; sleep 5; shot "section-$section"
 done
-# Settings with the remote: move down the list (right pane follows), then into a pane.
-key DPAD_LEFT DPAD_LEFT; tap_text "Settings"; sleep 3
-key DPAD_RIGHT DPAD_DOWN DPAD_DOWN; sleep 1; shot settings-remote-1
-key DPAD_DOWN DPAD_DOWN DPAD_DOWN; sleep 1; shot settings-remote-2
-key DPAD_RIGHT DPAD_DOWN; sleep 1; shot settings-pane-focus
-# Live TV: play a channel with the remote, controls, then Right to the Audio/Subtitles/Size buttons.
-key DPAD_LEFT DPAD_LEFT; tap_text "Live TV"; sleep 5
-key DPAD_RIGHT DPAD_DOWN DPAD_DOWN DPAD_DOWN; sleep 1; shot live-focus
-key DPAD_CENTER; sleep 10; shot player
+# Settings with the remote: the list on the left, the options on the right.
+home; tap_text "Settings"; sleep 3
+key DPAD_DOWN DPAD_DOWN; sleep 1; shot settings-down-2
+key DPAD_DOWN DPAD_DOWN; sleep 1; shot settings-down-4
+key DPAD_RIGHT; sleep 1; shot settings-into-pane
+# Live TV with the remote: down the list, play, controls, the Audio/Subtitles/Size buttons, number keys.
+home; tap_text "Live TV"; sleep 6
+key DPAD_DOWN DPAD_DOWN DPAD_DOWN DPAD_DOWN; sleep 1; shot live-focus
+key DPAD_CENTER; sleep 12; shot player
 key DPAD_CENTER; sleep 1; shot player-controls
 key DPAD_RIGHT; sleep 1; shot player-buttons
 key DPAD_CENTER; sleep 2; shot player-audio-picker
-key BACK; sleep 1; key DPAD_UP; sleep 6; shot player-next-channel
+key BACK; sleep 1; key DPAD_UP; sleep 8; shot player-next-channel
+key 1 0 2; sleep 1; shot player-typing; sleep 3; shot player-after-number
 key BACK BACK; sleep 2; shot after-player
 # TV Guide with the remote.
-key DPAD_LEFT DPAD_LEFT; tap_text "TV Guide"; sleep 6
-key DPAD_RIGHT DPAD_DOWN DPAD_RIGHT DPAD_RIGHT; sleep 1; shot guide-remote
-# Home: Back twice should leave the app.
-key DPAD_LEFT DPAD_LEFT; tap_text "Home"; sleep 4; shot home
-key BACK; sleep 1; shot back-once
+home; tap_text "TV Guide"; sleep 8
+key DPAD_DOWN DPAD_DOWN DPAD_RIGHT DPAD_RIGHT; sleep 1; shot guide-remote
+key DPAD_CENTER; sleep 6; shot guide-play
+key BACK; sleep 2
+# Search with the remote keyboard.
+home; tap_text "Search"; sleep 2; adb shell input text BBC; sleep 6; shot search-bbc
+# Back twice on Home leaves the app.
+home; key BACK; sleep 1; shot back-once; key BACK; sleep 2; shot back-twice
 crashes
 adb logcat -d -t 2000 > $OUT/logcat.txt
 echo "---- crashes ----"; cat $OUT/crashes.txt
