@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,7 +45,7 @@ fun AiSubtitlesSection(ai: AiSubtitles) {
             Text("This device's processor isn't supported.", color = Vanta.Error, fontSize = 14.sp)
             return@Section
         }
-        if (ai.lowMemory) Text("This device has little memory, so AI subtitles may be slow. Use the Fast model.", color = Vanta.Cyan, fontSize = 13.sp)
+        Requirements(ai)
 
         AiMode.entries.forEach { m ->
             FocusCard(onClick = { mode = m; ai.mode = m }, selected = mode == m, modifier = Modifier.fillMaxWidth()) {
@@ -63,6 +68,16 @@ fun AiSubtitlesSection(ai: AiSubtitles) {
                     }
                 }
             }
+            // What gets downloaded, so people can look it up first.
+            Column(
+                Modifier.fillMaxWidth().background(Vanta.SurfaceHigh, RoundedCornerShape(10.dp)).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text("What gets downloaded", color = Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("${model.file} (${model.mb} MB), a Whisper speech model converted by the whisper.cpp project", color = Vanta.TextDim, fontSize = 13.sp)
+                Text("From: ${ai.sourceShort}", color = Vanta.Cyan, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("Free, open source, MIT licence. Stored only on this device; delete it below at any time.", color = Vanta.TextDim, fontSize = 12.sp)
+            }
             when (val s = state) {
                 ModelState.Missing -> GradientButton("Download the ${model.label} model (${model.mb} MB)", onClick = ai::download)
                 is ModelState.Downloading -> {
@@ -80,5 +95,38 @@ fun AiSubtitlesSection(ai: AiSubtitles) {
             FocusCard(onClick = ai::deleteModels) { Text("Delete downloaded models", color = Vanta.Text) }
         }
         Text("Speech recognition by whisper.cpp and OpenAI's Whisper models (MIT licence).", color = Vanta.TextDim, fontSize = 11.sp)
+    }
+}
+
+/** A clear box: what AI subtitles need, and how this device measures up. */
+@Composable
+private fun Requirements(ai: AiSubtitles) {
+    val fit = remember { ai.deviceFit() }
+    val colour = when (fit.level) {
+        com.vantaview.app.data.aisubs.DeviceFit.Level.GOOD -> androidx.compose.ui.graphics.Color(0xFF19B36B)
+        com.vantaview.app.data.aisubs.DeviceFit.Level.OK -> androidx.compose.ui.graphics.Color(0xFFE0A100)
+        com.vantaview.app.data.aisubs.DeviceFit.Level.POOR -> Vanta.Error
+    }
+    Column(
+        Modifier.fillMaxWidth()
+            .border(2.dp, colour, RoundedCornerShape(12.dp))
+            .background(colour.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text("⚠  Before you turn this on", color = Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        listOf(
+            "Needs a fairly powerful device: a phone or tablet from about 2019 or newer with 4 GB of memory, or a strong TV box (Nvidia Shield, Chromecast with Google TV, Fire TV Stick 4K Max, Fire TV Cube).",
+            "Not for 1 GB devices like the basic Fire TV Stick or Fire TV Stick Lite.",
+            "Works the processor hard: phones drain faster and get warm, and weaker devices may stutter.",
+            "Words appear about 5 to 7 seconds after they're spoken.",
+            "Accuracy drops with music, crowd noise, people talking over each other and strong accents. Translation is into English only.",
+            "Needs 31 MB (Fast) or 57 MB (Better) of storage for the speech model.",
+        ).forEach { Text("•  $it", color = Vanta.Text, fontSize = 13.sp, lineHeight = 18.sp) }
+        Text(
+            "This device: ${fit.memoryGb} GB memory · ${if (fit.is64) "64-bit" else "32-bit"} · ${fit.cores} cores",
+            color = Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(fit.advice, color = colour, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }

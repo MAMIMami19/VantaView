@@ -29,6 +29,11 @@ enum class AiModel(val label: String, val detail: String, val file: String, val 
     BETTER("Better", "More accurate. Needs a recent phone or a strong TV box.", "ggml-base-q5_1.bin", 57),
 }
 
+/** How well this device should cope with AI subtitles. */
+data class DeviceFit(val memoryGb: Double, val is64: Boolean, val cores: Int, val level: Level, val advice: String) {
+    enum class Level { GOOD, OK, POOR }
+}
+
 sealed interface ModelState {
     data object Missing : ModelState
     data class Downloading(val percent: Int) : ModelState
@@ -70,6 +75,27 @@ class AiSubtitles @Inject constructor(
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem < 1_800_000_000L
         }.getOrDefault(false)
+
+    /** This device's memory, processor and what we'd suggest. */
+    fun deviceFit(): DeviceFit {
+        val mem = runCatching {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem
+        }.getOrDefault(0L)
+        val gb = Math.round(mem / 1_073_741_824.0 * 10) / 10.0
+        val is64 = android.os.Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
+        val cores = Runtime.getRuntime().availableProcessors()
+        return when {
+            !supported -> DeviceFit(gb, is64, cores, DeviceFit.Level.POOR, "Not supported on this device's processor.")
+            mem < 1_800_000_000L -> DeviceFit(gb, is64, cores, DeviceFit.Level.POOR, "Not recommended: too little memory. Expect long delays or stutter.")
+            !is64 || mem < 2_900_000_000L || cores < 4 -> DeviceFit(gb, is64, cores, DeviceFit.Level.OK, "Use the Fast model. Better will probably fall behind.")
+            mem >= 3_800_000_000L -> DeviceFit(gb, is64, cores, DeviceFit.Level.GOOD, "Should run either model. Try Better.")
+            else -> DeviceFit(gb, is64, cores, DeviceFit.Level.OK, "Fast should run well. Better may fall behind.")
+        }
+    }
+
+    /** Where the speech models come from, short enough to type into a browser. */
+    val sourceShort = "hf.co/ggerganov/whisper.cpp"
 
     /** Ready to run in a player now. */
     val active: Boolean get() = mode != AiMode.OFF && supported && file().length() > 1_000_000

@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -96,6 +97,8 @@ fun VantaTheme(appearance: com.vantaview.app.data.Appearance = com.vantaview.app
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        @Suppress("DEPRECATION")
+        run { window.statusBarColor = p.bg.toArgb(); window.navigationBarColor = p.bg.toArgb() }
         androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = p.light
             isAppearanceLightNavigationBars = p.light
