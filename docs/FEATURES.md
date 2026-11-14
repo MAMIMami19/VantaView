@@ -171,6 +171,8 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Favourite star on the left of each channel
 - [x] TV: number keys jump to a channel in the player; Fire TV steps for allowing updates; no location prompt on TVs
 - [x] Release 0.7.0 published
+- [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
+- [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
 
 ## Before release
 
