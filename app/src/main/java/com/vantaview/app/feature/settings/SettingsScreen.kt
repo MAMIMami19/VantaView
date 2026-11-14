@@ -134,6 +134,8 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
 
+            WeatherSection(vm)
+
             if (ui.stored.isNotEmpty()) {
                 Section("Backups on this device") {
                     ui.stored.take(10).forEach { b ->
@@ -310,5 +312,54 @@ private fun QrCode(text: String, modifier: Modifier) {
         for (y in 0 until n) for (x in 0 until n) {
             if (matrix.get(x, y)) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
         }
+    }
+}
+
+/** Weather on Home: on or off, °C or °F, and where (this device's location or a chosen town). */
+@Composable
+private fun WeatherSection(vm: SettingsViewModel) {
+    val w by vm.weatherUi.collectAsStateWithLifecycle()
+    val places by vm.places.collectAsStateWithLifecycle()
+    var query by remember { mutableStateOf("") }
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) vm.useDeviceLocation()
+    }
+    Section("Weather on Home") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Show the weather", color = Vanta.Text, modifier = Modifier.weight(1f))
+            Switch(checked = w.enabled, onCheckedChange = vm::setWeatherOn)
+        }
+        if (!w.enabled) return@Section
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Use °F instead of °C", color = Vanta.Text, modifier = Modifier.weight(1f))
+            Switch(checked = w.fahrenheit, onCheckedChange = vm::setFahrenheit)
+        }
+        Text(
+            when {
+                w.place != null -> "Showing weather for ${w.place}."
+                w.usingDevice -> "Showing weather for this device's rough location."
+                else -> "Choose a town, or let VantaView use this device's rough location."
+            },
+            color = Vanta.TextDim, fontSize = 13.sp,
+        )
+        FocusCard(onClick = {
+            runCatching { askLocation.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+        }) { Text("Use this device's location", color = Vanta.Text) }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = query, onValueChange = { query = it }, singleLine = true,
+                label = { Text("Town or city") }, modifier = Modifier.weight(1f),
+            )
+            FocusCard(onClick = { vm.searchPlaces(query) }) { Text("Find", color = Vanta.Text) }
+        }
+        places.forEach { p ->
+            FocusCard(onClick = { vm.pickPlace(p); query = "" }, modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    Text(p.name, color = Vanta.Text)
+                    if (p.area.isNotBlank()) Text(p.area, color = Vanta.TextDim, fontSize = 12.sp)
+                }
+            }
+        }
+        Text("Weather data by Open-Meteo.com", color = Vanta.TextDim, fontSize = 11.sp)
     }
 }

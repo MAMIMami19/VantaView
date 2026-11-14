@@ -72,6 +72,7 @@ class HomeViewModel @Inject constructor(
     private val session: ProfileSession,
     private val okHttp: OkHttpClient,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
+    private val weatherRepo: com.vantaview.app.data.weather.WeatherRepository,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -81,6 +82,16 @@ class HomeViewModel @Inject constructor(
     val favourites: StateFlow<List<ChannelEntity>> = providerIds
         .flatMapLatest { list -> if (list.isEmpty()) flowOf(emptyList<ChannelEntity>()) else db.content().observeFavouriteChannels(list.map { it.id }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Weather for the greeting (null when off or nowhere to get it for). */
+    val weather: StateFlow<com.vantaview.app.data.weather.Weather?> = weatherRepo.weather
+    val weatherEnabled: Boolean get() = weatherRepo.enabled
+    fun weatherHasSource(): Boolean = weatherRepo.hasSource()
+    fun refreshWeather(force: Boolean = false) { viewModelScope.launch { weatherRepo.refresh(force) } }
+
+    /** What's on now on the last-watched channel. */
+    private val _previewNow = MutableStateFlow<com.vantaview.app.data.db.ProgrammeEntity?>(null)
+    val previewNow: StateFlow<com.vantaview.app.data.db.ProgrammeEntity?> = _previewNow
 
     /** Favourite channels with what's on now (from the TV guide). */
     private val _onNow = MutableStateFlow<List<Pair<ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity>>>(emptyList())
@@ -117,6 +128,16 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             combine(favourites, guide.version, minuteTicks()) { f, _, _ -> f }.collect { buildOnNow(it) }
         }
+        viewModelScope.launch {
+            combine(_preview, guide.version, minuteTicks()) { p, _, _ -> p?.channel }.collect { ch ->
+                val key = ch?.epgChannelId
+                _previewNow.value = if (ch == null || key == null) null
+                else runCatching { guide.nowNext(ch.providerId, key) }.getOrDefault(emptyList())
+                    .firstOrNull()?.takeIf { it.start <= System.currentTimeMillis() }
+            }
+        }
+        // Weather: now, then every 30 minutes.
+        viewModelScope.launch { while (true) { weatherRepo.refresh(); kotlinx.coroutines.delay(30 * 60_000L) } }
     }
 
     // ---- On now (favourite channels with a guide) ----

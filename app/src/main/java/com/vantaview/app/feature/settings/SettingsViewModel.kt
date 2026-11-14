@@ -34,7 +34,33 @@ data class SettingsUi(
 data class Pending(val text: String, val info: BackupInfo, val wrongPassword: Boolean = false)
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val backup: BackupManager) : ViewModel() {
+class SettingsViewModel @Inject constructor(
+    private val backup: BackupManager,
+    private val weather: com.vantaview.app.data.weather.WeatherRepository,
+) : ViewModel() {
+    // ---- Weather ----
+    data class WeatherUi(val enabled: Boolean, val fahrenheit: Boolean, val place: String?, val usingDevice: Boolean)
+
+    private val _weatherUi = MutableStateFlow(weatherNow())
+    val weatherUi: StateFlow<WeatherUi> = _weatherUi
+    private val _places = MutableStateFlow<List<com.vantaview.app.data.weather.Place>>(emptyList())
+    val places: StateFlow<List<com.vantaview.app.data.weather.Place>> = _places
+
+    private fun weatherNow() = WeatherUi(
+        enabled = weather.enabled, fahrenheit = weather.fahrenheit,
+        place = weather.place?.let { p -> listOf(p.name, p.area).filter { it.isNotBlank() }.joinToString(", ") },
+        usingDevice = weather.place == null && weather.hasLocationPermission(),
+    )
+    private fun weatherChanged() {
+        _weatherUi.value = weatherNow()
+        viewModelScope.launch { weather.refresh(force = true) }
+    }
+    fun setWeatherOn(on: Boolean) { weather.enabled = on; weatherChanged() }
+    fun setFahrenheit(on: Boolean) { weather.fahrenheit = on; weatherChanged() }
+    fun useDeviceLocation() { weather.place = null; weatherChanged() }
+    fun searchPlaces(q: String) { viewModelScope.launch { _places.value = weather.search(q) } }
+    fun pickPlace(p: com.vantaview.app.data.weather.Place) { weather.place = p; _places.value = emptyList(); weatherChanged() }
+
     private val _ui = MutableStateFlow(SettingsUi())
     val ui: StateFlow<SettingsUi> = _ui
     val lastAuto: StateFlow<Long> = backup.lastAuto

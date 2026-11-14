@@ -211,7 +211,12 @@ private fun AppNav(
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                 )
             }
-            composable("settings") { com.vantaview.app.feature.settings.SettingsScreen() }
+            composable("settings") {
+                // Kids profiles can't change settings.
+                if (profile?.isKids == true) Box(Modifier.fillMaxSize().background(Vanta.Bg)) {
+                    androidx.compose.material3.Text("Ask a grown-up to change settings.", color = Vanta.TextDim, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+                } else com.vantaview.app.feature.settings.SettingsScreen()
+            }
             composable("guide") {
                 com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
             }
