@@ -252,6 +252,9 @@ private fun VideoArea(
             modifier = Modifier.fillMaxSize(),
         )
 
+        // AI subtitles (beta), above the bottom controls.
+        vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (overlay) 110.dp else 28.dp)) }
+
         // Tap (or OK on a remote) shows and hides the overlay; swipe up or down on the video changes channel.
         Box(
             Modifier.fillMaxSize()

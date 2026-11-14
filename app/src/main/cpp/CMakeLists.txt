@@ -17,7 +17,6 @@ include(FetchContent)
 FetchContent_Declare(
     whisper
     URL https://github.com/ggerganov/whisper.cpp/archive/refs/tags/v1.7.4.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(whisper)
 

@@ -98,6 +98,9 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             modifier = Modifier.fillMaxSize(),
         )
 
+        // AI subtitles (beta), kept clear of the playback controls.
+        vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (controls) 120.dp else 28.dp)) }
+
         if (controls || ui.failed != null || ui.preparing != null) {
             Row(
                 Modifier.fillMaxWidth()

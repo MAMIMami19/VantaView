@@ -40,6 +40,7 @@ class SettingsViewModel @Inject constructor(
     val playback: com.vantaview.app.data.PlaybackSettings,
     val appearance: com.vantaview.app.data.AppearanceSettings,
     val updates: com.vantaview.app.data.update.UpdateManager,
+    val aiSubs: com.vantaview.app.data.aisubs.AiSubtitles,
 ) : ViewModel() {
     // ---- Weather ----
     data class WeatherUi(val enabled: Boolean, val fahrenheit: Boolean, val place: String?, val usingDevice: Boolean)

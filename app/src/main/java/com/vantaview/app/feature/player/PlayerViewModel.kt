@@ -59,6 +59,7 @@ class PlayerViewModel @Inject constructor(
     private val session: com.vantaview.app.data.profile.ProfileSession,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     val settings: com.vantaview.app.data.PlaybackSettings,
+    aiSubs: com.vantaview.app.data.aisubs.AiSubtitles,
     private val parental: com.vantaview.app.data.profile.ParentalControl,
     savedState: SavedStateHandle,
 ) : ViewModel() {
@@ -68,7 +69,11 @@ class PlayerViewModel @Inject constructor(
     val ui: StateFlow<PlayerUi> = _ui
 
     // Buffer size from Settings › Playback (Medium unless changed).
-    val player: ExoPlayer = ExoPlayer.Builder(context)
+    /** AI subtitles (beta), when turned on in Settings and the speech model is downloaded. */
+    val ai: com.vantaview.app.data.aisubs.AiSubtitleEngine? =
+        if (aiSubs.active) com.vantaview.app.data.aisubs.AiSubtitleEngine(aiSubs) else null
+
+    val player: ExoPlayer = (ai?.let { ExoPlayer.Builder(context, it.renderers(context)) } ?: ExoPlayer.Builder(context))
         .setLoadControl(settings.loadControl())
         .build()
 
@@ -141,6 +146,7 @@ class PlayerViewModel @Inject constructor(
     init {
         player.addListener(listener)
         TrackPrefs.apply(player, settings)
+        ai?.start()
         viewModelScope.launch {
             val channel = db.content().channel(channelId)
             if (channel == null) {
@@ -330,5 +336,6 @@ class PlayerViewModel @Inject constructor(
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel(); guideJob?.cancel()
         player.removeListener(listener)
         player.release()
+        ai?.release()
     }
 }

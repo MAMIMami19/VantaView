@@ -16,6 +16,20 @@ import androidx.media3.ui.SubtitleView
 import com.vantaview.app.data.PlaybackSettings
 import com.vantaview.app.data.SubtitleMode
 import java.util.Locale
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /** One audio or subtitle track a viewer can pick. [group] null means "Off". */
 data class TrackChoice(val label: String, val selected: Boolean, val group: Tracks.Group?, val index: Int)
@@ -93,5 +107,34 @@ object TrackPrefs {
             if (f.selectionFlags and C.SELECTION_FLAG_FORCED != 0) add("Forced")
         }
         return if (extra.isEmpty()) name else "$name · ${extra.joinToString(" · ")}"
+    }
+}
+
+/** The AI subtitle line, styled like normal subtitles, with a small "AI" tag. */
+@androidx.compose.runtime.Composable
+fun AiCaption(engine: com.vantaview.app.data.aisubs.AiSubtitleEngine, s: PlaybackSettings, modifier: androidx.compose.ui.Modifier) {
+    val line by engine.line.collectAsState()
+    val status by engine.status.collectAsState()
+    androidx.compose.foundation.layout.Column(modifier, horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+        status?.let {
+            androidx.compose.material3.Text(
+                it, color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp,
+                modifier = androidx.compose.ui.Modifier.background(androidx.compose.ui.graphics.Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+            )
+        }
+        line?.let { l ->
+            val fg = if (s.subtitleYellow) androidx.compose.ui.graphics.Color(0xFFFFD60A) else androidx.compose.ui.graphics.Color.White
+            androidx.compose.material3.Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = androidx.compose.ui.graphics.Color(0xFF14E0E0), fontSize = 11.sp, fontWeight = FontWeight.Black)) { append("AI  ") }
+                    append(l.text)
+                },
+                color = fg, fontSize = (18 * s.subtitleSize.scale).sp, fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center, maxLines = 3,
+                style = if (s.subtitleBox) TextStyle.Default else TextStyle(shadow = Shadow(androidx.compose.ui.graphics.Color.Black, blurRadius = 6f)),
+                modifier = androidx.compose.ui.Modifier.padding(top = 6.dp)
+                    .then(if (s.subtitleBox) androidx.compose.ui.Modifier.background(androidx.compose.ui.graphics.Color(0xAA000000), RoundedCornerShape(4.dp)).padding(horizontal = 10.dp, vertical = 3.dp) else androidx.compose.ui.Modifier),
+            )
+        }
     }
 }

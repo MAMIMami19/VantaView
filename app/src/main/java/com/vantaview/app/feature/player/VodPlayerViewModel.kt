@@ -44,6 +44,7 @@ data class VodUi(
 class VodPlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     val settings: com.vantaview.app.data.PlaybackSettings,
+    aiSubs: com.vantaview.app.data.aisubs.AiSubtitles,
     private val okHttp: OkHttpClient,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
@@ -52,7 +53,11 @@ class VodPlayerViewModel @Inject constructor(
     private val _ui = MutableStateFlow(VodUi())
     val ui: StateFlow<VodUi> = _ui
 
-    val player: ExoPlayer = ExoPlayer.Builder(context)
+    /** AI subtitles (beta), when turned on in Settings and the speech model is downloaded. */
+    val ai: com.vantaview.app.data.aisubs.AiSubtitleEngine? =
+        if (aiSubs.active) com.vantaview.app.data.aisubs.AiSubtitleEngine(aiSubs) else null
+
+    val player: ExoPlayer = (ai?.let { ExoPlayer.Builder(context, it.renderers(context)) } ?: ExoPlayer.Builder(context))
         .setLoadControl(settings.loadControl())
         .setSeekBackIncrementMs(10_000)
         .setSeekForwardIncrementMs(10_000)
@@ -102,6 +107,7 @@ class VodPlayerViewModel @Inject constructor(
     init {
         player.addListener(listener)
         TrackPrefs.apply(player, settings)
+        ai?.start()
         val req = session.current
         if (req == null || req.streams.isEmpty()) {
             _ui.value = VodUi(failed = "Nothing to play")
@@ -208,5 +214,6 @@ class VodPlayerViewModel @Inject constructor(
         resolveJob?.cancel()
         player.removeListener(listener)
         player.release()
+        ai?.release()
     }
 }
