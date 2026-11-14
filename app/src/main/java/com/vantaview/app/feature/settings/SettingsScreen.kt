@@ -1,0 +1,314 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vantaview.app.feature.settings
+
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.vantaview.app.data.backup.RestoreMode
+import com.vantaview.app.ui.FocusCard
+import com.vantaview.app.ui.GradientButton
+import com.vantaview.app.ui.Vanta
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private enum class Ask { BACKUP, AUTO }
+
+@Composable
+fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+    val ui by vm.ui.collectAsStateWithLifecycle()
+    val lastAuto by vm.lastAuto.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var ask by remember { mutableStateOf<Ask?>(null) }
+    val when_ = SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK)
+
+    val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) vm.writeTo(uri, context)
+    }
+    val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.open(uri)
+    }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            vm.setFolder(uri)
+        }
+    }
+
+    Box(Modifier.fillMaxSize().background(Vanta.Bg).imePadding(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("Settings", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+
+            Section("Backup and restore") {
+                Text(
+                    "Saves your profiles, playlists and logins, favourites, watch history, add-ons, debrid accounts and settings. " +
+                        "Logins are locked with a backup password. Channels and the TV guide download again after restoring.",
+                    color = Vanta.TextDim, fontSize = 14.sp,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GradientButton("Back up now", onClick = { ask = Ask.BACKUP })
+                    FocusCard(onClick = {
+                        try { openFile.launch(arrayOf("*/*")) }
+                        catch (_: ActivityNotFoundException) { /* TVs without a file picker use the list below */ }
+                    }) { Text("Restore from a file", color = Vanta.Text) }
+                }
+            }
+
+            Section("Automatic backups") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Back up after every change", color = Vanta.Text)
+                        Text(
+                            "When you add, edit or remove a playlist or profile. Keeps the last 5." +
+                                if (lastAuto > 0) "\nLast one: ${when_.format(Date(lastAuto))}" else "",
+                            color = Vanta.TextDim, fontSize = 13.sp,
+                        )
+                    }
+                    Switch(checked = ui.autoEnabled, onCheckedChange = { on ->
+                        if (on && !ui.hasPassword) ask = Ask.AUTO else vm.setAuto(on)
+                    })
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FocusCard(onClick = {
+                        try { pickFolder.launch(null) } catch (_: ActivityNotFoundException) { vm.setFolder(null) }
+                    }) { Text("Choose folder", color = Vanta.Text) }
+                    Text(
+                        ui.folderName?.let { "Saving to: $it" } ?: "Saving in the app's folder (removed if the app is uninstalled)",
+                        color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.weight(1f),
+                    )
+                }
+                if (ui.hasPassword) {
+                    FocusCard(onClick = vm::forgetPassword) { Text("Forget the backup password", color = Vanta.Text) }
+                }
+            }
+
+            if (ui.stored.isNotEmpty()) {
+                Section("Backups on this device") {
+                    ui.stored.take(10).forEach { b ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(if (b.name.startsWith("vantaview-auto-")) "Automatic backup" else "Backup", color = Vanta.Text)
+                                Text(when_.format(Date(b.modified)), color = Vanta.TextDim, fontSize = 13.sp)
+                            }
+                            FocusCard(onClick = { vm.open(b.uri) }) { Text("Restore", color = Vanta.Text) }
+                        }
+                    }
+                }
+            }
+
+            ui.busy?.let { Text(it, color = Vanta.Cyan) }
+            ui.message?.let { Text(it, color = if (ui.isError) Vanta.Error else Vanta.Cyan) }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+
+    ask?.let { purpose ->
+        PasswordDialog(
+            purpose = purpose,
+            remembered = vm.rememberedPassword,
+            onDismiss = { ask = null },
+            onSaveFile = { pw, remember ->
+                ask = null
+                vm.prepare(pw, remember) {
+                    try { saveFile.launch(vm.fileName()) } catch (_: ActivityNotFoundException) { vm.saveInAppFolder() }
+                }
+            },
+            onSendPhone = { pw, remember -> ask = null; vm.prepare(pw, remember) { vm.shareToPhone() } },
+            onTurnOnAuto = { pw -> ask = null; vm.setAuto(true, pw) },
+        )
+    }
+
+    ui.pending?.let { p ->
+        var pw by remember(p.info.createdAt) { mutableStateOf(vm.rememberedPassword.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = vm::cancelRestore,
+            containerColor = Vanta.Surface,
+            title = { Text("Restore this backup?", color = Vanta.Text) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Made ${when_.format(Date(p.info.createdAt))}", color = Vanta.TextDim)
+                    Text(
+                        "${p.info.profiles} profile(s), ${p.info.playlists} playlist(s), ${p.info.addons} add-on(s)",
+                        color = Vanta.TextDim,
+                    )
+                    if (p.info.locked) {
+                        OutlinedTextField(
+                            value = pw, onValueChange = { pw = it }, singleLine = true,
+                            label = { Text("Backup password") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        )
+                        if (p.wrongPassword) Text("That password isn't right.", color = Vanta.Error)
+                        Text("Leave it blank to restore everything except logins.", color = Vanta.TextDim, fontSize = 12.sp)
+                    }
+                    Text(
+                        "Replace: this device ends up exactly like the backup.\nAdd: keeps what's here and adds what's missing.",
+                        color = Vanta.TextDim, fontSize = 13.sp,
+                    )
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { vm.restore(pw, RestoreMode.MERGE) }) { Text("Add") }
+                    GradientButton("Replace", onClick = { vm.restore(pw, RestoreMode.REPLACE) })
+                }
+            },
+            dismissButton = { TextButton(onClick = vm::cancelRestore) { Text("Cancel") } },
+        )
+    }
+
+    ui.shareUrl?.let { url ->
+        AlertDialog(
+            onDismissRequest = vm::stopSharing,
+            containerColor = Vanta.Surface,
+            title = { Text("Scan with your phone", color = Vanta.Text) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    QrCode(url, Modifier.size(220.dp))
+                    Text(
+                        "Your phone must be on the same Wi-Fi. It downloads the backup file; keep it somewhere safe. " +
+                            "This stops when you close it, or after 10 minutes.",
+                        color = Vanta.TextDim, fontSize = 13.sp,
+                    )
+                    Text(url, color = Vanta.TextDim, fontSize = 11.sp)
+                }
+            },
+            confirmButton = { TextButton(onClick = vm::stopSharing) { Text("Done") } },
+        )
+    }
+}
+
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        content()
+    }
+}
+
+@Composable
+private fun PasswordDialog(
+    purpose: Ask,
+    remembered: String?,
+    onDismiss: () -> Unit,
+    onSaveFile: (String, Boolean) -> Unit,
+    onSendPhone: (String, Boolean) -> Unit,
+    onTurnOnAuto: (String) -> Unit,
+) {
+    var pw by remember { mutableStateOf(remembered.orEmpty()) }
+    var again by remember { mutableStateOf(remembered.orEmpty()) }
+    var rememberIt by remember { mutableStateOf(true) }
+    val auto = purpose == Ask.AUTO
+    val matches = pw == again
+    val ok = matches && (pw.length >= 4 || (!auto && pw.isEmpty()))
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Vanta.Surface,
+        title = { Text(if (auto) "Set a backup password" else "Back up now", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (auto) "Automatic backups use this password to lock your logins. You'll need it to restore."
+                    else "Choose a password to lock your logins in the backup. You'll need it to restore. " +
+                        "Leave it blank to back up without logins.",
+                    color = Vanta.TextDim, fontSize = 13.sp,
+                )
+                OutlinedTextField(
+                    value = pw, onValueChange = { pw = it }, singleLine = true, label = { Text("Backup password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                )
+                OutlinedTextField(
+                    value = again, onValueChange = { again = it }, singleLine = true, label = { Text("Type it again") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                )
+                if (!matches) Text("The two passwords don't match.", color = Vanta.Error, fontSize = 13.sp)
+                if (pw.isNotEmpty() && pw.length < 4) Text("Use at least 4 characters.", color = Vanta.Error, fontSize = 13.sp)
+                if (!auto) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = rememberIt, onCheckedChange = { rememberIt = it })
+                    Text("Remember on this device (for automatic backups)", color = Vanta.Text, fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {
+            if (auto) {
+                GradientButton("Turn on", onClick = { onTurnOnAuto(pw) }, enabled = ok && pw.isNotEmpty())
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onSendPhone(pw, rememberIt && pw.isNotEmpty()) }, enabled = ok) { Text("Send to phone") }
+                    GradientButton("Save to a file", onClick = { onSaveFile(pw, rememberIt && pw.isNotEmpty()) }, enabled = ok)
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** Draws a QR code for [text] (black on white, with a quiet border). */
+@Composable
+private fun QrCode(text: String, modifier: Modifier) {
+    val matrix = remember(text) { QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0) }
+    Canvas(modifier.background(Color.White).padding(10.dp)) {
+        val n = matrix.width
+        val cell = size.minDimension / n
+        for (y in 0 until n) for (x in 0 until n) {
+            if (matrix.get(x, y)) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+        }
+    }
+}

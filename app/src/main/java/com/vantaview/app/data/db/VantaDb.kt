@@ -21,6 +21,7 @@ abstract class VantaDb : RoomDatabase() {
     abstract fun addons(): AddonDao
     abstract fun profiles(): ProfileDao
     abstract fun guide(): GuideDao
+    abstract fun backup(): BackupDao
 
     companion object {
         /** Version 5 adds the TV guide's programmes; everything else is kept. */

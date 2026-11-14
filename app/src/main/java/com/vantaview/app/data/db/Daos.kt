@@ -272,3 +272,30 @@ interface GuideDao {
     )
     suspend fun onNow(providerId: Long, keys: List<String>, now: Long): List<ProgrammeEntity>
 }
+
+/** Whole-table reads and writes used by backup and restore. */
+@Dao
+interface BackupDao {
+    @Query("SELECT * FROM profile") suspend fun profiles(): List<ProfileEntity>
+    @Query("SELECT * FROM provider") suspend fun providers(): List<ProviderEntity>
+    @Query("SELECT * FROM favourite") suspend fun favourites(): List<FavouriteEntity>
+    @Query("SELECT * FROM addon") suspend fun addons(): List<AddonEntity>
+    @Query("SELECT * FROM kids_category") suspend fun kidsCategories(): List<KidsCategoryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putProfiles(items: List<ProfileEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putProviders(items: List<ProviderEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putFavourites(items: List<FavouriteEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAddons(items: List<AddonEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putKidsCategories(items: List<KidsCategoryEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun addAddon(item: AddonEntity): Long
+    @Insert suspend fun addProfile(item: ProfileEntity): Long
+    @Insert suspend fun addProvider(item: ProviderEntity): Long
+
+    /** Fields that matter for a backup, so a re-sync (new counts and times) doesn't trigger one. */
+    @Query("SELECT id || '|' || profileId || '|' || name || '|' || baseUrl || '|' || username || '|' || passwordEnc FROM provider ORDER BY id")
+    fun watchProviders(): Flow<List<String>>
+
+    @Query("SELECT id || '|' || name || '|' || avatar || '|' || isKids || '|' || IFNULL(pinHash, '') FROM profile ORDER BY id")
+    fun watchProfiles(): Flow<List<String>>
+}

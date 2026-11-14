@@ -116,5 +116,8 @@ class WatchHistory @Inject constructor(
         changed.value++
     }
 
+    /** Re-reads history after a restore wrote it directly. */
+    fun reload() { changed.value++ }
+
     private companion object { const val MAX = 200 }
 }

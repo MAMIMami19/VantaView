@@ -53,9 +53,12 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var providers: ProviderRepository
     @Inject lateinit var addons: AddonRepository
     @Inject lateinit var profiles: ProfileRepository
+    @Inject lateinit var backups: com.vantaview.app.data.backup.BackupManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Automatic backups after playlist or profile changes (when switched on in Settings).
+        backups.startAutomatic()
         setContent {
             VantaTheme {
                 AppNav(prefs, providers, addons, profiles, onExit = { finish() })
@@ -132,6 +135,7 @@ private fun AppNav(
         route == "movies" -> Section.MOVIES
         route == "series" -> Section.SERIES
         route.startsWith("sources") -> Section.SOURCES
+        route == "settings" -> Section.SETTINGS
         else -> null
     }
 
@@ -207,6 +211,7 @@ private fun AppNav(
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                 )
             }
+            composable("settings") { com.vantaview.app.feature.settings.SettingsScreen() }
             composable("guide") {
                 com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
             }

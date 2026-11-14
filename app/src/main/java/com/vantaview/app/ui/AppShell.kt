@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -69,7 +70,8 @@ enum class Section(val route: String, val label: String, val icon: ImageVector) 
     GUIDE("guide", "TV Guide", Icons.Filled.DateRange),
     MOVIES("movies", "Movies", Icons.Filled.Star),
     SERIES("series", "TV Series", Icons.Filled.List),
-    SOURCES("sources", "Sources", Icons.Filled.Settings),
+    SOURCES("sources", "Sources", Icons.Filled.AddCircle),
+    SETTINGS("settings", "Settings", Icons.Filled.Settings),
 }
 
 /**
@@ -85,7 +87,7 @@ fun AppShell(
     content: @Composable () -> Unit,
 ) {
     // Kids profiles can't open Sources.
-    val sections = Section.entries.filter { !(profile?.isKids == true && it == Section.SOURCES) }
+    val sections = Section.entries.filter { !(profile?.isKids == true && (it == Section.SOURCES || it == Section.SETTINGS)) }
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg).safeDrawingPadding()) {
         val wide = maxWidth >= 720.dp
         val drawer = rememberDrawerState(DrawerValue.Closed)

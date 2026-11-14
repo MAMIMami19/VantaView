@@ -56,6 +56,9 @@ android {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
+    // Backups: QR codes for sending to a phone, and saving into a folder the user picks.
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
