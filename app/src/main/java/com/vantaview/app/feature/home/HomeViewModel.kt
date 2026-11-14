@@ -87,6 +87,9 @@ class HomeViewModel @Inject constructor(
     val weather: StateFlow<com.vantaview.app.data.weather.Weather?> = weatherRepo.weather
     val weatherEnabled: Boolean get() = weatherRepo.enabled
     fun weatherHasSource(): Boolean = weatherRepo.hasSource()
+    /** True only the first time: Home then asks for location so the weather can show. */
+    fun shouldAskLocation(): Boolean = weatherRepo.enabled && !weatherRepo.askedForLocation && !weatherRepo.hasLocationPermission()
+    fun markAskedLocation() { weatherRepo.askedForLocation = true }
     fun refreshWeather(force: Boolean = false) { viewModelScope.launch { weatherRepo.refresh(force) } }
 
     /** What's on now on the last-watched channel. */

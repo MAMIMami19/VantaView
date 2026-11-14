@@ -6,13 +6,20 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Bundle
+import android.os.Looper
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.TimeZone
+import kotlin.coroutines.resume
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -86,17 +93,69 @@ class WeatherRepository @Inject constructor(
             .maxByOrNull { it.time }
     }
 
+    /** Set once the app has asked for location on first launch, so it never asks by itself again. */
+    var askedForLocation: Boolean
+        get() = sp.getBoolean("asked_location", false)
+        set(v) { sp.edit().putBoolean("asked_location", v).apply() }
+
+    /**
+     * A fresh rough fix when Android has none saved yet (common straight after the permission is
+     * given). Gives up after 10 seconds; TV boxes often have no location source at all.
+     */
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    private suspend fun freshLocation(): Location? {
+        if (!hasLocationPermission()) return null
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        val provider = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
+            .firstOrNull { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) } ?: return null
+        return withTimeoutOrNull(10_000) {
+            suspendCancellableCoroutine { cont ->
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) { if (cont.isActive) cont.resume(location) }
+                    // Older Android versions need these filled in.
+                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
+                }
+                val started = runCatching { lm.requestSingleUpdate(provider, listener, Looper.getMainLooper()) }.isSuccess
+                if (!started && cont.isActive) cont.resume(null)
+                cont.invokeOnCancellation { runCatching { lm.removeUpdates(listener) } }
+            }
+        }
+    }
+
+    /** The main city of the device's time zone ("Europe/London" is London), for when there's no location. */
+    private fun timeZoneCity(): String? =
+        TimeZone.getDefault().id.takeIf { '/' in it && !it.startsWith("Etc/") }
+            ?.substringAfterLast('/')?.replace('_', ' ')?.ifBlank { null }
+
+    /** A rough place from the time zone, looked up once and remembered. */
+    private suspend fun timeZonePlace(): Place? {
+        val city = timeZoneCity() ?: return null
+        if (sp.getString("tz_city", null) == city) {
+            return Place(city, sp.getString("tz_area", "").orEmpty(), sp.getFloat("tz_lat", 0f).toDouble(), sp.getFloat("tz_lon", 0f).toDouble())
+        }
+        val found = search(city).firstOrNull() ?: return null
+        sp.edit().putString("tz_city", city).putString("tz_area", found.area)
+            .putFloat("tz_lat", found.lat.toFloat()).putFloat("tz_lon", found.lon.toFloat()).apply()
+        return found
+    }
+
     /** True when there's somewhere to get weather for. */
-    fun hasSource(): Boolean = place != null || deviceLocation() != null
+    fun hasSource(): Boolean = place != null || deviceLocation() != null || timeZoneCity() != null
 
     /** Refreshes at most every 30 minutes. */
     suspend fun refresh(force: Boolean = false): Weather? = withContext(Dispatchers.IO) {
         if (!enabled) return@withContext null
         val cached = _weather.value
         if (!force && cached != null && System.currentTimeMillis() - cached.fetchedAt < 30 * 60_000L) return@withContext cached
-        val chosen = place
+        // A chosen town first, then the device's location, then a guess from the time zone.
+        var chosen = place
+        val device = if (chosen == null) deviceLocation() ?: freshLocation() else null
+        if (chosen == null && device == null) chosen = timeZonePlace()
         val (lat, lon) = chosen?.let { it.lat to it.lon }
-            ?: deviceLocation()?.let { it.latitude to it.longitude }
+            ?: device?.let { it.latitude to it.longitude }
             ?: return@withContext null
         val f = fahrenheit
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +

@@ -100,6 +100,18 @@ fun HomeScreen(
     val askLocation = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) vm.refreshWeather(force = true) else onSection("settings") }
+    // First launch: ask once for rough location so the weather is for here. Saying no still shows
+    // weather for the device's time zone city; a town can be picked in Settings.
+    val firstAsk = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { vm.refreshWeather(force = true) }
+    LaunchedEffect(Unit) {
+        if (vm.shouldAskLocation()) {
+            vm.markAskedLocation()
+            runCatching { firstAsk.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+                .onFailure { vm.refreshWeather(force = true) }
+        }
+    }
 
     var now by remember { mutableStateOf(Date()) }
     LaunchedEffect(Unit) { while (true) { now = Date(); delay(15_000) } }
