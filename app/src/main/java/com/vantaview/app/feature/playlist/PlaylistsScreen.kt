@@ -174,7 +174,7 @@ fun FreeTvCard(onAdd: () -> Unit) {
         )
         GradientButton("Add free channels", onClick = onAdd)
         Text(
-            "List by Free TV (github.com/Free-TV/IPTV). Thanks to its maintainers and contributors.",
+            "List by Free TV (github.com/Free-TV/IPTV). TV guide by epgshare01.online. Thanks to their maintainers and contributors.",
             color = Vanta.TextDim, fontSize = 12.sp,
         )
     }

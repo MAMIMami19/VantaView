@@ -86,36 +86,92 @@ class GuideRepository @Inject constructor(
         }
     }
 
-    private fun guideUrl(p: ProviderEntity): String? {
-        p.epgUrl?.trim()?.takeIf { it.startsWith("http", true) }?.let { return it }
+    private fun guideUrls(p: ProviderEntity): List<String> {
+        GuideSources.split(p.epgUrl).takeIf { it.isNotEmpty() }?.let { return it }
         if (p.kind == "XTREAM") {
             val u = URLEncoder.encode(p.username, "UTF-8")
             val pw = URLEncoder.encode(crypto.decrypt(p.passwordEnc), "UTF-8")
-            return "${p.baseUrl}/xmltv.php?username=$u&password=$pw"
+            return listOf("${p.baseUrl}/xmltv.php?username=$u&password=$pw")
         }
-        return null
+        return emptyList()
     }
 
-    private suspend fun load(p: ProviderEntity): Int {
-        val url = guideUrl(p) ?: throw IllegalStateException("This playlist doesn't include a TV guide link")
+    /** Running totals while one or more guide files are read into a playlist's guide. */
+    private class Sink(val providerId: Long) {
+        var cleared = false
+        var total = 0
+    }
+
+    /**
+     * Free TV playlists added before 0.7.1 saved only the first of its guide links. Read the list's
+     * first line again to get them all, and save them, without re-downloading every channel.
+     */
+    private suspend fun freeTvLinks(p: ProviderEntity): ProviderEntity {
+        if (!p.baseUrl.equals(com.vantaview.app.data.repo.FREE_TV_URL, ignoreCase = true) || GuideSources.split(p.epgUrl).size > 1) return p
+        val header = runCatching {
+            http.newCall(Request.Builder().url(p.baseUrl).build()).execute().use { r ->
+                if (!r.isSuccessful) null else r.body?.source()?.readUtf8Line()
+            }
+        }.getOrNull() ?: return p
+        val links = Regex("""(?:url-tvg|x-tvg-url)="([^"]*)"""", RegexOption.IGNORE_CASE).find(header)?.groupValues?.get(1)
+        val list = GuideSources.split(links)
+        if (list.size <= 1) return p
+        val updated = p.copy(epgUrl = list.joinToString(","))
+        db.providers().update(updated)
+        return updated
+    }
+
+    private suspend fun load(provider: ProviderEntity): Int {
+        val p = freeTvLinks(provider)
+        val all = guideUrls(p)
+        if (all.isEmpty()) throw IllegalStateException("This playlist doesn't include a TV guide link")
         val pick = countries.chosen(session.id, p.id)
         val keys = (if (pick == null) db.content().guideKeys(p.id) else db.content().guideKeysIn(p.id, pick.toList())).toHashSet()
         if (keys.isEmpty()) throw IllegalStateException("The channels in this playlist don't have guide IDs")
 
+        val urls = GuideSources.pick(all, keys)
         val from = XmltvTime.dayStart(-1)
         val to = XmltvTime.dayStart(8)
+        val sink = Sink(p.id)
+        var lastError: Exception? = null
+        urls.forEachIndexed { i, url ->
+            if (urls.size > 1) setState(p.id, GuideState.Loading("Loading the TV guide (${i + 1} of ${urls.size})"))
+            try {
+                fetch(url) { input -> parseInto(sink, input, keys, from, to) }
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+        if (sink.total == 0) {
+            if (sink.cleared || lastError == null) {
+                db.guide().deleteFor(p.id)
+                throw IllegalStateException("The guide had nothing for your channels in the next week")
+            }
+            throw lastError!!
+        }
+        return sink.total
+    }
+
+    /** Downloads one guide file, trying a few app names because some servers only answer known players. */
+    private suspend fun fetch(url: String, read: suspend (InputStream) -> Unit) {
         val agents = listOf("VantaView/${BuildConfig.VERSION_NAME}", "IPTVSmartersPro", null)
         var lastError: Exception? = null
+        var reading = false
         for (ua in agents) {
             try {
                 val b = Request.Builder().url(url)
                 if (ua != null) b.header("User-Agent", ua)
-                return http.newCall(b.build()).execute().use { r ->
+                val r = http.newCall(b.build()).execute()
+                r.use {
                     if (!r.isSuccessful) throw IllegalStateException("The guide server answered with error ${r.code}")
                     val body = r.body ?: throw IllegalStateException("The guide was empty")
-                    parseInto(p.id, unzip(body.byteStream()), keys, from, to)
+                    reading = true
+                    read(unzip(body.byteStream()))
                 }
+                return
             } catch (e: Exception) {
+                // Once programmes are being saved, trying again would save them twice.
+                if (reading) throw e
                 lastError = e
             }
         }
@@ -131,23 +187,22 @@ class GuideRepository @Inject constructor(
         return if (a == 0x1f && b == 0x8b) BufferedInputStream(GZIPInputStream(s, 64 * 1024), 64 * 1024) else s
     }
 
-    private suspend fun parseInto(providerId: Long, input: InputStream, keys: Set<String>, from: Long, to: Long): Int {
+    private suspend fun parseInto(sink: Sink, input: InputStream, keys: Set<String>, from: Long, to: Long) {
+        val providerId = sink.providerId
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         parser.setInput(input, null)
 
         val dao = db.guide()
-        var cleared = false
         val batch = ArrayList<ProgrammeEntity>(2000)
-        var total = 0
 
         suspend fun flush() {
             if (batch.isEmpty()) return
-            if (!cleared) { dao.deleteFor(providerId); cleared = true }
+            if (!sink.cleared) { dao.deleteFor(providerId); sink.cleared = true }
             dao.insert(batch.toList())
-            total += batch.size
+            sink.total += batch.size
             batch.clear()
-            setState(providerId, GuideState.Loading("Loading the TV guide: ${"%,d".format(total)} programmes"))
+            setState(providerId, GuideState.Loading("Loading the TV guide: ${"%,d".format(sink.total)} programmes"))
         }
 
         var event = parser.eventType
@@ -190,11 +245,6 @@ class GuideRepository @Inject constructor(
             if (event != XmlPullParser.END_DOCUMENT) event = parser.next()
         }
         flush()
-        if (!cleared) {
-            dao.deleteFor(providerId)
-            throw IllegalStateException("The guide had nothing for your channels in the next week")
-        }
-        return total
     }
 
     // ---- Questions the pages ask ----

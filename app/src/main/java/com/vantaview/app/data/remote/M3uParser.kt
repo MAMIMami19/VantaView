@@ -59,7 +59,10 @@ object M3uParser {
                 if (line.startsWith("<")) throw IllegalArgumentException("This link is a web page, not a playlist")
                 if (line.startsWith("#EXTM3U", true)) {
                     val attrs = attr.findAll(line).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
-                    epgUrl = (attrs["url-tvg"] ?: attrs["x-tvg-url"])?.substringBefore(',')?.trim()?.ifBlank { null }
+                    // Some lists (Free TV) give many guide links separated by commas; keep them all.
+                    epgUrl = (attrs["url-tvg"] ?: attrs["x-tvg-url"])?.split(',')
+                        ?.map { it.trim() }?.filter { it.startsWith("http", true) }
+                        ?.joinToString(",")?.ifBlank { null }
                     continue
                 }
             }
