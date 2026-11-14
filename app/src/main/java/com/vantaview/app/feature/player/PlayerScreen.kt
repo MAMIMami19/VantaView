@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -96,7 +97,11 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
 
-    // Back: the first press hides the controls, the next one leaves the player.
+    // Full screen on an upright phone (double-tap the video, or double-tap a channel in the list).
+    var full by remember { mutableStateOf(false) }
+
+    // Back: hides the controls first, then leaves full screen, then leaves the player.
+    BackHandler(enabled = full) { full = false }
     BackHandler(enabled = overlay) { overlay = false }
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.pause() }
@@ -120,7 +125,8 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         // Phones held upright get the video on top and the channel list underneath; otherwise full screen.
         // The screen follows the device's own rotation (and its rotation lock).
-        val portrait = !isTv && maxHeight > maxWidth
+        val upright = !isTv && maxHeight > maxWidth
+        val portrait = upright && !full
         DisposableEffect(portrait) {
             val window = activity?.window
             val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
@@ -134,16 +140,25 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
             VideoArea(
                 vm = vm, ui = ui, isTv = isTv, overlay = overlay, compact = portrait, focus = focus,
                 modifier = m, onTap = ::tapped, onZap = ::zap, onBack = onBack,
+                onDoubleTap = { if (upright) full = !full },
             )
         }
         if (portrait) {
             Column(Modifier.fillMaxSize().background(Vanta.Bg)) {
                 video(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
-                PortraitChannelList(list, current, Modifier.weight(1f).fillMaxWidth()) { i ->
-                    vm.playAt(i)
-                    overlay = true
-                    overlayTick++
-                }
+                NowStrip(ui)
+                PortraitChannelList(
+                    list, current, Modifier.weight(1f).fillMaxWidth(),
+                    onPick = { i ->
+                        vm.playAt(i)
+                        overlay = true
+                        overlayTick++
+                    },
+                    onFull = { i ->
+                        vm.playAt(i)
+                        full = true
+                    },
+                )
             }
         } else {
             video(Modifier.fillMaxSize())
@@ -164,6 +179,7 @@ private fun VideoArea(
     onTap: () -> Unit,
     onZap: (Int) -> Unit,
     onBack: () -> Unit,
+    onDoubleTap: () -> Unit,
 ) {
     val density = LocalDensity.current
     val swipe = with(density) { 60.dp.toPx() }
@@ -203,7 +219,7 @@ private fun VideoArea(
         // Tap (or OK on a remote) shows and hides the overlay; swipe up or down on the video changes channel.
         Box(
             Modifier.fillMaxSize()
-                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
+                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }, onDoubleTap = { onDoubleTap() }) }
                 .pointerInput(ui.hasSiblings) {
                     if (!ui.hasSiblings) return@pointerInput
                     var total = 0f
@@ -247,6 +263,9 @@ private fun VideoArea(
                         .padding(horizontal = pad, vertical = if (compact) 8.dp else 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    if (!compact && ui.now != null && ui.status == PlayStatus.PLAYING) {
+                        NowInfo(ui, Modifier.fillMaxWidth().padding(bottom = 10.dp))
+                    }
                     when (ui.status) {
                         PlayStatus.LOADING -> Text(if (ui.eventOnly) "Looking for the event…" else "Loading…", color = Color.White)
                         PlayStatus.RECONNECTING -> Text(
@@ -299,6 +318,7 @@ private fun PortraitChannelList(
     current: Int,
     modifier: Modifier,
     onPick: (Int) -> Unit,
+    onFull: (Int) -> Unit,
 ) {
     val state = rememberLazyListState()
     LaunchedEffect(current, channels.size) {
@@ -312,7 +332,13 @@ private fun PortraitChannelList(
     ) {
         itemsIndexed(channels, key = { _, c -> c.id }) { i, c ->
             val event = ChannelNames.isEventOnly(c.name)
-            FocusCard(onClick = { onPick(i) }, selected = i == current, modifier = Modifier.fillMaxWidth()) {
+            // Tap to switch; double-tap to switch and go full screen.
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(if (i == current) Vanta.SurfaceHigh else Vanta.Surface)
+                    .pointerInput(i) { detectTapGestures(onTap = { onPick(i) }, onDoubleTap = { onFull(i) }) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (event && i != current) 0.65f else 1f)) {
                     Text(c.number.toString(), color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1)
                     Box(
@@ -332,6 +358,57 @@ private fun PortraitChannelList(
                     )
                 }
             }
+        }
+    }
+}
+
+private val hhmm = java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK)
+
+/** Now: title, times and progress, then Next. Used over the video in full screen. */
+@Composable
+private fun NowInfo(ui: PlayerUi, modifier: Modifier = Modifier) {
+    val now = ui.now ?: return
+    val t = System.currentTimeMillis()
+    Column(modifier) {
+        Text(
+            "Now: ${now.title}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("${hhmm.format(java.util.Date(now.start))} – ${hhmm.format(java.util.Date(now.stop))}", color = Vanta.TextDim, fontSize = 13.sp)
+            Spacer(Modifier.width(10.dp))
+            val f = ((t - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+            Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x55FFFFFF))) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Vanta.Cyan))
+            }
+        }
+        ui.next?.let { n ->
+            Text("Next: ${hhmm.format(java.util.Date(n.start))} ${n.title}", color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Under the video on an upright phone: what's on now with its description, and what's next. */
+@Composable
+private fun NowStrip(ui: PlayerUi) {
+    val now = ui.now
+    Column(Modifier.fillMaxWidth().background(Vanta.Surface).padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(ui.number.toString(), color = Vanta.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text(ui.title, color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (now == null) {
+            Text("No guide information for this channel", color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            return@Column
+        }
+        Spacer(Modifier.height(4.dp))
+        NowInfo(ui.copy(next = null))
+        now.description?.let {
+            Text(it, color = Vanta.TextDim, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        }
+        ui.next?.let { n ->
+            Text("Next: ${hhmm.format(java.util.Date(n.start))} ${n.title}", color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

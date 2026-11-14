@@ -318,7 +318,7 @@ private fun GuideRow(
         Box(Modifier.weight(1f).fillMaxHeight().clipToBounds()) {
             if (progs.isEmpty()) {
                 FocusCard(
-                    onClick = { onPick(Picked(channel, null)) },
+                    onClick = { onPlay(channel.id) },
                     modifier = Modifier.fillMaxSize(),
                     padding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 ) { Text("No guide information", color = Vanta.TextDim, fontSize = 12.sp) }
@@ -332,10 +332,8 @@ private fun GuideRow(
                 val past = p.stop <= now
                 val sel = picked?.programme?.id == p.id
                 FocusCard(
-                    onClick = {
-                        // Tap once to see details; tap the live programme again to watch.
-                        if (sel && isNow) onPlay(channel.id) else onPick(Picked(channel, p))
-                    },
+                    // Choosing a programme plays its channel; the player shows what's on now.
+                    onClick = { onPlay(channel.id) },
                     selected = sel || isNow,
                     modifier = Modifier
                         .offset { IntOffset(x0.roundToInt(), 0) }

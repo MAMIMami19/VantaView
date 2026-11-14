@@ -44,6 +44,9 @@ data class PlayerUi(
     val hasSiblings: Boolean = false,
     /** A channel that only carries something while an event is on. */
     val eventOnly: Boolean = false,
+    /** What's on now and next, from the TV guide (null when the channel has no guide). */
+    val now: com.vantaview.app.data.db.ProgrammeEntity? = null,
+    val next: com.vantaview.app.data.db.ProgrammeEntity? = null,
 )
 
 @OptIn(UnstableApi::class)
@@ -55,6 +58,7 @@ class PlayerViewModel @Inject constructor(
     private val okHttp: OkHttpClient,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     private val session: com.vantaview.app.data.profile.ProfileSession,
+    private val guide: com.vantaview.app.data.guide.GuideRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     private val channelId: Long = savedState.get<Long>("channelId") ?: 0L
@@ -80,6 +84,7 @@ class PlayerViewModel @Inject constructor(
     private val _index = MutableStateFlow(0)
     val current: StateFlow<Int> = _index
     private var eventTimer: Job? = null
+    private var guideJob: Job? = null
 
     /** Addresses to try for the current channel: (url, treat as HLS). */
     private var candidates: List<Pair<String, Boolean>> = emptyList()
@@ -194,6 +199,19 @@ class PlayerViewModel @Inject constructor(
             title = ChannelNames.display(channel.name), number = channel.number, status = PlayStatus.LOADING,
             hasSiblings = siblings.size > 1, eventOnly = event,
         )
+        // Now and next from the TV guide, refreshed every minute while watching.
+        guideJob?.cancel()
+        guideJob = viewModelScope.launch {
+            val key = channel.epgChannelId ?: return@launch
+            while (true) {
+                val t = System.currentTimeMillis()
+                val list = runCatching { guide.nowNext(channel.providerId, key, t) }.getOrDefault(emptyList())
+                val now = list.firstOrNull()?.takeIf { it.start <= t }
+                val next = if (now != null) list.getOrNull(1) else list.firstOrNull()
+                _ui.update { it.copy(now = now, next = next) }
+                delay(60_000)
+            }
+        }
         // Event channels are often empty: after 10 seconds without a picture, say so instead of spinning.
         if (event) eventTimer = viewModelScope.launch {
             delay(10_000)
@@ -285,7 +303,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
+        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel(); guideJob?.cancel()
         player.removeListener(listener)
         player.release()
     }

@@ -3,6 +3,8 @@ package com.vantaview.app.feature.home
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -235,6 +237,8 @@ private fun PreviewBox(p: Preview?, vm: HomeViewModel, modifier: Modifier, onFul
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
+        // Double-tap the preview to watch full screen.
+        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onDoubleTap = { onFull() }) })
         Badge("LIVE", Color(0xFFFF3B4E), Modifier.padding(10.dp))
         Row(
             Modifier.align(Alignment.BottomStart).fillMaxWidth()
