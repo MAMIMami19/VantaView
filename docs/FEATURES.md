@@ -73,7 +73,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] VOD: ±10s, speed, Episodes, resume *(±10s and resume only)*
 - [ ] Skip intro and Next episode countdown
 - [x] Controls hide after 5 seconds (adjustable)
-- [ ] Phone: swipe gestures, lock button, picture-in-picture *(swipe to change channel and double tap for full screen, with an off switch; no lock button or picture-in-picture)*
+- [ ] Phone: swipe gestures, lock button, picture-in-picture *(swipes done: sideways for channel, left side brightness, right side volume up to 200%, double tap for full screen; no lock button or picture-in-picture yet)*
 - [ ] Record from the player **(later)**
 
 ## Movies and TV Series
@@ -168,6 +168,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Storage: space used by type; clear pictures, TV guide and update downloads; TV guide refresh setting
 - [x] Search page in the sidebar and on Home; Library page (Watchlist, Continue watching, Watched, Reminders); films marked watched when finished
 - [x] Reminder pop-ups in the app, notifications when it is closed
+- [x] Favourite star on the left of each channel
 - [x] Release 0.7.0 published
 
 ## Before release

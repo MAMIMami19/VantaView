@@ -57,7 +57,7 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
         get() = sp.getBoolean("mini_player", true)
         set(v) { sp.edit().putBoolean("mini_player", v).apply() }
 
-    /** Swipe up and down to change channel, double tap for full screen. */
+    /** Swipes in the live player (channel, brightness, volume) and double tap for full screen. */
     var gestures: Boolean
         get() = sp.getBoolean("gestures", true)
         set(v) { sp.edit().putBoolean("gestures", v).apply() }

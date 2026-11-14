@@ -46,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlin.math.roundToInt
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.focus.onFocusChanged
@@ -89,6 +91,9 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     var overlay by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableStateOf(0) }
     val focus = remember { FocusRequester() }
+    // Swipe up/down: left side brightness, right side volume (to 200%).
+    val levels = remember { PlayerLevels(activity, vm.player) }
+    DisposableEffect(Unit) { onDispose { levels.release() } }
     // True while the Audio/Subtitles/Size buttons have focus or a picker is open: the controls stay.
     var hold by remember { mutableStateOf(false) }
 
@@ -150,6 +155,7 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
                 vm = vm, ui = ui, isTv = isTv, overlay = overlay, compact = portrait, focus = focus,
                 modifier = m, onTap = ::tapped, onZap = ::zap, onBack = onBack,
                 onHold = { hold = it; overlayTick++ }, onShowControls = { overlay = true; overlayTick++ },
+                levels = levels,
                 onDoubleTap = { if (upright && vm.settings.gestures) full = !full },
             )
         }
@@ -192,11 +198,13 @@ private fun VideoArea(
     onDoubleTap: () -> Unit,
     onHold: (Boolean) -> Unit,
     onShowControls: () -> Unit,
+    levels: PlayerLevels,
 ) {
     val density = LocalDensity.current
     val swipe = with(density) { 60.dp.toPx() }
     val size by vm.size.collectAsStateWithLifecycle()
     val gestures = vm.settings.gestures
+    var levelShown by remember { mutableStateOf<Level?>(null) }
     // Audio or subtitle picker (a track type), and the buttons that open it.
     var picker by remember { mutableStateOf<Int?>(null) }
     val buttons = remember { FocusRequester() }
@@ -252,6 +260,9 @@ private fun VideoArea(
             modifier = Modifier.fillMaxSize(),
         )
 
+        // Brightness or volume while swiping.
+        levelShown?.let { LevelBadge(it, Modifier.align(if (it.brightness) Alignment.CenterStart else Alignment.CenterEnd).padding(28.dp)) }
+
         // AI subtitles (beta), above the bottom controls.
         vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (overlay) 110.dp else 28.dp)) }
 
@@ -260,18 +271,39 @@ private fun VideoArea(
             Modifier.fillMaxSize()
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }, onDoubleTap = { onDoubleTap() }) }
                 .pointerInput(ui.hasSiblings, gestures) {
-                    if (!ui.hasSiblings || !gestures) return@pointerInput
-                    var total = 0f
-                    detectVerticalDragGestures(
-                        onDragStart = { total = 0f },
+                    if (!gestures) return@pointerInput
+                    // Decide what a drag is once it has moved a little: sideways changes channel;
+                    // up/down sets brightness on the left half and volume on the right half.
+                    var mode = 0
+                    var dx = 0f
+                    var dy = 0f
+                    var startX = 0f
+                    val slop = viewConfiguration.touchSlop
+                    detectDragGestures(
+                        onDragStart = { o -> mode = 0; dx = 0f; dy = 0f; startX = o.x },
                         onDragEnd = {
-                            when {
-                                total < -swipe -> onZap(1)
-                                total > swipe -> onZap(-1)
+                            if (mode == 1 && ui.hasSiblings) {
+                                if (dx < -swipe) onZap(1) else if (dx > swipe) onZap(-1)
+                            }
+                            mode = 0
+                            levelShown = null
+                        },
+                        onDragCancel = { mode = 0; levelShown = null },
+                        onDrag = { change, d ->
+                            change.consume()
+                            dx += d.x; dy += d.y
+                            if (mode == 0 && (kotlin.math.abs(dx) > slop || kotlin.math.abs(dy) > slop)) {
+                                mode = if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) 1 else if (startX < size.width / 2) 2 else 3
+                            }
+                            val span = size.height * 0.8f
+                            when (mode) {
+                                2 -> { levels.changeBrightness(-d.y / span); levelShown = Level(true, levels.brightness) }
+                                3 -> { levels.changeVolume(-d.y * 2f / span); levelShown = Level(false, levels.volume) }
                             }
                         },
-                        onVerticalDrag = { change, dy -> change.consume(); total += dy },
                     )
+                }
+        )
                 }
         )
 
@@ -354,7 +386,7 @@ private fun VideoArea(
                     } else if (ui.hasSiblings && ui.status != PlayStatus.FAILED) {
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             FocusCard(onClick = { onZap(-1) }) { Text("▼ Previous", color = Vanta.Text) }
-                            if (!compact) Text("or swipe up and down", color = Vanta.TextDim, fontSize = 13.sp)
+                            if (!compact) Text("or swipe left and right", color = Vanta.TextDim, fontSize = 13.sp)
                             FocusCard(onClick = { onZap(1) }) { Text("▲ Next", color = Vanta.Text) }
                         }
                     }
@@ -501,5 +533,29 @@ private fun NowStrip(ui: PlayerUi) {
         ui.next?.let { n ->
             Text("Next: ${hhmm.format(java.util.Date(n.start))} ${n.title}", color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         }
+    }
+}
+
+/** What a swipe is changing: brightness (0..1) or volume (0..2). */
+private data class Level(val brightness: Boolean, val value: Float)
+
+@Composable
+private fun LevelBadge(l: Level, modifier: Modifier) {
+    val pct = (l.value * 100).roundToInt()
+    val boosted = !l.brightness && l.value > 1f
+    val max = if (l.brightness) 1f else PlayerLevels.MAX
+    Column(
+        modifier.background(Color(0xCC000000), RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(if (l.brightness) "☀" else if (pct == 0) "🔇" else "🔊", fontSize = 22.sp)
+        Box(Modifier.padding(vertical = 8.dp).size(width = 8.dp, height = 140.dp).background(Color(0x33FFFFFF), RoundedCornerShape(4.dp)), contentAlignment = Alignment.BottomCenter) {
+            Box(
+                Modifier.fillMaxWidth().fillMaxHeight((l.value / max).coerceIn(0f, 1f))
+                    .background(if (boosted) Color(0xFFFF9100) else Vanta.Cyan, RoundedCornerShape(4.dp))
+            )
+        }
+        Text("$pct%", color = if (boosted) Color(0xFFFF9100) else Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        if (boosted) Text("Boost", color = Color(0xFFFF9100), fontSize = 11.sp)
     }
 }

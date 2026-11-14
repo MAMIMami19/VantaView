@@ -114,7 +114,7 @@ private val tourPages = listOf(
         "On a TV, use the arrows and OK; Back always goes back a page.",
     "Home" to "Your shortcuts: Live TV, the TV Guide, Movies and Series, plus what's on now, Continue watching and your favourite channels.",
     "Live TV" to "Pick a category, then a channel. Type a number on the remote to jump to it, and use Countries to hide channels you don't want. " +
-        "In the player, Up and Down or a swipe change channel; double tap for full screen.",
+        "In the player, Up and Down or a sideways swipe change channel; swipe up or down for brightness (left) and volume (right); double tap for full screen.",
     "TV Guide" to "See what's on from yesterday to a week ahead. Select a programme to watch its channel.",
     "Movies and Series" to "Films and series come from the add-ons you install in Sources. Pick a title to see its details and choose a stream.",
     "Settings" to "Weather, backups and more. Back up your profiles and playlists to a file or your phone, and turn on automatic backups.",

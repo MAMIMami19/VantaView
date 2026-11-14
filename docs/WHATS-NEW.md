@@ -1,8 +1,8 @@
+- Live player swipes: left side for brightness, right side for volume (boost up to 200%); swipe sideways to change channel.
+- The favourite star now sits on the left of each channel.
 - Sort Movies and TV Series: recently added, A to Z, Z to A, newest, oldest or top rated.
 - Library: your Watchlist, Continue watching, Watched and Reminders in one place. Add films and series with + Watchlist.
 - Programme reminders: Remind me in the TV Guide, with a pop-up (or a notification when VantaView is closed).
 - Search: one search for channels, programmes, films and series, with recent searches and voice search.
 - Sources and storage: playlists and the TV guide refresh by themselves, Free TV settings, and see or clear the space used.
 - AI subtitles (beta): subtitles made on your device as you watch, or translated into English. Includes a device check and what it needs.
-- Subtitles and audio: choose your languages and the subtitle look; Audio and Subtitles buttons in the live player.
-- Updates: check for new versions and install them from Settings › Updates.

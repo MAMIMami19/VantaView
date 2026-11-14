@@ -379,6 +379,18 @@ private fun ChannelItem(
     }
     val event = ChannelNames.isEventOnly(name)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Favourite star on the left, away from the fast-scroll handle on the right.
+        FocusCard(
+            onClick = { onToggleFav(row) },
+            padding = PaddingValues(10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = if (row.isFav) "Remove from favourites" else "Add to favourites",
+                tint = if (row.isFav) androidx.compose.ui.graphics.Color(0xFFFFEA00) else Vanta.TextDim.copy(alpha = 0.45f),
+            )
+        }
         FocusCard(onClick = { onPlay(row.channel.id) }, modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (event) 0.65f else 1f)) {
                 Text(
@@ -409,17 +421,6 @@ private fun ChannelItem(
                     NowNextLine(row.channel, guideTick, nowNext)
                 }
             }
-        }
-        FocusCard(
-            onClick = { onToggleFav(row) },
-            padding = PaddingValues(10.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Filled.Star,
-                contentDescription = if (row.isFav) "Remove from favourites" else "Add to favourites",
-                tint = if (row.isFav) androidx.compose.ui.graphics.Color(0xFFFFEA00) else Vanta.TextDim.copy(alpha = 0.45f),
-            )
         }
     }
 }

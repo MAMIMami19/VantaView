@@ -60,7 +60,7 @@ fun PlaybackSection(s: PlaybackSettings) {
     }
 
     Section("Phone gestures") {
-        Toggle("Swipe and double tap", "Swipe up or down to change channel; double tap for full screen", gestures) { gestures = it; s.gestures = it }
+        Toggle("Swipe and double tap", "Swipe left or right to change channel. Swipe up or down on the left for brightness, on the right for volume (up to 200%). Double tap for full screen.", gestures) { gestures = it; s.gestures = it }
     }
 
     Text("Changes apply the next time a video starts.", color = Vanta.TextDim, fontSize = 13.sp)
