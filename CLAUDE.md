@@ -8,3 +8,7 @@
 - When a feature is only partly built, leave it unticked and update its *(italic note)* to say what's missing.
 - A new feature that isn't on the list goes under "Built that wasn't on the original list", ticked.
 - Never tick something that isn't in the code yet.
+
+## What's new
+
+`docs/WHATS-NEW.md` is the "What's new" shown in the app's update notice for test builds. In the same commit as any change people will notice, add a short plain-English bullet at the top (newest first) and keep the list to about 8 bullets. Write it for viewers, not developers: what they can now do, not how it was built. For a release, copy the relevant bullets into `docs/releases/v<version>.md`.

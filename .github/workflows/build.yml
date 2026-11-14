@@ -35,6 +35,15 @@ jobs:
         with:
           name: VantaView-test-apk
           path: VantaView-test.apk
+      - name: Release notes (what's new, then build details after a --- line)
+        run: |
+          {
+            cat docs/WHATS-NEW.md
+            echo
+            echo "---"
+            echo "Test build ${{ github.run_number }} from commit ${{ github.sha }}."
+            echo "Signed with a shared test key. Source: this repository (GPL-3.0-or-later)."
+          } > release-notes.md
       - name: Publish as the "test-latest" pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -44,6 +53,4 @@ jobs:
           files: |
             VantaView-test.apk
             version.txt
-          body: |
-            Test build ${{ github.run_number }} from commit ${{ github.sha }}.
-            Signed with a shared test key. Source: this repository (GPL-3.0-or-later).
+          body_path: release-notes.md

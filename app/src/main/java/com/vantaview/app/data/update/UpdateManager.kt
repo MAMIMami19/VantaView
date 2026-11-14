@@ -132,7 +132,7 @@ class UpdateManager @Inject constructor(
         } else o.optString("name").ifBlank { o.optString("tag_name") }
         return Found(
             UpdateInfo(
-                name = name, notes = plainNotes(body), apkUrl = apk.optString("browser_download_url"),
+                name = name, notes = plainNotes(whatsNew(body)), apkUrl = apk.optString("browser_download_url"),
                 size = apk.optLong("size"), test = test,
             ),
             newer, code ?: published,
@@ -203,6 +203,10 @@ class UpdateManager @Inject constructor(
 
     companion object {
         const val REPO = "wardy-uk1/VantaView"
+
+        /** The part of the notes for people: everything before a "---" line (build details come after). */
+        fun whatsNew(body: String): String =
+            body.lines().takeWhile { it.trim() != "---" }.joinToString("\n").trim()
 
         /** Release notes as plain text: no Markdown marks, links shown as their words. */
         fun plainNotes(md: String): String = md.lines().joinToString("\n") { l ->
