@@ -304,8 +304,6 @@ private fun VideoArea(
                     )
                 }
         )
-                }
-        )
 
         if (overlay) {
             val pad = if (compact) 12.dp else 20.dp
