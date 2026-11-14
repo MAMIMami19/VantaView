@@ -1,0 +1,19 @@
+name: TV check
+
+# Run by hand: lint for TV problems, then start an Android TV emulator, install the test APK,
+# drive it with the remote's keys and save screenshots and any crash log.
+on:
+  workflow_dispatch:
+    inputs:
+      list_images:
+        description: "Only list the TV emulator images"
+        required: false
+        default: "false"
+
+jobs:
+  images:
+    if: inputs.list_images == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list 2>/dev/null | grep -iE "system-images;android-[0-9]+;(android-tv|google-tv)" | sort -u
