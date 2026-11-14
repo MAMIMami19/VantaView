@@ -43,6 +43,7 @@ data class VodUi(
 @HiltViewModel
 class VodPlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    val settings: com.vantaview.app.data.PlaybackSettings,
     private val okHttp: OkHttpClient,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
@@ -52,6 +53,7 @@ class VodPlayerViewModel @Inject constructor(
     val ui: StateFlow<VodUi> = _ui
 
     val player: ExoPlayer = ExoPlayer.Builder(context)
+        .setLoadControl(settings.loadControl())
         .setSeekBackIncrementMs(10_000)
         .setSeekForwardIncrementMs(10_000)
         .build()

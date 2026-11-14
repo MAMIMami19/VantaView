@@ -88,6 +88,9 @@ fun HomeScreen(
     val onNow by vm.onNow.collectAsStateWithLifecycle()
     val preview by vm.preview.collectAsStateWithLifecycle()
     val newSeason by vm.newSeason.collectAsStateWithLifecycle()
+    // Settings › Playback › Start on last channel (once, when the app starts).
+    val openChannel by vm.openChannel.collectAsStateWithLifecycle()
+    LaunchedEffect(openChannel) { openChannel?.let { vm.openedChannel(); onPlayChannel(it) } }
 
     // The muted preview only runs while Home is on screen (it shares the provider connection).
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.stopPreview() }
@@ -477,7 +480,7 @@ private fun LastWatchedBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(width = if (wide) 200.dp else 128.dp, height = if (wide) 112.dp else 72.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black)) {
-            AndroidView(
+            if (vm.miniPlayer) AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         useController = false
@@ -487,6 +490,9 @@ private fun LastWatchedBar(
                 },
                 onRelease = { it.player = null },
                 modifier = Modifier.fillMaxSize(),
+            ) else coil.compose.AsyncImage(
+                model = p.channel.logo, contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(14.dp),
             )
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onDoubleTap = { onFull() }, onTap = { onFull() }) })
             Badge("LIVE", Color(0xFFFF3B4E), Modifier.padding(6.dp))
@@ -510,10 +516,12 @@ private fun LastWatchedBar(
             }
         }
         Spacer(Modifier.width(8.dp))
-        FocusCard(onClick = vm::toggleMute, shape = CircleShape, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
-            Text(if (p.muted) "🔇" else "🔊", fontSize = 15.sp)
+        if (vm.miniPlayer) {
+            FocusCard(onClick = vm::toggleMute, shape = CircleShape, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
+                Text(if (p.muted) "🔇" else "🔊", fontSize = 15.sp)
+            }
+            Spacer(Modifier.width(8.dp))
         }
-        Spacer(Modifier.width(8.dp))
         Box(
             Modifier.size(46.dp).clip(CircleShape).background(Vanta.Text).clickable(onClick = onFull),
             contentAlignment = Alignment.Center,

@@ -73,6 +73,7 @@ class HomeViewModel @Inject constructor(
     private val okHttp: OkHttpClient,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     private val weatherRepo: com.vantaview.app.data.weather.WeatherRepository,
+    private val playback: com.vantaview.app.data.PlaybackSettings,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -250,7 +251,16 @@ class HomeViewModel @Inject constructor(
 
     // ---- Live preview ----
 
+    /** Fires once after the app starts when "Start on last channel" is on: open this channel. */
+    private val _openChannel = MutableStateFlow<Long?>(null)
+    val openChannel: StateFlow<Long?> = _openChannel
+    fun openedChannel() { _openChannel.value = null }
+
+    /** Settings › Playback › Mini player: off shows the last channel without the muted video. */
+    val miniPlayer: Boolean get() = playback.miniPlayer
+
     private suspend fun loadPreview() {
+        val firstStart = playback.firstStart()
         player.stop()
         val id = session.lastChannel()
         val ch = if (id > 0) db.content().channel(id) else null
@@ -258,10 +268,12 @@ class HomeViewModel @Inject constructor(
         if (ch == null || !mine) { _preview.value = null; return }
         if (profile.value?.isKids == true && (ch.isAdult || KidsFilter.looksAdult(ch.name))) { _preview.value = null; return }
         _preview.value = Preview(ch)
+        if (firstStart && playback.startOnLastChannel) { _openChannel.value = ch.id; return }
         startPreview()
     }
 
     fun startPreview() {
+        if (!playback.miniPlayer) return
         val ch = _preview.value?.channel ?: return
         viewModelScope.launch {
             try {

@@ -37,6 +37,7 @@ data class Pending(val text: String, val info: BackupInfo, val wrongPassword: Bo
 class SettingsViewModel @Inject constructor(
     private val backup: BackupManager,
     private val weather: com.vantaview.app.data.weather.WeatherRepository,
+    val playback: com.vantaview.app.data.PlaybackSettings,
 ) : ViewModel() {
     // ---- Weather ----
     data class WeatherUi(val enabled: Boolean, val fahrenheit: Boolean, val place: String?, val usingDevice: Boolean)

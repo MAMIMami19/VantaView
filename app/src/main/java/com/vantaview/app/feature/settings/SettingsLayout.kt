@@ -38,8 +38,8 @@ import com.vantaview.app.ui.Vanta
 /** The Settings sections, in the agreed order. [keywords] are extra words the search box matches. */
 enum class SettingsSection(val title: String, val summary: String, val keywords: String) {
     PLAYBACK(
-        "Playback", "Buffer size, trailers, reminders, how long controls stay, mini player and phone gestures",
-        "buffer buffering trailer autoplay reminder controls hide mini player preview gestures swipe brightness volume",
+        "Playback", "Buffer size, how long controls stay, mini player, start on last channel, picture size and phone gestures",
+        "buffer buffering controls hide mini player preview start last channel picture size fit fill zoom gestures swipe double tap",
     ),
     APPEARANCE("Appearance", "Dark, light or follow the device, accent colour and language", "theme dark light accent colour color language"),
     SUBTITLES("Subtitles and audio", "Preferred languages, subtitle size and style", "subtitle subtitles captions audio language track size"),

@@ -67,13 +67,13 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Live: previous/next channel, remote Up/Down changes channel
 - [ ] Live: pause and rewind with Go live
 - [x] Live: Now/Next bar and quick channel list
-- [ ] Audio, subtitles and picture size
-- [ ] Smart anti-buffering with Medium buffer by default
+- [ ] Audio, subtitles and picture size *(picture size only: Fit, Fill, Zoom, with the Size button or Menu on a remote)*
+- [ ] Smart anti-buffering with Medium buffer by default *(Small, Medium and Large buffer sizes, Medium by default; no automatic adjusting yet)*
 - [x] Auto-reconnect with "Reconnecting" message
 - [ ] VOD: ±10s, speed, Episodes, resume *(±10s and resume only)*
 - [ ] Skip intro and Next episode countdown
-- [ ] Controls hide after 5 seconds (adjustable) *(not adjustable yet)*
-- [ ] Phone: swipe gestures, lock button, picture-in-picture *(swipe to change channel only)*
+- [x] Controls hide after 5 seconds (adjustable)
+- [ ] Phone: swipe gestures, lock button, picture-in-picture *(swipe to change channel and double tap for full screen, with an off switch; no lock button or picture-in-picture)*
 - [ ] Record from the player **(later)**
 
 ## Movies and TV Series
@@ -119,7 +119,7 @@ This file is ticked off in the same commit that finishes a feature.
 ## Settings
 
 - [x] Two panes on TV, list on phone, search settings
-- [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures
+- [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures *(trailers and reminders get their settings when those features are built)*
 - [ ] Appearance: Dark/Light/Follow device, accent colour, language
 - [ ] Subtitles and audio
 - [ ] Sources and storage, Free channels settings
@@ -142,7 +142,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Sleep timer
 - [ ] Auto-refresh sources on a schedule
 - [ ] Stream info overlay
-- [ ] Start on last channel option
+- [x] Start on last channel option
 - [ ] Export a log file
 
 ## Built that wasn't on the original list
@@ -158,6 +158,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Greeting that follows the time of day, weather glance, location asked on first launch
 - [x] Backup password, send to phone by QR code, automatic backups (keeps 5)
 - [x] Debrid accounts for add-on streams
+- [x] Playback settings: mini player on Home on/off, remember picture size
 - [x] Release 0.7.0 published
 
 ## Before release

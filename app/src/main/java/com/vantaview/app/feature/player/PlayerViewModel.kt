@@ -13,7 +13,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.vantaview.app.BuildConfig
@@ -59,6 +58,7 @@ class PlayerViewModel @Inject constructor(
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     private val session: com.vantaview.app.data.profile.ProfileSession,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
+    val settings: com.vantaview.app.data.PlaybackSettings,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     private val channelId: Long = savedState.get<Long>("channelId") ?: 0L
@@ -66,14 +66,15 @@ class PlayerViewModel @Inject constructor(
     private val _ui = MutableStateFlow(PlayerUi())
     val ui: StateFlow<PlayerUi> = _ui
 
-    // "Medium" buffer preset: 15 s minimum, 30 s maximum, start after 2.5 s.
+    // Buffer size from Settings › Playback (Medium unless changed).
     val player: ExoPlayer = ExoPlayer.Builder(context)
-        .setLoadControl(
-            DefaultLoadControl.Builder()
-                .setBufferDurationsMs(15_000, 30_000, 2_500, 5_000)
-                .build()
-        )
+        .setLoadControl(settings.loadControl())
         .build()
+
+    /** How the video fills the screen: Fit, Fill or Zoom. */
+    private val _size = MutableStateFlow(settings.size)
+    val size: StateFlow<com.vantaview.app.data.StreamSize> = _size
+    fun cycleSize() { _size.value = _size.value.next(); settings.size = _size.value }
 
     private var siblings: List<ChannelEntity> = emptyList()
     private var index = 0

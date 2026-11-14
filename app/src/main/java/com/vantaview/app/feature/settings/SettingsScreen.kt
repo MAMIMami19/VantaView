@@ -151,6 +151,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SettingsSection.WEATHER -> WeatherSection(vm)
             SettingsSection.BACKUP -> backupContent()
             SettingsSection.ABOUT -> HelpAbout()
+            SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
             else -> ComingSoon(section)
         }
     }

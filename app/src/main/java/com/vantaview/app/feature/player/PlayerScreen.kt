@@ -88,8 +88,9 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
 
     // Hide the overlay a few seconds after it was last shown, unless something needs attention.
     LaunchedEffect(overlay, overlayTick, ui.status) {
-        if (overlay && ui.status == PlayStatus.PLAYING) {
-            delay(4000)
+        val seconds = vm.settings.controlsSeconds
+        if (overlay && ui.status == PlayStatus.PLAYING && seconds > 0) {
+            delay(seconds * 1000L)
             overlay = false
         }
     }
@@ -140,7 +141,7 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
             VideoArea(
                 vm = vm, ui = ui, isTv = isTv, overlay = overlay, compact = portrait, focus = focus,
                 modifier = m, onTap = ::tapped, onZap = ::zap, onBack = onBack,
-                onDoubleTap = { if (upright) full = !full },
+                onDoubleTap = { if (upright && vm.settings.gestures) full = !full },
             )
         }
         if (portrait) {
@@ -156,7 +157,7 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
                     },
                     onFull = { i ->
                         vm.playAt(i)
-                        full = true
+                        if (vm.settings.gestures) full = true
                     },
                 )
             }
@@ -183,6 +184,8 @@ private fun VideoArea(
 ) {
     val density = LocalDensity.current
     val swipe = with(density) { 60.dp.toPx() }
+    val size by vm.size.collectAsStateWithLifecycle()
+    val gestures = vm.settings.gestures
     Box(
         modifier
             .background(Color.Black)
@@ -192,6 +195,11 @@ private fun VideoArea(
                     Key.DirectionUp, Key.ChannelUp, Key.PageUp, Key.MediaNext -> 1
                     Key.DirectionDown, Key.ChannelDown, Key.PageDown, Key.MediaPrevious -> -1
                     else -> 0
+                }
+                // Menu on a remote changes the picture size (Fit, Fill, Zoom).
+                if (e.key == Key.Menu) {
+                    if (e.type == KeyEventType.KeyUp) vm.cycleSize()
+                    return@onKeyEvent true
                 }
                 if (e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter) {
                     if (e.type == KeyEventType.KeyUp) onTap()
@@ -212,6 +220,7 @@ private fun VideoArea(
                     player = vm.player
                 }
             },
+            update = { it.resizeMode = size.mode },
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
@@ -220,8 +229,8 @@ private fun VideoArea(
         Box(
             Modifier.fillMaxSize()
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }, onDoubleTap = { onDoubleTap() }) }
-                .pointerInput(ui.hasSiblings) {
-                    if (!ui.hasSiblings) return@pointerInput
+                .pointerInput(ui.hasSiblings, gestures) {
+                    if (!ui.hasSiblings || !gestures) return@pointerInput
                     var total = 0f
                     detectVerticalDragGestures(
                         onDragStart = { total = 0f },
@@ -253,8 +262,10 @@ private fun VideoArea(
                     Spacer(Modifier.width(12.dp))
                     Text(
                         ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                     )
+                    if (!isTv) FocusCard(onClick = vm::cycleSize) { Text("Size: ${size.label}", color = Vanta.Text) }
+                    else Text("Size: ${size.label}", color = Vanta.TextDim, fontSize = 14.sp)
                 }
 
                 Column(
@@ -293,8 +304,8 @@ private fun VideoArea(
                         Text(
                             when {
                                 ui.status == PlayStatus.FAILED -> "OK to try again   ·   ▲ ▼ change channel   ·   Back to exit"
-                                ui.hasSiblings -> "▲ ▼ change channel   ·   Back to exit"
-                                else -> "Back to exit"
+                                ui.hasSiblings -> "▲ ▼ change channel   ·   Menu picture size   ·   Back to exit"
+                                else -> "Menu picture size   ·   Back to exit"
                             },
                             color = Vanta.TextDim, fontSize = 14.sp,
                         )
