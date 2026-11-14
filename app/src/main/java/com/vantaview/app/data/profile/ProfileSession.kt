@@ -28,7 +28,13 @@ class ProfileSession @Inject constructor(@ApplicationContext context: Context) {
 
     /** Last live channel watched, per profile (shown in Home's preview). */
     fun lastChannel(): Long = sp.getLong("last_channel_$id", 0L)
-    fun setLastChannel(channelId: Long) = sp.edit().putLong("last_channel_$id", channelId).apply()
+    fun setLastChannel(channelId: Long) {
+        sp.edit().putLong("last_channel_$id", channelId).apply()
+        _lastChannelChanges.value++
+    }
+    private val _lastChannelChanges = MutableStateFlow(0)
+    /** Goes up whenever the last channel changes (or is cleared). */
+    val lastChannelChanges: StateFlow<Int> = _lastChannelChanges
 
     /** The parent PIN that guards leaving a Kids profile and changing profiles. */
     var parentPinHash: String?

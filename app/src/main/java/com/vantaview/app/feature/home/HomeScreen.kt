@@ -93,8 +93,8 @@ fun HomeScreen(
     LaunchedEffect(openChannel) { openChannel?.let { vm.openedChannel(); onPlayChannel(it) } }
 
     // The muted preview only runs while Home is on screen (it shares the provider connection).
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.stopPreview() }
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.startPreview() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.onHidden() }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.onShown() }
 
     val weather by vm.weather.collectAsStateWithLifecycle()
     val previewNow by vm.previewNow.collectAsStateWithLifecycle()

@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var addons: AddonRepository
     @Inject lateinit var profiles: ProfileRepository
     @Inject lateinit var backups: com.vantaview.app.data.backup.BackupManager
+    @Inject lateinit var parental: com.vantaview.app.data.profile.ParentalControl
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
         backups.startAutomatic()
         setContent {
             VantaTheme {
-                AppNav(prefs, providers, addons, profiles, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, parental, onExit = { finish() })
             }
         }
     }
@@ -103,6 +104,7 @@ private fun AppNav(
     providers: ProviderRepository,
     addons: AddonRepository,
     profiles: ProfileRepository,
+    parental: com.vantaview.app.data.profile.ParentalControl,
     onExit: () -> Unit,
 ) {
     val nav = rememberNavController()
@@ -215,7 +217,7 @@ private fun AppNav(
                 // Kids profiles can't change settings.
                 if (profile?.isKids == true) Box(Modifier.fillMaxSize().background(Vanta.Bg)) {
                     androidx.compose.material3.Text("Ask a grown-up to change settings.", color = Vanta.TextDim, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
-                } else com.vantaview.app.feature.settings.SettingsScreen()
+                } else com.vantaview.app.feature.settings.SettingsScreen(onEditProfile = { id -> nav.navigate("profile/edit/$id") })
             }
             composable("guide") {
                 com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
@@ -238,7 +240,18 @@ private fun AppNav(
                 "sources?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.StringType; defaultValue = "playlists" }),
             ) { e ->
-                SourcesScreen(
+                // Settings › Parental control › Lock Sources: ask for the parent PIN first.
+                val unlocked by parental.unlocked.collectAsState()
+                parental.changes.collectAsState().value
+                if (parental.lockSources && !unlocked) {
+                    Box(Modifier.fillMaxSize().background(Vanta.Bg))
+                    com.vantaview.app.feature.profiles.PinDialog(
+                        title = "Sources is locked", message = "Enter the parent PIN to change playlists, add-ons and debrid.",
+                        check = profiles::checkParentPin,
+                        onOk = { parental.unlock() },
+                        onCancel = { if (!nav.popBackStack()) nav.goTo(Section.HOME.route) },
+                    )
+                } else SourcesScreen(
                     when (e.arguments?.getString("tab")) {
                         "addons" -> SourcesTab.ADDONS
                         "debrid" -> SourcesTab.DEBRID

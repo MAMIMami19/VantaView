@@ -74,6 +74,7 @@ class HomeViewModel @Inject constructor(
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     private val weatherRepo: com.vantaview.app.data.weather.WeatherRepository,
     private val playback: com.vantaview.app.data.PlaybackSettings,
+    private val parental: com.vantaview.app.data.profile.ParentalControl,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -82,6 +83,16 @@ class HomeViewModel @Inject constructor(
 
     val favourites: StateFlow<List<ChannelEntity>> = providerIds
         .flatMapLatest { list -> if (list.isEmpty()) flowOf(emptyList<ChannelEntity>()) else db.content().observeFavouriteChannels(list.map { it.id }) }
+        .let { f ->
+            // Settings › Parental control: hidden adult channels stay off Home too.
+            combine(f, parental.changes) { list, _ ->
+                if (!parental.hiding) list
+                else list.groupBy { it.providerId }.flatMap { (pid, chans) ->
+                    val ids = parental.adultIds(db.content().categories(pid))
+                    chans.filter { !parental.hidden(it, ids) }
+                }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Weather for the greeting (null when off or nowhere to get it for). */
@@ -126,7 +137,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             combine(history.entries, profile) { e, _ -> e }.collect { buildContinue(it) }
         }
-        viewModelScope.launch { session.current.collect { loadPreview() } }
+        viewModelScope.launch {
+            combine(session.current, session.lastChannelChanges, parental.changes) { _, _, _ -> }.collect { loadPreview() }
+        }
         // TV guide: load it when missing or old, then keep "On now" for favourite channels up to date.
         viewModelScope.launch { providerIds.collect { list -> list.forEach { guide.ensureFresh(it) } } }
         viewModelScope.launch {
@@ -261,15 +274,18 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun loadPreview() {
         val firstStart = playback.firstStart()
-        player.stop()
         val id = session.lastChannel()
         val ch = if (id > 0) db.content().channel(id) else null
         val mine = ch != null && db.providers().allFor(session.id).any { it.id == ch.providerId }
-        if (ch == null || !mine) { _preview.value = null; return }
-        if (profile.value?.isKids == true && (ch.isAdult || KidsFilter.looksAdult(ch.name))) { _preview.value = null; return }
+        if (ch == null || !mine) { player.stop(); _preview.value = null; return }
+        if (profile.value?.isKids == true && (ch.isAdult || KidsFilter.looksAdult(ch.name))) { player.stop(); _preview.value = null; return }
+        if (parental.hiding && parental.hidden(ch, parental.adultIds(db.content().categories(ch.providerId)))) { player.stop(); _preview.value = null; return }
+        // Same channel already previewing: leave it playing.
+        if (_preview.value?.channel?.id == ch.id && player.playbackState != androidx.media3.common.Player.STATE_IDLE) return
+        player.stop()
         _preview.value = Preview(ch)
         if (firstStart && playback.startOnLastChannel) { _openChannel.value = ch.id; return }
-        startPreview()
+        if (visible) startPreview()
     }
 
     fun startPreview() {
@@ -293,6 +309,11 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    /** True while Home is on screen; the preview only plays then. */
+    private var visible = false
+    fun onShown() { visible = true; startPreview() }
+    fun onHidden() { visible = false; stopPreview() }
 
     fun stopPreview() = player.stop()
 

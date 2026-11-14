@@ -60,7 +60,7 @@ import java.util.Locale
 private enum class Ask { BACKUP, AUTO }
 
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val lastAuto by vm.lastAuto.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -152,6 +152,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             SettingsSection.BACKUP -> backupContent()
             SettingsSection.ABOUT -> HelpAbout()
             SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
+            SettingsSection.PARENTAL -> ParentalSection(onEditProfile)
             else -> ComingSoon(section)
         }
     }

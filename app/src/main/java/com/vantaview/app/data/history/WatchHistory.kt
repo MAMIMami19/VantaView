@@ -116,6 +116,10 @@ class WatchHistory @Inject constructor(
         changed.value++
     }
 
+    /** Clears films and series history for the profile in use (Continue watching, resume points). */
+    @Synchronized
+    fun clear() = save(session.id, emptyList())
+
     /** Re-reads history after a restore wrote it directly. */
     fun reload() { changed.value++ }
 

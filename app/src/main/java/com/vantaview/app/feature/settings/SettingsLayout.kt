@@ -46,7 +46,10 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
     SOURCES("Sources and storage", "Playlist refresh, free channels and clearing saved data", "playlist refresh free tv channels storage cache clear guide epg"),
     WEATHER("Weather", "Weather on Home: on or off, °C or °F, and where", "weather temperature celsius fahrenheit location town city forecast"),
     BACKUP("Backup and restore", "Back up to a file or your phone, restore, and automatic backups", "backup restore export import password qr phone automatic folder"),
-    PARENTAL("Parental control", "Lock adult categories with a PIN and clear watch history", "parental pin lock adult kids history clear"),
+    PARENTAL(
+        "Parental control", "Hide adult categories, lock Sources, your profile PIN and clearing watch history",
+        "parental pin lock adult kids history clear hide sources profile",
+    ),
     UPDATES("Updates", "Check for a new version and install it", "update updates version download install apk"),
     ABOUT("Help and about", "App tour, support, terms, credits and version", "help support tour terms credits licence license about version");
 

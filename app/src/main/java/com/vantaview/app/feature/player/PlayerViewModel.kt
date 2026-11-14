@@ -59,6 +59,7 @@ class PlayerViewModel @Inject constructor(
     private val session: com.vantaview.app.data.profile.ProfileSession,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     val settings: com.vantaview.app.data.PlaybackSettings,
+    private val parental: com.vantaview.app.data.profile.ParentalControl,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     private val channelId: Long = savedState.get<Long>("channelId") ?: 0L
@@ -142,6 +143,10 @@ class PlayerViewModel @Inject constructor(
                 val adultCats = db.content().categories(channel.providerId)
                     .filter { com.vantaview.app.data.profile.KidsFilter.looksAdult(it.name) }.map { it.remoteId }.toSet()
                 siblings = siblings.filter { com.vantaview.app.data.profile.KidsFilter.channelAllowed(it, adultCats, allow) }
+            } else if (parental.hiding) {
+                // Settings › Parental control: don't zap into hidden adult channels.
+                val ids = parental.adultIds(db.content().categories(channel.providerId))
+                siblings = siblings.filter { it.id == channel.id || !parental.hidden(it, ids) }
             }
             index = siblings.indexOfFirst { it.id == channel.id }.coerceAtLeast(0)
             if (siblings.isEmpty()) siblings = listOf(channel)

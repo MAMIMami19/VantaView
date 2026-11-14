@@ -124,7 +124,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Subtitles and audio
 - [ ] Sources and storage, Free channels settings
 - [x] Local backup and restore
-- [ ] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN *(after Playback)*
+- [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN
 - [ ] Check for updates (downloads the APK and opens the installer)
 - [ ] Speed test
 - [x] App tour and support
@@ -160,6 +160,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Backup password, send to phone by QR code, automatic backups (keeps 5)
 - [x] Debrid accounts for add-on streams
 - [x] Playback settings: mini player on Home on/off, remember picture size
+- [x] Parental control: hide adult categories everywhere, mark your own, lock Sources, PIN unlocks until the app closes
 - [x] Release 0.7.0 published
 
 ## Before release

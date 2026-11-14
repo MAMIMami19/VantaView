@@ -48,6 +48,7 @@ class LiveViewModel @Inject constructor(
     private val session: ProfileSession,
     private val countries: CountryStore,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
+    private val parental: com.vantaview.app.data.profile.ParentalControl,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
@@ -92,8 +93,12 @@ class LiveViewModel @Inject constructor(
     private val device = CountryDetect.deviceCountry()
 
     val categories: StateFlow<List<CategoryEntity>> =
-        combine(allCategories, allowed, scan, chosen) { cats, allow, sc, pick ->
-            val kidsOk = if (allow == null) cats else KidsFilter.categories(cats, allow)
+        combine(allCategories, allowed, scan, chosen, parental.changes) { cats, allow, sc, pick, _ ->
+            val kidsOk = when {
+                allow != null -> KidsFilter.categories(cats, allow)
+                parental.hiding -> cats.filter { !parental.isAdult(it) } // Settings › Parental control
+                else -> cats
+            }
             if (sc == null) kidsOk
             else kidsOk
                 .filter { c -> pick == null || sc.inCategory(c.remoteId).any { it in pick } }
@@ -130,9 +135,11 @@ class LiveViewModel @Inject constructor(
                 }
             }
             .let { rows ->
-                combine(rows, allCategories, allowed) { list, cats, allow ->
-                    if (allow == null) list
-                    else {
+                combine(rows, allCategories, allowed, parental.changes) { list, cats, allow, _ ->
+                    if (allow == null) {
+                        if (!parental.hiding) list
+                        else parental.adultIds(cats).let { ids -> list.filter { !parental.hidden(it.channel, ids) } }
+                    } else {
                         val adultCats = cats.filter { KidsFilter.looksAdult(it.name) }.map { it.remoteId }.toSet()
                         list.filter { KidsFilter.channelAllowed(it.channel, adultCats, allow) }
                     }
@@ -199,6 +206,8 @@ class LiveViewModel @Inject constructor(
         val id = active.value?.id ?: return null
         channels.value.firstOrNull { it.channel.number == number }?.let { return it.channel.id }
         if (isKids.value) return null // Kids only reach what their list shows.
-        return db.content().channelByNumber(id, number)?.id
+        val ch = db.content().channelByNumber(id, number) ?: return null
+        if (parental.hiding && parental.hidden(ch, parental.adultIds(db.content().categories(id)))) return null
+        return ch.id
     }
 }
