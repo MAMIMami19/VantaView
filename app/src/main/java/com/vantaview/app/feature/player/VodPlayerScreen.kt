@@ -2,8 +2,8 @@
 package com.vantaview.app.feature.player
 
 import android.app.Activity
-import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -59,18 +59,18 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
     var controls by remember { mutableStateOf(true) }
     var picking by remember { mutableStateOf(false) }
 
+    // Full screen. The screen keeps following the device's own rotation (and its rotation lock).
     DisposableEffect(Unit) {
         val window = activity?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller?.hide(WindowInsetsCompat.Type.systemBars())
-        val previous = activity?.requestedOrientation
-        if (!isTv) activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        onDispose {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-            if (!isTv && previous != null) activity?.requestedOrientation = previous
-        }
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
     }
+
+    // Back: the first press hides the controls, the next one leaves the player.
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
+    BackHandler(enabled = controls && !picking && ui.failed == null && ui.preparing == null) { playerView?.hideController() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.pause() }
     LaunchedEffect(ui.notice) { if (ui.notice != null) { delay(4000); vm.clearNotice() } }
 
@@ -86,6 +86,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
                     setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v -> controls = v == android.view.View.VISIBLE })
                     player = vm.player
                     requestFocus()
+                    playerView = this
                 }
             },
             onRelease = { it.player = null },

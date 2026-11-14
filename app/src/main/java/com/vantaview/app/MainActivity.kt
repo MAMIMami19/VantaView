@@ -81,10 +81,17 @@ private suspend fun afterTerms(profiles: ProfileRepository, providers: ProviderR
     }
 }
 
-private fun NavHostController.goTo(route: String, restore: Boolean = true) = navigate(route) {
-    popUpTo(graph.id) { saveState = restore }
-    launchSingleTop = true
-    restoreState = restore
+private fun NavHostController.goTo(route: String, restore: Boolean = true) {
+    // Home sits at the bottom of the page history, so Back from any section returns to Home.
+    val homeInHistory = runCatching { getBackStackEntry(Section.HOME.route) }.isSuccess
+    if (!homeInHistory) {
+        navigate(Section.HOME.route) { popUpTo(graph.id) { inclusive = true } }
+    }
+    navigate(route) {
+        popUpTo(Section.HOME.route) { saveState = restore }
+        launchSingleTop = true
+        restoreState = restore
+    }
 }
 
 @Composable
@@ -152,7 +159,7 @@ private fun AppNav(
                     first = true,
                     onDone = { id ->
                         profiles.select(id)
-                        nav.navigate("sources?tab=playlists") { popUpTo(nav.graph.id) { inclusive = true } }
+                        nav.goTo("sources?tab=playlists", restore = false)
                     },
                     onBack = null,
                 )
@@ -173,6 +180,14 @@ private fun AppNav(
                 )
             }
             composable("home") {
+                // Back on Home: press twice to leave the app, so a stray press doesn't close it.
+                var exitArmed by remember { mutableStateOf(false) }
+                val context = androidx.compose.ui.platform.LocalContext.current
+                LaunchedEffect(exitArmed) { if (exitArmed) { kotlinx.coroutines.delay(2_000); exitArmed = false } }
+                androidx.activity.compose.BackHandler(enabled = !exitArmed) {
+                    exitArmed = true
+                    android.widget.Toast.makeText(context, "Press Back again to exit", android.widget.Toast.LENGTH_SHORT).show()
+                }
                 HomeScreen(
                     onSection = { route -> nav.goTo(route) },
                     onOpenTitle = { type, id, name, poster, play ->
