@@ -38,7 +38,7 @@ crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime: |ANR in com
 
 adb install -r VantaView-test.apk || exit 1
 adb logcat -c
-adb shell am start -n com.vantaview.app/.MainActivity
+echo "---- start-up time ----"; adb shell am start -W -n com.vantaview.app/.MainActivity
 sleep 3; shot splash
 sleep 10; shot terms
 key DPAD_CENTER; sleep 3; shot profile-setup

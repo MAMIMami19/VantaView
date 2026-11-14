@@ -44,8 +44,12 @@ android {
         debug {
             signingConfig = signingConfigs.getByName("debug")
         }
+        // Test builds and releases are both built as "release": not debuggable, so Android compiles the app
+        // properly and it starts and runs much faster (a debug build took ~10 s to open on a Fire TV Stick).
+        // Signed with the same shared key as before, so it installs over earlier builds.
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

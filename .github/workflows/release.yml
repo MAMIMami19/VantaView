@@ -39,10 +39,10 @@ jobs:
           echo "VV_VERSION=$V" >> $GITHUB_ENV
           echo "VV_VERSION_CODE=$(( $(git rev-list --count HEAD) * 10 + 1 ))" >> $GITHUB_ENV
       - name: Unit tests and APK
-        run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
+        run: gradle --no-daemon --stacktrace testReleaseUnitTest assembleRelease
       - name: Rename APK
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk VantaView.apk
+          cp app/build/outputs/apk/release/app-release.apk VantaView.apk
           echo "$VV_VERSION_CODE" > version.txt
       - name: Publish release
         uses: softprops/action-gh-release@v2
