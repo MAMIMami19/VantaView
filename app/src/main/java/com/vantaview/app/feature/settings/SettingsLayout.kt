@@ -46,7 +46,7 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
         "theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language",
     ),
     SUBTITLES("Subtitles and audio", "Audio and subtitle languages, when subtitles show, their size and colour", "subtitle subtitles captions cc audio language track size yellow box"),
-    SOURCES("Sources and storage", "Playlist refresh, free channels and clearing saved data", "playlist refresh free tv channels storage cache clear guide epg"),
+    SOURCES("Sources and storage", "Refreshing playlists and the TV guide, free channels, and space used", "playlist refresh free tv channels countries storage space cache clear pictures guide epg update downloads"),
     WEATHER("Weather", "Weather on Home: on or off, °C or °F, and where", "weather temperature celsius fahrenheit location town city forecast"),
     BACKUP("Backup and restore", "Back up to a file or your phone, restore, and automatic backups", "backup restore export import password qr phone automatic folder"),
     PARENTAL(

@@ -76,7 +76,7 @@ class BackupManager @Inject constructor(
     private val sp = context.getSharedPreferences("backup", Context.MODE_PRIVATE)
 
     /** Settings files copied into a backup. ("guide" is a cache; "debrid" goes in the locked part.) */
-    private val prefNames = listOf("vantaview", "history", "countries", "playback", "parental", "appearance")
+    private val prefNames = listOf("vantaview", "history", "countries", "playback", "parental", "appearance", "sources")
 
     private val _lastAuto = MutableStateFlow(sp.getLong("last_auto", 0))
     val lastAuto: StateFlow<Long> = _lastAuto

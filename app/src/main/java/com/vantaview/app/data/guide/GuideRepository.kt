@@ -47,6 +47,7 @@ class GuideRepository @Inject constructor(
     private val crypto: CredentialCrypto,
     private val session: ProfileSession,
     private val countries: CountryStore,
+    private val schedule: com.vantaview.app.data.SourceSettings,
     @AppScope private val scope: CoroutineScope,
 ) {
     private val sp = context.getSharedPreferences("guide", Context.MODE_PRIVATE)
@@ -62,11 +63,15 @@ class GuideRepository @Inject constructor(
 
     private fun setState(id: Long, s: GuideState) = _states.update { it + (id to s) }
 
-    /** Loads the guide if it has never loaded, the playlist was re-synced since, or it is over 12 hours old. */
+    /**
+     * Loads the guide if it has never loaded, the playlist was re-synced since, or it's older than
+     * Settings › Sources and storage › TV guide allows (Never = only when refreshed by hand).
+     */
     fun ensureFresh(p: ProviderEntity) {
         if (_states.value[p.id] is GuideState.Loading) return
         val loadedAt = sp.getLong("at_${p.id}", 0)
-        val stale = loadedAt < p.lastSyncAt || System.currentTimeMillis() - loadedAt > 12 * 3_600_000L
+        val every = schedule.guide
+        val stale = loadedAt == 0L || (every.hours > 0 && (loadedAt < p.lastSyncAt || System.currentTimeMillis() - loadedAt > every.ms))
         if (stale && p.lastSyncAt > 0) refresh(p)
         else if (_states.value[p.id] == null && loadedAt > 0) setState(p.id, GuideState.Ready(sp.getInt("n_${p.id}", 0)))
     }
@@ -245,6 +250,14 @@ class GuideRepository @Inject constructor(
             if (event != XmlPullParser.END_DOCUMENT) event = parser.next()
         }
         flush()
+    }
+
+    /** Settings › Sources and storage › Clear TV guide: everything goes, and loads again when next needed. */
+    suspend fun clearAll() {
+        db.guide().clearAll()
+        sp.edit().clear().apply()
+        _states.value = emptyMap()
+        _version.update { it + 1 }
     }
 
     // ---- Questions the pages ask ----

@@ -1,3 +1,4 @@
+- Sources and storage: playlists and the TV guide refresh by themselves, Free TV settings, and see or clear the space used.
 - AI subtitles (beta): subtitles made on your device as you watch, or translated into English. Includes a device check and what it needs.
 - Subtitles and audio: choose your languages and the subtitle look; Audio and Subtitles buttons in the live player.
 - Updates: check for new versions and install them from Settings › Updates.
@@ -5,4 +6,3 @@
 - New loading screen with a light ripple, and a ripple when you pick a profile.
 - Parental control: hide adult categories, lock Sources, clear watch history.
 - Playback settings: buffer size, how long controls stay, mini player, start on last channel, picture size.
-- Fixes: the sidebar scrolls on a phone on its side; status bar icons show on the light theme.

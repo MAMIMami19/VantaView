@@ -29,7 +29,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Stalker / MAC portal
 - [x] Smart Add (paste a provider message)
 - [ ] Optional EPG link per source *(the playlist's own guide link is used; no box to type one)*
-- [ ] Free channels (Free TV list, country picker, daily refresh, YouTube/Twitch/Dailymotion removed) *(no daily refresh)*
+- [x] Free channels (Free TV list, country picker, daily refresh, YouTube/Twitch/Dailymotion removed)
 - [x] Addon links **(later)**
 - [ ] Local files **(later)**
 - [ ] Add from phone by QR code **(later)**
@@ -122,7 +122,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures *(trailers and reminders get their settings when those features are built)*
 - [x] Appearance: Dark/Light/Follow device, accent colour, language
 - [x] Subtitles and audio
-- [ ] Sources and storage, Free channels settings
+- [x] Sources and storage, Free channels settings
 - [x] Local backup and restore
 - [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN
 - [x] Check for updates (downloads the APK and opens the installer)
@@ -140,7 +140,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Guide time offset per source
 - [ ] Open in another player (VLC, MX Player)
 - [ ] Sleep timer
-- [ ] Auto-refresh sources on a schedule
+- [x] Auto-refresh sources on a schedule
 - [ ] Stream info overlay
 - [x] Start on last channel option
 - [ ] Export a log file
@@ -165,6 +165,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Appearance extras: Black (OLED) theme, custom accent colour, text size, sidebar auto-hide switch, loading screen switch
 - [x] Updates can offer test builds (switch in Settings › Updates)
 - [x] AI subtitles (beta): on-device captions or English translation with whisper.cpp, model downloaded when chosen
+- [x] Storage: space used by type; clear pictures, TV guide and update downloads; TV guide refresh setting
 - [x] Release 0.7.0 published
 
 ## Before release

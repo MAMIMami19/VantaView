@@ -3,6 +3,7 @@ package com.vantaview.app
 
 import android.net.Uri
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var parental: com.vantaview.app.data.profile.ParentalControl
     @Inject lateinit var appearance: com.vantaview.app.data.AppearanceSettings
     @Inject lateinit var updates: com.vantaview.app.data.update.UpdateManager
+    @Inject lateinit var sourceSettings: com.vantaview.app.data.SourceSettings
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +66,8 @@ class MainActivity : ComponentActivity() {
         backups.startAutomatic()
         // Settings › Updates: look for a new version once a day.
         updates.checkIfDue()
+        // Settings › Sources and storage: refresh playlists that are out of date.
+        lifecycleScope.launch { runCatching { providers.autoRefresh(sourceSettings.playlists) } }
         setContent {
             val look by appearance.state.collectAsState()
             VantaTheme(look) {

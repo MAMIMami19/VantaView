@@ -240,6 +240,9 @@ interface GuideDao {
     @Query("DELETE FROM programme WHERE providerId = :providerId")
     suspend fun deleteFor(providerId: Long)
 
+    @Query("DELETE FROM programme")
+    suspend fun clearAll()
+
     @Query("SELECT COUNT(*) FROM programme WHERE providerId = :providerId")
     suspend fun count(providerId: Long): Int
 

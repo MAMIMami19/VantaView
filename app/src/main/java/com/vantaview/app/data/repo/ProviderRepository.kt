@@ -132,6 +132,13 @@ class ProviderRepository @Inject constructor(
         else db.content().removeFavourite(channel.providerId, channel.remoteId)
     }
 
+    /** Settings › Sources and storage: refresh this profile's playlists that are older than allowed. */
+    suspend fun autoRefresh(every: com.vantaview.app.data.RefreshEvery) {
+        if (every.hours == 0) return
+        val now = System.currentTimeMillis()
+        db.providers().allFor(session.id).filter { now - it.lastSyncAt > every.ms }.forEach { sync(it.id) }
+    }
+
     fun sync(id: Long) {
         if (_syncStates.value[id] is SyncState.Running) return
         setState(id, SyncState.Running("Connecting"))
