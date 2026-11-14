@@ -102,6 +102,8 @@ fun AppShell(
 
         // Side rail auto-hide: everywhere except Home, 5 seconds after focus leaves the rail.
         // Settings › Appearance › Hide the sidebar.
+        // TVs are 540 dp tall: a tighter sidebar so all nine sections and the profile fit.
+        val shortRail = maxHeight < 640.dp
         val autoHide = wide && current != null && current != Section.HOME && LocalAppearance.current.sidebarAutoHide
         var railShown by remember { mutableStateOf(true) }
         var railHasFocus by remember { mutableStateOf(false) }
@@ -143,20 +145,18 @@ fun AppShell(
                     AnimatedVisibility(visible = railShown, enter = expandHorizontally(), exit = shrinkHorizontally()) {
                         Column(
                             Modifier.width(172.dp).fillMaxHeight().background(Vanta.Surface)
-                                .onFocusChanged { railHasFocus = it.hasFocus }.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                .onFocusChanged { railHasFocus = it.hasFocus }.padding(horizontal = 12.dp, vertical = if (shortRail) 8.dp else 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (shortRail) 4.dp else 8.dp),
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
-                                VantaLogo(size = 34.dp)
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = if (shortRail) 4.dp else 12.dp)) {
+                                VantaLogo(size = if (shortRail) 28.dp else 34.dp)
                                 Spacer(Modifier.width(8.dp))
                                 Text("VantaView", color = Vanta.Text, fontWeight = FontWeight.Black, fontSize = 17.sp)
                             }
                             // The list scrolls when the screen is short (a phone on its side); the profile stays at the bottom.
                             Column(
                                 Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(
-                                    if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 640) 4.dp else 8.dp
-                                ),
+                                verticalArrangement = Arrangement.spacedBy(if (shortRail) 2.dp else 8.dp),
                             ) {
                                 sections.forEach { s ->
                                     NavItem(s, s == current, if (s == current) Modifier.focusRequester(railFocus) else Modifier) { onSelect(s) }
@@ -216,7 +216,7 @@ private fun NavItem(s: Section, selected: Boolean, modifier: Modifier = Modifier
     val short = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 640
     FocusCard(
         onClick = onClick, selected = selected, modifier = modifier.fillMaxWidth(),
-        padding = PaddingValues(horizontal = 14.dp, vertical = if (short) 7.dp else 10.dp),
+        padding = PaddingValues(horizontal = 14.dp, vertical = if (short) 6.dp else 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(s.icon, contentDescription = null, tint = if (selected) Vanta.Cyan else Vanta.TextDim)
