@@ -30,6 +30,16 @@ import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
 import com.vantaview.app.ui.VantaLogo
 
+/** The terms of use, shown on first launch and again in Settings › Help and about. */
+const val TERMS_TEXT =
+    "VantaView is only a player for IPTV and video on demand. It does not come with, " +
+        "host, sell or recommend any channels, films or series.\n\n" +
+        "You add your own playlists and sources. Finding and using those links is at your own " +
+        "discretion, and you are responsible for making sure you have the right to watch " +
+        "what they contain.\n\n" +
+        "VantaView is free, open-source software released under the GNU GPL version 3 or later, " +
+        "with no warranty."
+
 @Composable
 fun TermsScreen(onAgree: () -> Unit, onDisagree: () -> Unit) {
     val agreeFocus = remember { FocusRequester() }
@@ -50,13 +60,7 @@ fun TermsScreen(onAgree: () -> Unit, onDisagree: () -> Unit) {
             Text("Terms of use", color = Vanta.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
-                "VantaView is only a player for IPTV and video on demand. It does not come with, " +
-                    "host, sell or recommend any channels, films or series.\n\n" +
-                    "You add your own playlists and sources. Finding and using those links is at your own " +
-                    "discretion, and you are responsible for making sure you have the right to watch " +
-                    "what they contain.\n\n" +
-                    "VantaView is free, open-source software released under the GNU GPL version 3 or later, " +
-                    "with no warranty.",
+                TERMS_TEXT,
                 color = Vanta.Text,
                 fontSize = 16.sp,
                 lineHeight = 23.sp,

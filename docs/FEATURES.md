@@ -127,9 +127,9 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Parental control and clear history
 - [ ] Check for updates (downloads the APK and opens the installer)
 - [ ] Speed test
-- [ ] App tour and support
+- [x] App tour and support
 - [ ] Ambient mode
-- [ ] Terms, Credits, About
+- [x] Terms, Credits, About
 - [ ] Trakt sync **(later)**
 - [ ] Connected servers: Jellyfin, Sonarr, Radarr **(later)**
 
@@ -166,4 +166,4 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Tested on a 1 GB Fire TV Stick with a 50,000+ channel playlist
 - [ ] Signing key backed up
 - [ ] Privacy page published
-- [ ] Credits complete (Free TV, TMDB, TheSportsDB, Open-Meteo, libraries) *(Free TV, epgshare01 and Open-Meteo credited)*
+- [ ] Credits complete (Free TV, TMDB, TheSportsDB, Open-Meteo, libraries) *(Settings › Help and about credits Free TV, epgshare01, Open-Meteo and the libraries; add TMDB and TheSportsDB when they are used)*

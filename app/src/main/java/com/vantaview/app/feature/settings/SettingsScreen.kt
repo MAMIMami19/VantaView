@@ -150,6 +150,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         when (section) {
             SettingsSection.WEATHER -> WeatherSection(vm)
             SettingsSection.BACKUP -> backupContent()
+            SettingsSection.ABOUT -> HelpAbout()
             else -> ComingSoon(section)
         }
     }
@@ -231,7 +232,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String, content: @Composable () -> Unit) {
     Column(
         Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
