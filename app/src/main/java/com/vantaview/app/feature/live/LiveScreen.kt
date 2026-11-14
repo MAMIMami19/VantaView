@@ -2,6 +2,8 @@
 package com.vantaview.app.feature.live
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,15 +15,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,14 +35,25 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,11 +61,22 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.vantaview.app.data.ChannelNames
 import com.vantaview.app.data.db.CategoryEntity
 import com.vantaview.app.data.db.ChannelRow
 import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** Digit keys on a remote or keyboard, for typing a channel number. */
+private val digitKeys = mapOf(
+    Key.Zero to 0, Key.One to 1, Key.Two to 2, Key.Three to 3, Key.Four to 4,
+    Key.Five to 5, Key.Six to 6, Key.Seven to 7, Key.Eight to 8, Key.Nine to 9,
+    Key.NumPad0 to 0, Key.NumPad1 to 1, Key.NumPad2 to 2, Key.NumPad3 to 3, Key.NumPad4 to 4,
+    Key.NumPad5 to 5, Key.NumPad6 to 6, Key.NumPad7 to 7, Key.NumPad8 to 8, Key.NumPad9 to 9,
+)
 
 @Composable
 fun LiveScreen(
@@ -68,34 +96,39 @@ fun LiveScreen(
     val countryLabel by vm.countryLabel.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
+    // Typing a channel number: digits collect for a moment, then that channel plays.
+    var typed by remember { mutableStateOf("") }
+    var notFound by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(typed) {
+        if (typed.isEmpty()) return@LaunchedEffect
+        delay(1_500)
+        val n = typed.toIntOrNull()
+        val id = n?.let { vm.channelIdByNumber(it) }
+        if (id != null) onPlay(id) else notFound = typed
+        typed = ""
+    }
+    LaunchedEffect(notFound) { if (notFound != null) { delay(2_000); notFound = null } }
+
+    BoxWithConstraints(
+        Modifier.fillMaxSize().background(Vanta.Bg).onKeyEvent { e ->
+            val d = digitKeys[e.key] ?: return@onKeyEvent false
+            if (providers.isEmpty()) return@onKeyEvent false
+            if (e.type == KeyEventType.KeyDown && typed.length < 5) typed += d
+            true
+        }
+    ) {
         val wide = maxWidth >= 720.dp
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            // Top bar
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Box {
-                    var open by remember { mutableStateOf(false) }
-                    FocusCard(onClick = { if (providers.size > 1) open = true }) {
-                        Text(
-                            (active?.name ?: "No playlist") + if (providers.size > 1) "  ▾" else "",
-                            color = Vanta.Cyan, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                        providers.forEach { p ->
-                            DropdownMenuItem(text = { Text(p.name) }, onClick = { vm.selectProvider(p.id); open = false })
-                        }
-                    }
-                }
-                countryLabel?.let { label ->
-                    FocusCard(onClick = vm::editCountries) {
-                        Text("Countries: $label", color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                if (providers.isNotEmpty()) FocusCard(onClick = vm::refresh) { Text("Refresh", color = Vanta.Text) }
-            }
+            Header(
+                wide = wide,
+                playlistName = active?.name ?: "No playlist",
+                providers = providers.map { it.id to it.name },
+                countryLabel = countryLabel,
+                showRefresh = providers.isNotEmpty(),
+                onPickProvider = vm::selectProvider,
+                onCountries = vm::editCountries,
+                onRefresh = vm::refresh,
+            )
             if (providers.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -119,7 +152,7 @@ fun LiveScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = { vm.query.value = it },
-                label = { Text("Search channels") },
+                label = { Text("Search channels or numbers") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -145,14 +178,103 @@ fun LiveScreen(
                             }
                         }
                     }
-                    ChannelList(channels, filter, query, Modifier.weight(1f).fillMaxHeight(), onPlay, vm::toggleFavourite)
+                    ChannelList(channels, filter, query, wide = true, Modifier.weight(1f).fillMaxHeight(), onPlay, vm::toggleFavourite)
                 }
             } else {
                 CategoryRow(categories, filter) { vm.filter.value = it }
                 Spacer(Modifier.height(10.dp))
-                ChannelList(channels, filter, query, Modifier.fillMaxSize(), onPlay, vm::toggleFavourite)
+                ChannelList(channels, filter, query, wide = false, Modifier.fillMaxSize(), onPlay, vm::toggleFavourite)
             }
         }
+
+        // The number being typed, or a note that it wasn't found.
+        val badge = when {
+            typed.isNotEmpty() -> "Channel $typed"
+            notFound != null -> "No channel $notFound"
+            else -> null
+        }
+        if (badge != null) {
+            Text(
+                badge,
+                color = if (typed.isNotEmpty()) Vanta.Cyan else Vanta.Error,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopEnd).padding(24.dp)
+                    .background(Vanta.Surface, RoundedCornerShape(12.dp)).padding(horizontal = 18.dp, vertical = 10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Header(
+    wide: Boolean,
+    playlistName: String,
+    providers: List<Pair<Long, String>>,
+    countryLabel: String?,
+    showRefresh: Boolean,
+    onPickProvider: (Long) -> Unit,
+    onCountries: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    if (wide) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            PlaylistChip(playlistName, providers, onPickProvider)
+            if (countryLabel != null) CountriesChip(countryLabel, onCountries)
+            Spacer(Modifier.weight(1f))
+            if (showRefresh) RefreshButton(onRefresh)
+        }
+    } else {
+        // Phones: title and refresh on one line, playlist and countries on the next.
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                if (showRefresh) RefreshButton(onRefresh)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlaylistChip(playlistName, providers, onPickProvider, Modifier.weight(1f, fill = false))
+                if (countryLabel != null) CountriesChip(countryLabel, onCountries, Modifier.weight(1f, fill = false))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistChip(
+    playlistName: String,
+    providers: List<Pair<Long, String>>,
+    onPickProvider: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier) {
+        var open by remember { mutableStateOf(false) }
+        FocusCard(onClick = { if (providers.size > 1) open = true }) {
+            Text(
+                playlistName + if (providers.size > 1) "  ▾" else "",
+                color = Vanta.Cyan, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            providers.forEach { (id, name) ->
+                DropdownMenuItem(text = { Text(name) }, onClick = { onPickProvider(id); open = false })
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountriesChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FocusCard(onClick = onClick, modifier = modifier) {
+        Text("Countries: $label", color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun RefreshButton(onClick: () -> Unit) {
+    FocusCard(onClick = onClick, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Refresh, contentDescription = "Refresh playlist", tint = Vanta.Text)
     }
 }
 
@@ -185,6 +307,7 @@ private fun ChannelList(
     channels: List<ChannelRow>,
     filter: Filter,
     query: String,
+    wide: Boolean,
     modifier: Modifier,
     onPlay: (Long) -> Unit,
     onToggleFav: (ChannelRow) -> Unit,
@@ -202,47 +325,120 @@ private fun ChannelList(
         }
         return
     }
-    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-        items(channels, key = { it.channel.id }) { row ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                FocusCard(onClick = { onPlay(row.channel.id) }, modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            row.channel.number.toString(),
-                            color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1,
-                        )
-                        Box(
-                            Modifier.size(width = 56.dp, height = 36.dp).clip(RoundedCornerShape(6.dp)).background(Vanta.Bg),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (row.channel.logo != null) {
-                                AsyncImage(
-                                    model = row.channel.logo,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            row.channel.name,
-                            color = Vanta.Text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+    val listState = rememberLazyListState()
+    // Back to the top when the category or search changes.
+    LaunchedEffect(filter, query) { listState.scrollToItem(0) }
+    Row(modifier) {
+        LazyColumn(
+            Modifier.weight(1f).fillMaxHeight(),
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            items(channels, key = { it.channel.id }) { row -> ChannelItem(row, wide, onPlay, onToggleFav) }
+        }
+        if (channels.size > 60) FastScroller(listState, channels)
+    }
+}
+
+@Composable
+private fun ChannelItem(row: ChannelRow, wide: Boolean, onPlay: (Long) -> Unit, onToggleFav: (ChannelRow) -> Unit) {
+    val name = row.channel.name
+    if (ChannelNames.isDivider(name)) {
+        // The provider's own heading between groups of channels: shown as a heading, not played.
+        Text(
+            ChannelNames.dividerTitle(name),
+            color = Vanta.Cyan,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp, top = 10.dp, bottom = 2.dp),
+        )
+        return
+    }
+    val event = ChannelNames.isEventOnly(name)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FocusCard(onClick = { onPlay(row.channel.id) }, modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (event) 0.65f else 1f)) {
+                Text(
+                    row.channel.number.toString(),
+                    color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1,
+                )
+                Box(
+                    Modifier.size(width = 56.dp, height = 36.dp).clip(RoundedCornerShape(6.dp)).background(Vanta.Bg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (row.channel.logo != null) {
+                        AsyncImage(
+                            model = row.channel.logo,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(2.dp),
                         )
                     }
                 }
-                FocusCard(
-                    onClick = { onToggleFav(row) },
-                    padding = PaddingValues(10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.Star,
-                        contentDescription = if (row.isFav) "Remove from favourites" else "Add to favourites",
-                        tint = if (row.isFav) androidx.compose.ui.graphics.Color(0xFFFFEA00) else Vanta.TextDim.copy(alpha = 0.45f),
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        ChannelNames.display(name),
+                        color = Vanta.Text, fontSize = 16.sp,
+                        maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis,
                     )
+                    if (event) Text("Event only · plays while an event is on", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 1)
                 }
             }
+        }
+        FocusCard(
+            onClick = { onToggleFav(row) },
+            padding = PaddingValues(10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = if (row.isFav) "Remove from favourites" else "Add to favourites",
+                tint = if (row.isFav) androidx.compose.ui.graphics.Color(0xFFFFEA00) else Vanta.TextDim.copy(alpha = 0.45f),
+            )
+        }
+    }
+}
+
+/** A handle down the right-hand side: drag (or tap the track) to jump through a long list. */
+@Composable
+private fun FastScroller(state: LazyListState, channels: List<ChannelRow>) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var dragging by remember { mutableStateOf(false) }
+    val fraction by remember(channels) {
+        derivedStateOf { state.firstVisibleItemIndex.toFloat() / (channels.size - 1).coerceAtLeast(1) }
+    }
+    BoxWithConstraints(Modifier.width(28.dp).fillMaxHeight().padding(start = 4.dp)) {
+        val trackPx = with(density) { maxHeight.toPx() }
+        val thumbH = 44.dp
+        val thumbPx = with(density) { thumbH.toPx() }
+        fun jump(y: Float) {
+            val f = ((y - thumbPx / 2) / (trackPx - thumbPx)).coerceIn(0f, 1f)
+            val target = (f * (channels.size - 1)).toInt()
+            scope.launch { state.scrollToItem(target) }
+        }
+        Box(
+            Modifier.fillMaxSize()
+                .pointerInput(channels) { detectTapGestures { jump(it.y) } }
+                .pointerInput(channels) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragging = true; jump(it.y) },
+                        onDragEnd = { dragging = false },
+                        onDragCancel = { dragging = false },
+                        onVerticalDrag = { change, _ -> change.consume(); jump(change.position.y) },
+                    )
+                }
+        ) {
+            val top = with(density) { (fraction * (trackPx - thumbPx)).toDp() }
+            Box(
+                Modifier.align(Alignment.TopEnd).offset(y = top).width(if (dragging) 10.dp else 6.dp).height(thumbH)
+                    .clip(RoundedCornerShape(5.dp)).background(if (dragging) Vanta.Cyan else Vanta.TextDim.copy(alpha = 0.6f))
+            )
         }
     }
 }

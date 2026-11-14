@@ -51,7 +51,7 @@ interface ContentDao {
         LEFT JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
         WHERE c.providerId = :providerId
           AND (:category IS NULL OR c.categoryRemoteId = :category)
-          AND (:query = '' OR c.name LIKE '%' || :query || '%')
+          AND (:query = '' OR c.name LIKE '%' || :query || '%' OR CAST(c.number AS TEXT) = :query)
           AND (:favOnly = 0 OR f.remoteId IS NOT NULL)
         ORDER BY c.number, c.sortKey
         LIMIT 3000
@@ -68,7 +68,7 @@ interface ContentDao {
         WHERE c.providerId = :providerId
           AND (:category IS NULL OR c.categoryRemoteId = :category)
           AND c.country IN (:codes)
-          AND (:query = '' OR c.name LIKE '%' || :query || '%')
+          AND (:query = '' OR c.name LIKE '%' || :query || '%' OR CAST(c.number AS TEXT) = :query)
           AND (:favOnly = 0 OR f.remoteId IS NOT NULL)
         ORDER BY c.number, c.sortKey
         LIMIT 3000
@@ -91,6 +91,10 @@ interface ContentDao {
 
     @Query("SELECT * FROM channel WHERE id = :id")
     suspend fun channel(id: Long): ChannelEntity?
+
+    /** A channel by its number in a playlist (for typing a number on the remote). */
+    @Query("SELECT * FROM channel WHERE providerId = :providerId AND number = :number ORDER BY sortKey LIMIT 1")
+    suspend fun channelByNumber(providerId: Long, number: Int): ChannelEntity?
 
     @Query(
         """

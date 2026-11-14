@@ -7,6 +7,22 @@ import androidx.annotation.OptIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
+import com.vantaview.app.data.ChannelNames
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,14 +95,6 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     LaunchedEffect(ui.status) { if (ui.status != PlayStatus.PLAYING) overlay = true }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
-    // Full screen. The screen keeps following the device's own rotation (and its rotation lock).
-    DisposableEffect(Unit) {
-        val window = activity?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
-    }
 
     // Back: the first press hides the controls, the next one leaves the player.
     BackHandler(enabled = overlay) { overlay = false }
@@ -106,9 +114,61 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
         overlayTick++
     }
 
+    val list by vm.list.collectAsStateWithLifecycle()
+    val current by vm.current.collectAsStateWithLifecycle()
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+        // Phones held upright get the video on top and the channel list underneath; otherwise full screen.
+        // The screen follows the device's own rotation (and its rotation lock).
+        val portrait = !isTv && maxHeight > maxWidth
+        DisposableEffect(portrait) {
+            val window = activity?.window
+            val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (portrait) controller?.show(WindowInsetsCompat.Type.systemBars())
+            else controller?.hide(WindowInsetsCompat.Type.systemBars())
+            onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+        }
+
+        val video: @Composable (Modifier) -> Unit = { m ->
+            VideoArea(
+                vm = vm, ui = ui, isTv = isTv, overlay = overlay, compact = portrait, focus = focus,
+                modifier = m, onTap = ::tapped, onZap = ::zap, onBack = onBack,
+            )
+        }
+        if (portrait) {
+            Column(Modifier.fillMaxSize().background(Vanta.Bg)) {
+                video(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                PortraitChannelList(list, current, Modifier.weight(1f).fillMaxWidth()) { i ->
+                    vm.playAt(i)
+                    overlay = true
+                    overlayTick++
+                }
+            }
+        } else {
+            video(Modifier.fillMaxSize())
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+private fun VideoArea(
+    vm: PlayerViewModel,
+    ui: PlayerUi,
+    isTv: Boolean,
+    overlay: Boolean,
+    compact: Boolean,
+    focus: FocusRequester,
+    modifier: Modifier,
+    onTap: () -> Unit,
+    onZap: (Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    val density = LocalDensity.current
+    val swipe = with(density) { 60.dp.toPx() }
     Box(
-        Modifier
-            .fillMaxSize()
+        modifier
             .background(Color.Black)
             .focusRequester(focus)
             .onKeyEvent { e ->
@@ -118,11 +178,11 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
                     else -> 0
                 }
                 if (e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter) {
-                    if (e.type == KeyEventType.KeyUp) tapped()
+                    if (e.type == KeyEventType.KeyUp) onTap()
                     return@onKeyEvent true
                 }
                 if (handled == 0) return@onKeyEvent false
-                if (e.type == KeyEventType.KeyDown) zap(handled)
+                if (e.type == KeyEventType.KeyDown) onZap(handled)
                 true
             }
             .focusable()
@@ -140,47 +200,76 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Tap (or OK on a remote) shows and hides the overlay.
-        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { tapped() }) })
+        // Tap (or OK on a remote) shows and hides the overlay; swipe up or down on the video changes channel.
+        Box(
+            Modifier.fillMaxSize()
+                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
+                .pointerInput(ui.hasSiblings) {
+                    if (!ui.hasSiblings) return@pointerInput
+                    var total = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { total = 0f },
+                        onDragEnd = {
+                            when {
+                                total < -swipe -> onZap(1)
+                                total > swipe -> onZap(-1)
+                            }
+                        },
+                        onVerticalDrag = { change, dy -> change.consume(); total += dy },
+                    )
+                }
+        )
 
         if (overlay) {
+            val pad = if (compact) 12.dp else 20.dp
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(
                     Modifier.fillMaxWidth()
                         .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = pad, vertical = if (compact) 8.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (!isTv) {
                         FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text) }
                         Spacer(Modifier.width(14.dp))
                     }
-                    Text(ui.number.toString(), color = Vanta.Cyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(ui.number.toString(), color = Vanta.Cyan, fontSize = if (compact) 15.sp else 18.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(12.dp))
-                    Text(ui.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(
+                        ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
                 }
 
                 Column(
                     Modifier.fillMaxWidth()
                         .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = pad, vertical = if (compact) 8.dp else 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     when (ui.status) {
-                        PlayStatus.LOADING -> Text("Loading…", color = Color.White)
+                        PlayStatus.LOADING -> Text(if (ui.eventOnly) "Looking for the event…" else "Loading…", color = Color.White)
                         PlayStatus.RECONNECTING -> Text(
                             "Reconnecting (try ${ui.attempt} of 5)…",
                             color = Vanta.Cyan,
                             modifier = Modifier.background(Color(0x99000000), RoundedCornerShape(8.dp)).padding(8.dp),
                         )
                         PlayStatus.FAILED -> {
-                            Text(ui.message ?: "This channel could not be played", color = Vanta.Error, fontSize = 17.sp)
-                            Spacer(Modifier.height(10.dp))
-                            if (!isTv) GradientButton("Try again", onClick = vm::retryNow)
+                            Text(
+                                ui.message ?: "This channel could not be played",
+                                color = if (ui.eventOnly) Color.White else Vanta.Error,
+                                fontSize = if (compact) 14.sp else 17.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(if (compact) 6.dp else 10.dp))
+                            if (!isTv) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                GradientButton("Try again", onClick = vm::retryNow)
+                                if (ui.hasSiblings) FocusCard(onClick = { onZap(1) }) { Text("Next channel", color = Vanta.Text) }
+                            }
                         }
                         PlayStatus.PLAYING -> Unit
                     }
-                    Spacer(Modifier.height(10.dp))
+                    if (!compact || ui.status == PlayStatus.PLAYING) Spacer(Modifier.height(if (compact) 6.dp else 10.dp))
                     if (isTv) {
                         Text(
                             when {
@@ -190,12 +279,57 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
                             },
                             color = Vanta.TextDim, fontSize = 14.sp,
                         )
-                    } else if (ui.hasSiblings) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            FocusCard(onClick = { zap(-1) }) { Text("▼ Previous", color = Vanta.Text) }
-                            FocusCard(onClick = { zap(1) }) { Text("▲ Next", color = Vanta.Text) }
+                    } else if (ui.hasSiblings && ui.status != PlayStatus.FAILED) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            FocusCard(onClick = { onZap(-1) }) { Text("▼ Previous", color = Vanta.Text) }
+                            if (!compact) Text("or swipe up and down", color = Vanta.TextDim, fontSize = 13.sp)
+                            FocusCard(onClick = { onZap(1) }) { Text("▲ Next", color = Vanta.Text) }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** The category's channels under the video when the phone is upright. Tap one to switch to it. */
+@Composable
+private fun PortraitChannelList(
+    channels: List<com.vantaview.app.data.db.ChannelEntity>,
+    current: Int,
+    modifier: Modifier,
+    onPick: (Int) -> Unit,
+) {
+    val state = rememberLazyListState()
+    LaunchedEffect(current, channels.size) {
+        if (channels.isNotEmpty()) state.animateScrollToItem((current - 2).coerceAtLeast(0))
+    }
+    LazyColumn(
+        modifier,
+        state = state,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        itemsIndexed(channels, key = { _, c -> c.id }) { i, c ->
+            val event = ChannelNames.isEventOnly(c.name)
+            FocusCard(onClick = { onPick(i) }, selected = i == current, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (event && i != current) 0.65f else 1f)) {
+                    Text(c.number.toString(), color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1)
+                    Box(
+                        Modifier.size(width = 52.dp, height = 32.dp).clip(RoundedCornerShape(6.dp)).background(Vanta.Bg),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (c.logo != null) AsyncImage(
+                            model = c.logo, contentDescription = null, contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(2.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        ChannelNames.display(c.name) + if (i == current) "  · now playing" else "",
+                        color = if (i == current) Vanta.Cyan else Vanta.Text,
+                        fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }

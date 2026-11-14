@@ -167,4 +167,12 @@ class LiveViewModel @Inject constructor(
     fun refresh() {
         active.value?.let { repo.sync(it.id) }
     }
+
+    /** A channel by number in the active playlist, for typing a number on the remote. */
+    suspend fun channelIdByNumber(number: Int): Long? {
+        val id = active.value?.id ?: return null
+        channels.value.firstOrNull { it.channel.number == number }?.let { return it.channel.id }
+        if (isKids.value) return null // Kids only reach what their list shows.
+        return db.content().channelByNumber(id, number)?.id
+    }
 }

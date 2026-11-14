@@ -17,6 +17,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.vantaview.app.BuildConfig
+import com.vantaview.app.data.ChannelNames
 import com.vantaview.app.data.db.ChannelEntity
 import com.vantaview.app.data.db.VantaDb
 import com.vantaview.app.data.repo.PlayTarget
@@ -41,6 +42,8 @@ data class PlayerUi(
     val attempt: Int = 0,
     val message: String? = null,
     val hasSiblings: Boolean = false,
+    /** A channel that only carries something while an event is on. */
+    val eventOnly: Boolean = false,
 )
 
 @OptIn(UnstableApi::class)
@@ -70,6 +73,13 @@ class PlayerViewModel @Inject constructor(
 
     private var siblings: List<ChannelEntity> = emptyList()
     private var index = 0
+
+    /** The channels you can switch between (the current category), shown under the video in portrait. */
+    private val _list = MutableStateFlow<List<ChannelEntity>>(emptyList())
+    val list: StateFlow<List<ChannelEntity>> = _list
+    private val _index = MutableStateFlow(0)
+    val current: StateFlow<Int> = _index
+    private var eventTimer: Job? = null
 
     /** Addresses to try for the current channel: (url, treat as HLS). */
     private var candidates: List<Pair<String, Boolean>> = emptyList()
@@ -116,7 +126,9 @@ class PlayerViewModel @Inject constructor(
                 _ui.update { it.copy(status = PlayStatus.FAILED, message = "That channel is no longer in the playlist") }
                 return@launch
             }
+            // Provider divider rows ("◆◆◆ CINEMA ◆◆◆") are headings, not channels to switch to.
             siblings = db.content().siblings(channel.providerId, channel.categoryRemoteId)
+                .filter { it.id == channel.id || !ChannelNames.isDivider(it.name) }
             val profile = profiles.current()
             if (profile?.isKids == true) {
                 val allow = db.profiles().kidsCategories(profile.id)
@@ -127,6 +139,7 @@ class PlayerViewModel @Inject constructor(
             }
             index = siblings.indexOfFirst { it.id == channel.id }.coerceAtLeast(0)
             if (siblings.isEmpty()) siblings = listOf(channel)
+            _list.value = siblings
             start(siblings[index])
         }
     }
@@ -138,12 +151,24 @@ class PlayerViewModel @Inject constructor(
         start(siblings[index])
     }
 
+    /** Plays the channel at [i] in the list shown under the video. */
+    fun playAt(i: Int) {
+        if (i !in siblings.indices || i == index) return
+        index = i
+        start(siblings[index])
+    }
+
     fun retryNow() {
         if (candidates.isEmpty()) return
         attempts = 0
         working = null
         candidate = 0
         _ui.update { it.copy(status = PlayStatus.LOADING, message = null) }
+        eventTimer?.cancel()
+        if (_ui.value.eventOnly) eventTimer = viewModelScope.launch {
+            delay(10_000)
+            if (_ui.value.status != PlayStatus.PLAYING) giveUpOnEvent()
+        }
         prepareCurrent()
     }
 
@@ -157,15 +182,23 @@ class PlayerViewModel @Inject constructor(
 
     private fun start(channel: ChannelEntity) {
         session.setLastChannel(channel.id)
-        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel()
+        _index.value = index
+        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
         player.stop()
         attempts = 0
         working = null
         candidate = 0
         candidates = emptyList()
+        val event = ChannelNames.isEventOnly(channel.name)
         _ui.value = PlayerUi(
-            title = channel.name, number = channel.number, status = PlayStatus.LOADING, hasSiblings = siblings.size > 1,
+            title = ChannelNames.display(channel.name), number = channel.number, status = PlayStatus.LOADING,
+            hasSiblings = siblings.size > 1, eventOnly = event,
         )
+        // Event channels are often empty: after 10 seconds without a picture, say so instead of spinning.
+        if (event) eventTimer = viewModelScope.launch {
+            delay(10_000)
+            if (_ui.value.status != PlayStatus.PLAYING) giveUpOnEvent()
+        }
         loadJob = viewModelScope.launch {
             val target: PlayTarget = try {
                 repo.resolveStream(channel)
@@ -200,6 +233,17 @@ class PlayerViewModel @Inject constructor(
         player.playWhenReady = true
     }
 
+    private fun giveUpOnEvent() {
+        watchdog?.cancel(); retry?.cancel(); eventTimer?.cancel()
+        player.stop()
+        _ui.update {
+            it.copy(
+                status = PlayStatus.FAILED,
+                message = "Nothing is on this channel right now. Event channels only show something while an event is live.",
+            )
+        }
+    }
+
     private fun onFailure(reason: String) {
         retry?.cancel()
         if (candidates.isEmpty()) return
@@ -209,6 +253,8 @@ class PlayerViewModel @Inject constructor(
                 candidate++
                 prepareCurrent()
             }
+            // An event channel that never started is almost always just empty: don't keep retrying.
+            _ui.value.eventOnly && working == null -> giveUpOnEvent()
             attempts < 5 -> {
                 attempts++
                 _ui.update { it.copy(status = PlayStatus.RECONNECTING, attempt = attempts, message = reason) }
@@ -239,7 +285,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel()
+        watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
         player.removeListener(listener)
         player.release()
     }
