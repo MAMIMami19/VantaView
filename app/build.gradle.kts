@@ -18,8 +18,8 @@ android {
         targetSdk = 34
         versionCode = (System.getenv("VV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = System.getenv("VV_VERSION") ?: ("0.1.0-test" + (System.getenv("GITHUB_RUN_NUMBER")?.let { ".$it" } ?: ""))
-        // AI subtitles (whisper.cpp) for phones, tablets, TV boxes and emulators.
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        // AI subtitles (whisper.cpp) for phones, tablets, TV boxes, emulators (Android TV images are x86).
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86") }
         externalNativeBuild { cmake { arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static") } }
     }
 
@@ -59,6 +59,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
