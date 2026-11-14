@@ -11,6 +11,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -113,7 +115,7 @@ fun AppShell(
             gesturesEnabled = !wide && current != null,
             drawerContent = {
                 ModalDrawerSheet(drawerContainerColor = Vanta.Surface, modifier = Modifier.width(260.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
                             VantaLogo(size = 40.dp)
                             Spacer(Modifier.width(10.dp))
@@ -144,10 +146,15 @@ fun AppShell(
                                 Spacer(Modifier.width(8.dp))
                                 Text("VantaView", color = Vanta.Text, fontWeight = FontWeight.Black, fontSize = 17.sp)
                             }
-                            sections.forEach { s ->
-                                NavItem(s, s == current, if (s == current) Modifier.focusRequester(railFocus) else Modifier) { onSelect(s) }
+                            // The list scrolls when the screen is short (a phone on its side); the profile stays at the bottom.
+                            Column(
+                                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                sections.forEach { s ->
+                                    NavItem(s, s == current, if (s == current) Modifier.focusRequester(railFocus) else Modifier) { onSelect(s) }
+                                }
                             }
-                            Spacer(Modifier.weight(1f))
                             ProfileChip(profile, onProfiles)
                         }
                     }

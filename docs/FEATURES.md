@@ -153,6 +153,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] TV guide for the Free TV channels (only the countries you pick)
 - [x] Countries filter for big playlists, with divider and event-only channels handled
 - [x] Back button goes back a page; press Back twice on Home to exit
+- [x] Sidebar scrolls when the screen is short (phone on its side)
 - [x] Follows the device's orientation, with portrait player and channel list on phones
 - [x] Double tap the player or a channel for full screen
 - [x] Greeting that follows the time of day, weather glance, location asked on first launch
