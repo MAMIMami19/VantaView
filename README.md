@@ -20,6 +20,8 @@ You add your own playlists.
 
 Not in yet: reminders, catch-up, profiles, recording, downloads, Stalker/MAC, add-ons, settings.
 
+See [docs/FEATURES.md](docs/FEATURES.md) for the feature checklist: what is built and what is still to come.
+
 ## Download
 
 Get `VantaView-test.apk` from the [test-latest release](../../releases/tag/test-latest).
