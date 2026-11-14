@@ -164,6 +164,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Light ripple on the loading screen, and a ripple burst from the profile you pick (still with animations off)
 - [x] Appearance extras: Black (OLED) theme, custom accent colour, text size, sidebar auto-hide switch, loading screen switch
 - [x] Updates can offer test builds (switch in Settings › Updates)
+- [x] AI subtitles (beta): on-device captions or English translation with whisper.cpp, model downloaded when chosen
 - [x] Release 0.7.0 published
 
 ## Before release

@@ -44,6 +44,7 @@ logo for modified builds.
 
 - [Free TV](https://github.com/Free-TV/IPTV): the optional free channels list, fetched from its GitHub page. Thanks to its maintainers and contributors.
 - [epgshare01](https://epgshare01.online): the TV guide used by the Free TV list, fetched only for the countries you pick.
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and OpenAI's Whisper models (MIT): the optional AI subtitles, run on the device.
 - [Stream Goat](https://github.com/sherazi5110/stream-goat) by Syed Ali Hamza (GPL-3.0): the M3U
   parser and Xtream login check are adapted from its `LiveTv.kt`.
 - [CloudStream](https://github.com/recloudstream/cloudstream) (GPL-3.0), upstream of Stream Goat.
