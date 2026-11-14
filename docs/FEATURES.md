@@ -6,7 +6,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Setup and first launch
 
-- [ ] Splash screen with logo and loading bar
+- [x] Splash screen with logo and loading bar
 - [x] Terms: Agree or Disagree only (Disagree closes the app)
 - [ ] First launch order: Terms, Create profile, Add Playlist, Home *(Add Playlist is a prompt on Home, not its own step)*
 - [x] Skip Choose profile when there's only one profile
@@ -161,6 +161,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Debrid accounts for add-on streams
 - [x] Playback settings: mini player on Home on/off, remember picture size
 - [x] Parental control: hide adult categories everywhere, mark your own, lock Sources, PIN unlocks until the app closes
+- [x] Light ripple on the loading screen, and a ripple burst from the profile you pick (still with animations off)
 - [x] Release 0.7.0 published
 
 ## Before release

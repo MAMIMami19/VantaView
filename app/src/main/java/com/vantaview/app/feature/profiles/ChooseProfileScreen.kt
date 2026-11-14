@@ -38,6 +38,10 @@ import com.vantaview.app.data.db.ProfileEntity
 import com.vantaview.app.ui.AvatarCircle
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.boundsInRoot
 import com.vantaview.app.ui.VantaLogo
 
 private sealed interface Pending {
@@ -72,10 +76,30 @@ fun ChooseProfileScreen(
         }
     }
 
+    // Picking a profile sends a ripple out from its picture, then the app opens (skipped with animations off).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val animate = remember { com.vantaview.app.ui.animationsOn(context) }
+    val centers = remember { mutableMapOf<Long, androidx.compose.ui.geometry.Offset>() }
+    var screenOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var opening by remember { mutableStateOf<ProfileEntity?>(null) }
+    fun open(p: ProfileEntity) {
+        vm.repo.select(p.id)
+        if (!animate || opening != null) onChosen() else opening = p
+    }
+    val glow = remember { androidx.compose.animation.core.Animatable(0f) }
+    val picMiddle = with(androidx.compose.ui.platform.LocalDensity.current) { 64.dp.toPx() }
+    LaunchedEffect(opening) {
+        if (opening == null) return@LaunchedEffect
+        glow.animateTo(1.1f, androidx.compose.animation.core.tween(350))
+        kotlinx.coroutines.delay(800)
+        glow.animateTo(0f, androidx.compose.animation.core.tween(350))
+        onChosen()
+    }
+
     fun proceed(action: Pending) {
         when (action) {
             is Pending.Open -> if (action.p.pinHash != null && action.p.id != current?.id) profileGate = action.p
-                else { vm.repo.select(action.p.id); onChosen() }
+                else open(action.p)
             is Pending.Edit -> onEdit(action.p.id)
             Pending.Add -> onAdd()
         }
@@ -83,7 +107,13 @@ fun ChooseProfileScreen(
 
     fun request(action: Pending) = if (needsParent(action)) parentGate = action else proceed(action)
 
-    Box(Modifier.fillMaxSize().background(Vanta.Bg)) {
+    Box(Modifier.fillMaxSize().background(Vanta.Bg).onGloballyPositioned { screenOrigin = it.positionInRoot() }) {
+        opening?.let { p ->
+            com.vantaview.app.ui.RippleBackground(
+                Modifier.fillMaxSize(), brightness = glow.value, speed = 4f,
+                center = centers[p.id]?.let { it - screenOrigin },
+            )
+        }
         VantaLogo(size = 48.dp, modifier = Modifier.padding(24.dp))
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 80.dp, bottom = 24.dp),
@@ -93,8 +123,19 @@ fun ChooseProfileScreen(
             Text(if (managing) "Manage profiles" else "Who's watching?", color = Vanta.Text, fontSize = 32.sp, fontWeight = FontWeight.Black)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(horizontal = 24.dp)) {
                 items(profiles, key = { it.id }) { p ->
-                    ProfileTile(p, selected = p.id == current?.id, managing = managing) {
-                        request(if (managing) Pending.Edit(p) else Pending.Open(p))
+                    val dim = opening != null && opening?.id != p.id
+                    Box(
+                        Modifier
+                            .graphicsLayer { alpha = if (dim) 0.35f else 1f }
+                            .onGloballyPositioned { c ->
+                                val b = c.boundsInRoot()
+                                // The picture's middle: the tile's centre line, 64 dp from its top.
+                                centers[p.id] = androidx.compose.ui.geometry.Offset(b.center.x, b.top + picMiddle)
+                            },
+                    ) {
+                        ProfileTile(p, selected = p.id == current?.id || opening?.id == p.id, managing = managing) {
+                            if (opening == null) request(if (managing) Pending.Edit(p) else Pending.Open(p))
+                        }
                     }
                 }
                 item {
@@ -113,7 +154,8 @@ fun ChooseProfileScreen(
                     }
                 }
             }
-            FocusCard(onClick = { managing = !managing }) {
+            if (opening != null) Text("Opening ${opening?.name}…", color = Vanta.Text, fontSize = 18.sp)
+            else FocusCard(onClick = { managing = !managing }) {
                 Text(if (managing) "Done" else "Manage profiles", color = Vanta.Text)
             }
         }
@@ -133,7 +175,7 @@ fun ChooseProfileScreen(
             title = p.name,
             message = "Enter ${p.name}'s PIN.",
             check = { vm.repo.checkPin(p, it) },
-            onOk = { profileGate = null; vm.repo.select(p.id); onChosen() },
+            onOk = { profileGate = null; open(p) },
             onCancel = { profileGate = null },
         )
     }
@@ -171,3 +213,4 @@ private fun ProfileTile(p: ProfileEntity, selected: Boolean, managing: Boolean, 
         Spacer(Modifier.width(0.dp))
     }
 }
+
