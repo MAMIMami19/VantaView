@@ -293,9 +293,9 @@ private fun VideoArea(
                             change.consume()
                             dx += d.x; dy += d.y
                             if (mode == 0 && (kotlin.math.abs(dx) > slop || kotlin.math.abs(dy) > slop)) {
-                                mode = if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) 1 else if (startX < size.width / 2) 2 else 3
+                                mode = if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) 1 else if (startX < this@pointerInput.size.width / 2) 2 else 3
                             }
-                            val span = size.height * 0.8f
+                            val span = this@pointerInput.size.height * 0.8f
                             when (mode) {
                                 2 -> { levels.changeBrightness(-d.y / span); levelShown = Level(true, levels.brightness) }
                                 3 -> { levels.changeVolume(-d.y * 2f / span); levelShown = Level(false, levels.volume) }
