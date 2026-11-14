@@ -12,6 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.vantaview.app"
+        // When this APK was built (for the update check when a release has no version.txt).
+        buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         minSdk = 24
         targetSdk = 34
         versionCode = (System.getenv("VV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()

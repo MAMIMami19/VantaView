@@ -27,7 +27,10 @@ jobs:
       - name: Unit tests and debug APK
         run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk VantaView-test.apk
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk VantaView-test.apk
+          # The app's update check reads this to tell whether a build is newer than the one installed.
+          echo "$VV_VERSION_CODE" > version.txt
       - uses: actions/upload-artifact@v4
         with:
           name: VantaView-test-apk
@@ -38,7 +41,9 @@ jobs:
           tag_name: test-latest
           name: VantaView test build
           prerelease: true
-          files: VantaView-test.apk
+          files: |
+            VantaView-test.apk
+            version.txt
           body: |
             Test build ${{ github.run_number }} from commit ${{ github.sha }}.
             Signed with a shared test key. Source: this repository (GPL-3.0-or-later).

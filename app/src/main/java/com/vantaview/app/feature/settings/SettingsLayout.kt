@@ -53,7 +53,7 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
         "Parental control", "Hide adult categories, lock Sources, your profile PIN and clearing watch history",
         "parental pin lock adult kids history clear hide sources profile",
     ),
-    UPDATES("Updates", "Check for a new version and install it", "update updates version download install apk"),
+    UPDATES("Updates", "Check for a new version and install it, and test builds", "update updates version download install apk test build new"),
     ABOUT("Help and about", "App tour, support, terms, credits and version", "help support tour terms credits licence license about version");
 
     fun matches(query: String): Boolean {

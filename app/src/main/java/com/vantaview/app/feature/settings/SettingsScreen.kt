@@ -154,6 +154,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
             SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
             SettingsSection.PARENTAL -> ParentalSection(onEditProfile)
             SettingsSection.APPEARANCE -> AppearanceSection(vm.appearance)
+            SettingsSection.UPDATES -> UpdatesSection(vm.updates)
             else -> ComingSoon(section)
         }
     }

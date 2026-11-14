@@ -10,7 +10,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Terms: Agree or Disagree only (Disagree closes the app)
 - [ ] First launch order: Terms, Create profile, Add Playlist, Home *(Add Playlist is a prompt on Home, not its own step)*
 - [x] Skip Choose profile when there's only one profile
-- [ ] Update notice on launch
+- [x] Update notice on launch
 
 ## Profiles
 
@@ -125,7 +125,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Sources and storage, Free channels settings
 - [x] Local backup and restore
 - [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN
-- [ ] Check for updates (downloads the APK and opens the installer)
+- [x] Check for updates (downloads the APK and opens the installer)
 - [ ] Speed test
 - [x] App tour and support
 - [ ] Ambient mode
@@ -163,6 +163,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Parental control: hide adult categories everywhere, mark your own, lock Sources, PIN unlocks until the app closes
 - [x] Light ripple on the loading screen, and a ripple burst from the profile you pick (still with animations off)
 - [x] Appearance extras: Black (OLED) theme, custom accent colour, text size, sidebar auto-hide switch, loading screen switch
+- [x] Updates can offer test builds (switch in Settings › Updates)
 - [x] Release 0.7.0 published
 
 ## Before release

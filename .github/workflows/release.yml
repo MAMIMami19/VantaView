@@ -36,7 +36,9 @@ jobs:
       - name: Unit tests and APK
         run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk "VantaView-${VV_VERSION}.apk"
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "VantaView-${VV_VERSION}.apk"
+          echo "$VV_VERSION_CODE" > version.txt
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
@@ -46,4 +48,6 @@ jobs:
           body_path: docs/releases/v${{ env.VV_VERSION }}.md
           prerelease: false
           make_latest: true
-          files: VantaView-${{ env.VV_VERSION }}.apk
+          files: |
+            VantaView-${{ env.VV_VERSION }}.apk
+            version.txt

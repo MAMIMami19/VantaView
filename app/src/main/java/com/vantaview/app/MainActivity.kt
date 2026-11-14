@@ -56,15 +56,18 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var backups: com.vantaview.app.data.backup.BackupManager
     @Inject lateinit var parental: com.vantaview.app.data.profile.ParentalControl
     @Inject lateinit var appearance: com.vantaview.app.data.AppearanceSettings
+    @Inject lateinit var updates: com.vantaview.app.data.update.UpdateManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Automatic backups after playlist or profile changes (when switched on in Settings).
         backups.startAutomatic()
+        // Settings › Updates: look for a new version once a day.
+        updates.checkIfDue()
         setContent {
             val look by appearance.state.collectAsState()
             VantaTheme(look) {
-                AppNav(prefs, providers, addons, profiles, parental, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, parental, updates, onExit = { finish() })
             }
         }
     }
@@ -107,6 +110,7 @@ private fun AppNav(
     addons: AddonRepository,
     profiles: ProfileRepository,
     parental: com.vantaview.app.data.profile.ParentalControl,
+    updates: com.vantaview.app.data.update.UpdateManager,
     onExit: () -> Unit,
 ) {
     val nav = rememberNavController()
@@ -295,5 +299,12 @@ private fun AppNav(
     var splashShown by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(showLoading) }
     LaunchedEffect(splash) { if (!splash) { kotlinx.coroutines.delay(420); splashShown = false } }
     if (splashShown) com.vantaview.app.ui.SplashScreen(leaving = !splash)
+    // Update notice on launch (not for Kids profiles, and not over the loading screen).
+    val notice by updates.notice.collectAsState()
+    notice?.let { info ->
+        if (!splashShown && profile != null && profile?.isKids != true) {
+            com.vantaview.app.feature.settings.UpdateNotice(info, updates, onSettings = { nav.goTo(Section.SETTINGS.route) })
+        }
+    }
     }
 }
