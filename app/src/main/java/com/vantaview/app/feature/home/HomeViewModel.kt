@@ -100,7 +100,9 @@ class HomeViewModel @Inject constructor(
     val weatherEnabled: Boolean get() = weatherRepo.enabled
     fun weatherHasSource(): Boolean = weatherRepo.hasSource()
     /** True only the first time: Home then asks for location so the weather can show. */
-    fun shouldAskLocation(): Boolean = weatherRepo.enabled && !weatherRepo.askedForLocation && !weatherRepo.hasLocationPermission()
+    fun shouldAskLocation(): Boolean = weatherRepo.enabled && !weatherRepo.askedForLocation && !weatherRepo.hasLocationPermission() &&
+        // TVs and Fire TV have no location to give; they use the time zone's city instead.
+        !context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
     fun markAskedLocation() { weatherRepo.askedForLocation = true }
     fun refreshWeather(force: Boolean = false) { viewModelScope.launch { weatherRepo.refresh(force) } }
 

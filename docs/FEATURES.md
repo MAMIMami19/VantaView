@@ -169,6 +169,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Search page in the sidebar and on Home; Library page (Watchlist, Continue watching, Watched, Reminders); films marked watched when finished
 - [x] Reminder pop-ups in the app, notifications when it is closed
 - [x] Favourite star on the left of each channel
+- [x] TV: number keys jump to a channel in the player; Fire TV steps for allowing updates; no location prompt on TVs
 - [x] Release 0.7.0 published
 
 ## Before release

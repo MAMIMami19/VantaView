@@ -183,6 +183,14 @@ class PlayerViewModel @Inject constructor(
     }
 
     /** Plays the channel at [i] in the list shown under the video. */
+    /** A number typed on the remote: jump to that channel when it's in this list. */
+    fun playNumber(n: Int): Boolean {
+        val i = siblings.indexOfFirst { it.number == n }
+        if (i < 0) return false
+        if (i != index) { index = i; start(siblings[i]) }
+        return true
+    }
+
     fun playAt(i: Int) {
         if (i !in siblings.indices || i == index) return
         index = i

@@ -205,6 +205,18 @@ private fun VideoArea(
     val size by vm.size.collectAsStateWithLifecycle()
     val gestures = vm.settings.gestures
     var levelShown by remember { mutableStateOf<Level?>(null) }
+    // Number keys on the remote: collect digits, then jump after a short pause.
+    var typed by remember { mutableStateOf("") }
+    var typedMiss by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(typed) {
+        if (typed.isEmpty()) return@LaunchedEffect
+        kotlinx.coroutines.delay(1_500)
+        val n = typed.toIntOrNull()
+        typedMiss = if (n != null && !vm.playNumber(n)) "No channel $typed in this list" else null
+        if (typedMiss == null) onShowControls()
+        typed = ""
+    }
+    LaunchedEffect(typedMiss) { if (typedMiss != null) { kotlinx.coroutines.delay(2_000); typedMiss = null } }
     // Audio or subtitle picker (a track type), and the buttons that open it.
     var picker by remember { mutableStateOf<Int?>(null) }
     val buttons = remember { FocusRequester() }
@@ -229,6 +241,16 @@ private fun VideoArea(
                     Key.DirectionUp, Key.ChannelUp, Key.PageUp, Key.MediaNext -> 1
                     Key.DirectionDown, Key.ChannelDown, Key.PageDown, Key.MediaPrevious -> -1
                     else -> 0
+                }
+                val digit = when (e.key) {
+                    Key.Zero, Key.NumPad0 -> 0; Key.One, Key.NumPad1 -> 1; Key.Two, Key.NumPad2 -> 2
+                    Key.Three, Key.NumPad3 -> 3; Key.Four, Key.NumPad4 -> 4; Key.Five, Key.NumPad5 -> 5
+                    Key.Six, Key.NumPad6 -> 6; Key.Seven, Key.NumPad7 -> 7; Key.Eight, Key.NumPad8 -> 8
+                    Key.Nine, Key.NumPad9 -> 9; else -> -1
+                }
+                if (digit >= 0) {
+                    if (e.type == KeyEventType.KeyDown && typed.length < 5) typed += digit
+                    return@onKeyEvent true
                 }
                 // Menu on a remote changes the picture size (Fit, Fill, Zoom).
                 if (e.key == Key.Menu) {
@@ -259,6 +281,15 @@ private fun VideoArea(
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
+
+        // Channel number being typed on the remote.
+        (if (typed.isNotEmpty()) typed else typedMiss)?.let { t ->
+            Text(
+                t, color = Color.White, fontSize = if (typedMiss != null) 18.sp else 40.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.align(Alignment.TopEnd).padding(24.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
 
         // Brightness or volume while swiping.
         levelShown?.let { LevelBadge(it, Modifier.align(if (it.brightness) Alignment.CenterStart else Alignment.CenterEnd).padding(28.dp)) }

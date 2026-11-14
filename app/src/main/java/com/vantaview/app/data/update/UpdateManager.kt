@@ -190,15 +190,18 @@ class UpdateManager @Inject constructor(
         }
     }
 
-    /** Opens Android's "Install unknown apps" page for VantaView. */
-    fun openInstallPermission() {
-        if (Build.VERSION.SDK_INT < 26) return
-        runCatching {
+    /** Fire TV keeps this setting somewhere else, so the steps are shown instead. */
+    val isFireTv: Boolean get() = context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
+
+    /** Opens Android's "Install unknown apps" page for VantaView; false when the device has no such page. */
+    fun openInstallPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < 26) return false
+        return runCatching {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-        }
+        }.isSuccess
     }
 
     companion object {

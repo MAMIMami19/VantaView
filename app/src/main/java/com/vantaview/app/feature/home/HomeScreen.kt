@@ -528,8 +528,12 @@ private fun LastWatchedBar(
             }
             Spacer(Modifier.width(8.dp))
         }
+        // Play: shows a ring when the TV remote is on it.
+        var playFocused by remember { mutableStateOf(false) }
         Box(
-            Modifier.size(46.dp).clip(CircleShape).background(Vanta.Text).clickable(onClick = onFull),
+            Modifier.size(46.dp).onFocusChanged { playFocused = it.isFocused }
+                .then(if (playFocused) Modifier.border(3.dp, Vanta.Accent, CircleShape) else Modifier)
+                .clip(CircleShape).background(Vanta.Text).clickable(onClick = onFull),
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Filled.PlayArrow, contentDescription = "Watch full screen", tint = Vanta.Bg) }
     }

@@ -64,12 +64,16 @@ fun UpdatesSection(m: UpdateManager) {
     (state as? UpdateState.Downloading)?.let { UpdateCard(it.info, it.percent, m) }
     (state as? UpdateState.NeedsPermission)?.let { s ->
         Section("Allow VantaView to install updates") {
+            var noPage by remember { mutableStateOf(false) }
             Text(
-                "Android needs you to allow VantaView to install apps. Turn on \"Allow from this source\", come back, then press Update now again.",
+                if (m.isFireTv || noPage)
+                    "On Fire TV: Settings › My Fire TV › Developer options › Install unknown apps › VantaView: On. " +
+                        "(On some Fire TVs: Settings › Applications › Install unknown apps.) Then come back and press Update now."
+                else "Android needs you to allow VantaView to install apps. Turn on \"Allow from this source\", come back, then press Update now again.",
                 color = Vanta.TextDim, fontSize = 14.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GradientButton("Open the setting", onClick = m::openInstallPermission)
+                if (!m.isFireTv) GradientButton("Open the setting", onClick = { noPage = !m.openInstallPermission() })
                 FocusCard(onClick = { m.install(s.info) }) { Text("Update now", color = Vanta.Text) }
             }
         }
