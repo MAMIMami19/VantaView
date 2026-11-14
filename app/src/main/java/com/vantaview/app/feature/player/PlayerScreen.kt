@@ -46,6 +46,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.media3.common.C
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -85,17 +89,21 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     var overlay by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableStateOf(0) }
     val focus = remember { FocusRequester() }
+    // True while the Audio/Subtitles/Size buttons have focus or a picker is open: the controls stay.
+    var hold by remember { mutableStateOf(false) }
 
     // Hide the overlay a few seconds after it was last shown, unless something needs attention.
-    LaunchedEffect(overlay, overlayTick, ui.status) {
+    LaunchedEffect(overlay, overlayTick, ui.status, hold) {
         val seconds = vm.settings.controlsSeconds
-        if (overlay && ui.status == PlayStatus.PLAYING && seconds > 0) {
+        if (overlay && !hold && ui.status == PlayStatus.PLAYING && seconds > 0) {
             delay(seconds * 1000L)
             overlay = false
         }
     }
     LaunchedEffect(ui.status) { if (ui.status != PlayStatus.PLAYING) overlay = true }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    // When the controls hide, the remote goes back to the video (channel up/down).
+    LaunchedEffect(overlay) { if (!overlay) runCatching { focus.requestFocus() } }
 
 
     // Full screen on an upright phone (double-tap the video, or double-tap a channel in the list).
@@ -141,6 +149,7 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
             VideoArea(
                 vm = vm, ui = ui, isTv = isTv, overlay = overlay, compact = portrait, focus = focus,
                 modifier = m, onTap = ::tapped, onZap = ::zap, onBack = onBack,
+                onHold = { hold = it; overlayTick++ }, onShowControls = { overlay = true; overlayTick++ },
                 onDoubleTap = { if (upright && vm.settings.gestures) full = !full },
             )
         }
@@ -181,16 +190,33 @@ private fun VideoArea(
     onZap: (Int) -> Unit,
     onBack: () -> Unit,
     onDoubleTap: () -> Unit,
+    onHold: (Boolean) -> Unit,
+    onShowControls: () -> Unit,
 ) {
     val density = LocalDensity.current
     val swipe = with(density) { 60.dp.toPx() }
     val size by vm.size.collectAsStateWithLifecycle()
     val gestures = vm.settings.gestures
+    // Audio or subtitle picker (a track type), and the buttons that open it.
+    var picker by remember { mutableStateOf<Int?>(null) }
+    val buttons = remember { FocusRequester() }
+    var videoFocused by remember { mutableStateOf(false) }
+    var buttonsFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(picker, buttonsFocused) { onHold(picker != null || buttonsFocused) }
     Box(
         modifier
             .background(Color.Black)
             .focusRequester(focus)
+            .onFocusChanged { videoFocused = it.isFocused }
             .onKeyEvent { e ->
+                // Right on a remote moves to the Audio, Subtitles and Size buttons.
+                if (e.key == Key.DirectionRight && videoFocused) {
+                    if (e.type == KeyEventType.KeyDown) {
+                        onShowControls()
+                        runCatching { buttons.requestFocus() }
+                    }
+                    return@onKeyEvent true
+                }
                 val handled = when (e.key) {
                     Key.DirectionUp, Key.ChannelUp, Key.PageUp, Key.MediaNext -> 1
                     Key.DirectionDown, Key.ChannelDown, Key.PageDown, Key.MediaPrevious -> -1
@@ -217,6 +243,7 @@ private fun VideoArea(
                     useController = false
                     keepScreenOn = true
                     setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    TrackPrefs.style(this, vm.settings)
                     player = vm.player
                 }
             },
@@ -264,8 +291,20 @@ private fun VideoArea(
                         ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                     )
-                    if (!isTv) FocusCard(onClick = vm::cycleSize) { Text("Size: ${size.label}", color = Vanta.Text) }
-                    else Text("Size: ${size.label}", color = Vanta.TextDim, fontSize = 14.sp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.onFocusChanged { buttonsFocused = it.hasFocus },
+                    ) {
+                        FocusCard(onClick = { picker = C.TRACK_TYPE_AUDIO }, modifier = Modifier.focusRequester(buttons)) {
+                            Text("Audio", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                        }
+                        FocusCard(onClick = { picker = C.TRACK_TYPE_TEXT }) {
+                            Text("Subtitles", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                        }
+                        FocusCard(onClick = vm::cycleSize) {
+                            Text("Size: ${size.label}", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                        }
+                    }
                 }
 
                 Column(
@@ -304,8 +343,8 @@ private fun VideoArea(
                         Text(
                             when {
                                 ui.status == PlayStatus.FAILED -> "OK to try again   ·   ▲ ▼ change channel   ·   Back to exit"
-                                ui.hasSiblings -> "▲ ▼ change channel   ·   Menu picture size   ·   Back to exit"
-                                else -> "Menu picture size   ·   Back to exit"
+                                ui.hasSiblings -> "▲ ▼ change channel   ·   ▶ audio, subtitles, size   ·   Back to exit"
+                                else -> "▶ audio, subtitles, size   ·   Back to exit"
                             },
                             color = Vanta.TextDim, fontSize = 14.sp,
                         )
@@ -320,6 +359,44 @@ private fun VideoArea(
             }
         }
     }
+
+    picker?.let { type -> TrackPicker(vm, type) { picker = null } }
+}
+
+/** Pick an audio or subtitle track for the channel playing now. */
+@Composable
+private fun TrackPicker(vm: PlayerViewModel, type: Int, onClose: () -> Unit) {
+    val version by vm.tracksVersion.collectAsStateWithLifecycle()
+    val choices = remember(version) { vm.trackChoices(type) }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { first.requestFocus() } }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = Vanta.Surface,
+        title = { Text(if (type == C.TRACK_TYPE_AUDIO) "Audio" else "Subtitles", color = Vanta.Text) },
+        text = {
+            Column(
+                Modifier.heightIn(max = 360.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val real = choices.count { it.group != null }
+                if (real == 0) Text(
+                    if (type == C.TRACK_TYPE_AUDIO) "This channel has one audio track." else "This channel has no subtitles.",
+                    color = Vanta.TextDim,
+                )
+                choices.forEachIndexed { i, c ->
+                    if (c.group == null && real == 0) return@forEachIndexed
+                    FocusCard(
+                        onClick = { vm.pickTrack(type, c); onClose() }, selected = c.selected,
+                        modifier = Modifier.fillMaxWidth().then(if (i == 0) Modifier.focusRequester(first) else Modifier),
+                    ) {
+                        Text((if (c.selected) "✓  " else "     ") + c.label, color = if (c.selected) Vanta.Cyan else Vanta.Text)
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Close") } },
+    )
 }
 
 /** The category's channels under the video when the phone is upright. Tap one to switch to it. */

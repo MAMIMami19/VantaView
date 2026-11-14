@@ -83,6 +83,9 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
                     setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                     setShowNextButton(false)
                     setShowPreviousButton(false)
+                    // Subtitles button (the settings button already offers audio tracks when there are several).
+                    setShowSubtitleButton(true)
+                    TrackPrefs.style(this, vm.settings)
                     // Settings › Playback: how long the controls stay (0 = until hidden).
                     controllerShowTimeoutMs = vm.settings.controlsSeconds.let { if (it <= 0) 0 else it * 1000 }
                     setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v -> controls = v == android.view.View.VISIBLE })

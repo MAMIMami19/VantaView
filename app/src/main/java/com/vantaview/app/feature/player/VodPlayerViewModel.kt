@@ -73,6 +73,11 @@ class VodPlayerViewModel @Inject constructor(
             }
         }
 
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            _tracksVersion.value++
+            if (!pickedTracks) TrackPrefs.onTracks(player, settings, tracks)
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             val s = _ui.value
             val next = s.index + 1
@@ -86,8 +91,17 @@ class VodPlayerViewModel @Inject constructor(
         }
     }
 
+    // ---- Audio and subtitles (Settings › Subtitles and audio, and the picker in the player) ----
+    private var pickedTracks = false
+    private val _tracksVersion = MutableStateFlow(0)
+    /** Changes whenever the stream's tracks change, so the pickers re-read them. */
+    val tracksVersion: StateFlow<Int> = _tracksVersion
+    fun trackChoices(type: Int) = TrackPrefs.choices(player, type)
+    fun pickTrack(type: Int, c: TrackChoice) { pickedTracks = true; TrackPrefs.pick(player, type, c) }
+
     init {
         player.addListener(listener)
+        TrackPrefs.apply(player, settings)
         val req = session.current
         if (req == null || req.streams.isEmpty()) {
             _ui.value = VodUi(failed = "Nothing to play")

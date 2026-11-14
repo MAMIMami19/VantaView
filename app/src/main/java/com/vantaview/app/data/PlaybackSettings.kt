@@ -27,6 +27,18 @@ enum class StreamSize(val label: String, val mode: Int) {
     fun next(): StreamSize = entries[(ordinal + 1) % entries.size]
 }
 
+enum class SubtitleMode(val label: String) { OFF("Off"), FOREIGN("When the audio isn't my language"), ALWAYS("Always") }
+enum class SubtitleSize(val label: String, val scale: Float) { SMALL("Small", 0.8f), MEDIUM("Medium", 1f), LARGE("Large", 1.3f) }
+
+/** Languages offered in Settings › Subtitles and audio (ISO 639-1 codes). Empty code = the stream's own choice. */
+val TRACK_LANGUAGES = listOf(
+    "" to "Stream default", "en" to "English", "es" to "Spanish", "fr" to "French", "de" to "German", "it" to "Italian",
+    "pt" to "Portuguese", "nl" to "Dutch", "pl" to "Polish", "ro" to "Romanian", "el" to "Greek", "tr" to "Turkish",
+    "ar" to "Arabic", "hi" to "Hindi", "ur" to "Urdu", "pa" to "Punjabi", "ru" to "Russian", "uk" to "Ukrainian",
+    "sv" to "Swedish", "da" to "Danish", "no" to "Norwegian", "fi" to "Finnish", "hu" to "Hungarian", "cs" to "Czech",
+    "ja" to "Japanese", "ko" to "Korean", "zh" to "Chinese",
+)
+
 /** Settings › Playback. Shared by every profile on this device. */
 @Singleton
 class PlaybackSettings @Inject constructor(@ApplicationContext context: Context) {
@@ -63,6 +75,33 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
         get() = if (!rememberSize) StreamSize.FIT
             else runCatching { StreamSize.valueOf(sp.getString("size", null)!!) }.getOrDefault(StreamSize.FIT)
         set(v) { sp.edit().putString("size", v.name).apply() }
+
+    // ---- Settings › Subtitles and audio ----
+
+    /** Preferred audio language code; empty = whatever the stream picks. */
+    var audioLanguage: String
+        get() = sp.getString("audio_lang", "en")!!
+        set(v) { sp.edit().putString("audio_lang", v).apply() }
+
+    var subtitleLanguage: String
+        get() = sp.getString("sub_lang", "en")!!
+        set(v) { sp.edit().putString("sub_lang", v).apply() }
+
+    var subtitleMode: SubtitleMode
+        get() = runCatching { SubtitleMode.valueOf(sp.getString("sub_mode", null)!!) }.getOrDefault(SubtitleMode.FOREIGN)
+        set(v) { sp.edit().putString("sub_mode", v.name).apply() }
+
+    var subtitleSize: SubtitleSize
+        get() = runCatching { SubtitleSize.valueOf(sp.getString("sub_size", null)!!) }.getOrDefault(SubtitleSize.MEDIUM)
+        set(v) { sp.edit().putString("sub_size", v.name).apply() }
+
+    var subtitleYellow: Boolean
+        get() = sp.getBoolean("sub_yellow", false)
+        set(v) { sp.edit().putBoolean("sub_yellow", v).apply() }
+
+    var subtitleBox: Boolean
+        get() = sp.getBoolean("sub_box", true)
+        set(v) { sp.edit().putBoolean("sub_box", v).apply() }
 
     fun loadControl(): LoadControl = buffer.let {
         DefaultLoadControl.Builder().setBufferDurationsMs(it.minMs, it.maxMs, it.startMs, it.rebufferMs).build()

@@ -67,7 +67,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Live: previous/next channel, remote Up/Down changes channel
 - [ ] Live: pause and rewind with Go live
 - [x] Live: Now/Next bar and quick channel list
-- [ ] Audio, subtitles and picture size *(picture size only: Fit, Fill, Zoom, with the Size button or Menu on a remote)*
+- [x] Audio, subtitles and picture size
 - [ ] Smart anti-buffering with Medium buffer by default *(Small, Medium and Large buffer sizes, Medium by default; no automatic adjusting yet)*
 - [x] Auto-reconnect with "Reconnecting" message
 - [ ] VOD: ±10s, speed, Episodes, resume *(±10s and resume only)*
@@ -121,7 +121,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Two panes on TV, list on phone, search settings
 - [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures *(trailers and reminders get their settings when those features are built)*
 - [x] Appearance: Dark/Light/Follow device, accent colour, language
-- [ ] Subtitles and audio
+- [x] Subtitles and audio
 - [ ] Sources and storage, Free channels settings
 - [x] Local backup and restore
 - [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN

@@ -119,14 +119,28 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            _tracksVersion.value++
+            if (!pickedTracks) TrackPrefs.onTracks(player, settings, tracks)
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             watchdog?.cancel()
             onFailure(describe(error))
         }
     }
 
+    // ---- Audio and subtitles (Settings › Subtitles and audio, and the picker in the player) ----
+    private var pickedTracks = false
+    private val _tracksVersion = MutableStateFlow(0)
+    /** Changes whenever the stream's tracks change, so the pickers re-read them. */
+    val tracksVersion: StateFlow<Int> = _tracksVersion
+    fun trackChoices(type: Int) = TrackPrefs.choices(player, type)
+    fun pickTrack(type: Int, c: TrackChoice) { pickedTracks = true; TrackPrefs.pick(player, type, c) }
+
     init {
         player.addListener(listener)
+        TrackPrefs.apply(player, settings)
         viewModelScope.launch {
             val channel = db.content().channel(channelId)
             if (channel == null) {
@@ -192,6 +206,10 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun start(channel: ChannelEntity) {
+        // A new channel: forget the last channel's picked tracks and use the Settings choices again.
+        pickedTracks = false
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().clearOverrides().build()
+        TrackPrefs.apply(player, settings)
         session.setLastChannel(channel.id)
         _index.value = index
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
