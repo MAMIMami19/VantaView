@@ -31,6 +31,7 @@ fun PlaybackSection(s: PlaybackSettings) {
     var gestures by remember { mutableStateOf(s.gestures) }
     var startLast by remember { mutableStateOf(s.startOnLastChannel) }
     var rememberSize by remember { mutableStateOf(s.rememberSize) }
+    var remindMins by remember { mutableStateOf(s.reminderMinutes) }
 
     Section("Buffer size") {
         Choices(BufferSize.entries, buffer, { it.label }) { buffer = it; s.buffer = it }
@@ -51,6 +52,11 @@ fun PlaybackSection(s: PlaybackSettings) {
             "Keep Fit, Fill or Zoom between channels. Change it with the Size button, or Menu on a remote.",
             rememberSize,
         ) { rememberSize = it; s.rememberSize = it }
+    }
+
+    Section("Programme reminders") {
+        Text("Remind me this long before a programme starts", color = Vanta.Text)
+        Choices(listOf(1, 5, 10, 15), remindMins, { "$it min" }) { remindMins = it; s.reminderMinutes = it }
     }
 
     Section("Phone gestures") {

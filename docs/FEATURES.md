@@ -53,7 +53,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Timeline guide view
 - [ ] Full programme descriptions and scrolling long titles *(descriptions shown, titles don't scroll)*
 - [ ] Search, sort and edit favourites *(search only)*
-- [ ] Reminders for programmes not yet started (1/5/10/15 min, default 5)
+- [x] Reminders for programmes not yet started (1/5/10/15 min, default 5)
 - [ ] Category order and visibility per source
 
 ## Catch-up
@@ -80,14 +80,14 @@ This file is ticked off in the same commit that finishes a feature.
 
 - [ ] Recently added banner (Nuvio style)
 - [ ] Genre tiles
-- [ ] Sort, Genre, Year and Source filters
+- [ ] Sort, Genre, Year and Source filters *(sort done: recently added, A to Z, Z to A, newest, oldest, top rated; filters not yet)*
 - [ ] Posters-only grid (Stremio style)
 - [ ] Info on focus on TV
 - [ ] TMDB artwork and details (Bearer token)
 
 ## Details pages
 
-- [ ] Movie details: Play/Resume, Trailer, Watchlist, Watched *(Play/Resume only)*
+- [ ] Movie details: Play/Resume, Trailer, Watchlist, Watched *(no trailer yet)*
 - [ ] Trailer auto-play after 20s with sound and mute
 - [ ] Auto-pick best source, Choose source in the menu *(Choose stream only)*
 - [ ] Cast row and More like this *(cast list only)*
@@ -98,14 +98,14 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Search
 
-- [ ] Channels, films, series, programmes and people
-- [ ] On-screen keyboard on TV, recent searches
-- [ ] Voice search where available
+- [ ] Channels, films, series, programmes and people *(all but people, which needs TMDB)*
+- [x] On-screen keyboard on TV, recent searches
+- [x] Voice search where available
 
 ## Library
 
 - [ ] Shared with you
-- [ ] Watchlist
+- [x] Watchlist
 - [ ] Downloads **(later)**
 - [ ] Recordings **(later)**
 
@@ -166,6 +166,8 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Updates can offer test builds (switch in Settings › Updates)
 - [x] AI subtitles (beta): on-device captions or English translation with whisper.cpp, model downloaded when chosen
 - [x] Storage: space used by type; clear pictures, TV guide and update downloads; TV guide refresh setting
+- [x] Search page in the sidebar and on Home; Library page (Watchlist, Continue watching, Watched, Reminders); films marked watched when finished
+- [x] Reminder pop-ups in the app, notifications when it is closed
 - [x] Release 0.7.0 published
 
 ## Before release

@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vantaview.app.feature.library
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.vantaview.app.data.addon.MetaPreview
+import com.vantaview.app.data.history.HistoryEntry
+import com.vantaview.app.data.history.WatchHistory
+import com.vantaview.app.data.library.LibraryStore
+import com.vantaview.app.data.library.ReminderScheduler
+import com.vantaview.app.data.library.Reminder
+import com.vantaview.app.data.library.SavedTitle
+import com.vantaview.app.feature.vod.PosterCard
+import com.vantaview.app.ui.FocusCard
+import com.vantaview.app.ui.Vanta
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
+
+@HiltViewModel
+class LibraryViewModel @Inject constructor(
+    private val library: LibraryStore,
+    private val alarms: ReminderScheduler,
+    history: WatchHistory,
+) : ViewModel() {
+    private fun <T> Flow<T>.state(initial: T) = stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initial)
+    val watchlist: StateFlow<List<SavedTitle>> = library.watchlist.state(emptyList())
+    val watched: StateFlow<List<SavedTitle>> = library.watched.state(emptyList())
+    val reminders: StateFlow<List<Reminder>> = library.reminders.state(emptyList())
+    /** Unfinished films and episodes, most recent first. */
+    val continuing: StateFlow<List<HistoryEntry>> = history.entries.map { l -> l.filter { !it.finished } }.state(emptyList())
+
+    fun cancel(r: Reminder) { library.removeReminder(r); alarms.cancel(r) }
+    fun unwatch(t: SavedTitle) = library.setWatched(t, false)
+}
+
+private enum class Tab(val label: String) { WATCHLIST("Watchlist"), CONTINUE("Continue watching"), WATCHED("Watched"), REMINDERS("Reminders") }
+
+/** Library: Watchlist, Continue watching, Watched and programme reminders for this profile. */
+@Composable
+fun LibraryScreen(
+    onOpenTitle: (type: String, id: String, name: String, poster: String?, play: String?) -> Unit,
+    onPlayChannel: (Long) -> Unit,
+    vm: LibraryViewModel = hiltViewModel(),
+) {
+    var tab by rememberSaveable { mutableStateOf(Tab.WATCHLIST) }
+    val watchlist by vm.watchlist.collectAsStateWithLifecycle()
+    val watched by vm.watched.collectAsStateWithLifecycle()
+    val reminders by vm.reminders.collectAsStateWithLifecycle()
+    val continuing by vm.continuing.collectAsStateWithLifecycle()
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Library", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(Tab.entries) { t ->
+                val n = when (t) {
+                    Tab.WATCHLIST -> watchlist.size; Tab.CONTINUE -> continuing.size
+                    Tab.WATCHED -> watched.size; Tab.REMINDERS -> reminders.size
+                }
+                FocusCard(onClick = { tab = t }, selected = tab == t) {
+                    Text("${t.label} · $n", color = if (tab == t) Vanta.Cyan else Vanta.Text, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
+        }
+        when (tab) {
+            Tab.WATCHLIST -> Posters(
+                watchlist.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
+                "Nothing here yet. Use + Watchlist on a film or series to save it for later.",
+            ) { m -> onOpenTitle(m.type, m.id, m.name, m.poster, null) }
+            Tab.WATCHED -> Posters(
+                watched.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
+                "Films you finish, and titles you mark as watched, show here.",
+            ) { m -> onOpenTitle(m.type, m.id, m.name, m.poster, null) }
+            Tab.CONTINUE -> Posters(
+                continuing.map { e ->
+                    MetaPreview(e.metaId, e.type, e.title + (if (e.season != null) " · S${e.season} E${e.episode}" else ""), e.poster, null, null)
+                },
+                "Films and episodes you've started show here.",
+            ) { m ->
+                val e = continuing.firstOrNull { it.metaId == m.id && it.type == m.type }
+                onOpenTitle(m.type, m.id, e?.title ?: m.name, m.poster, if (m.type == "movie") "movie" else e?.videoId)
+            }
+            Tab.REMINDERS -> Reminders(reminders, onPlayChannel, vm::cancel)
+        }
+    }
+}
+
+@Composable
+private fun Posters(items: List<MetaPreview>, empty: String, onOpen: (MetaPreview) -> Unit) {
+    if (items.isEmpty()) { Text(empty, color = Vanta.TextDim, fontSize = 15.sp); return }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(124.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize(),
+    ) {
+        items(items, key = { it.type + it.id }) { m -> PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth()) }
+    }
+}
+
+@Composable
+private fun Reminders(list: List<Reminder>, onPlay: (Long) -> Unit, onCancel: (Reminder) -> Unit) {
+    if (list.isEmpty()) {
+        Text("No reminders. In the TV Guide, pick a programme that hasn't started and choose Remind me.", color = Vanta.TextDim, fontSize = 15.sp)
+        return
+    }
+    val day = SimpleDateFormat("EEE d MMM", Locale.UK)
+    val time = SimpleDateFormat("HH:mm", Locale.UK)
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(list, key = { it.key }) { r ->
+            val now = System.currentTimeMillis()
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(r.title, color = Vanta.Text, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${day.format(Date(r.start))} · ${time.format(Date(r.start))} – ${time.format(Date(r.stop))} · ${r.channelName}" +
+                            " · reminds ${r.leadMinutes} min before",
+                        color = Vanta.TextDim, fontSize = 13.sp,
+                    )
+                }
+                if (r.start <= now) FocusCard(onClick = { onPlay(r.channelId) }) { Text("▶ Watch", color = Vanta.Text) }
+                FocusCard(onClick = { onCancel(r) }) { Text("Cancel", color = Vanta.Text) }
+            }
+        }
+    }
+}

@@ -100,6 +100,22 @@ interface ContentDao {
     @Query("SELECT DISTINCT epgChannelId FROM channel WHERE providerId = :providerId AND country IN (:codes) AND epgChannelId IS NOT NULL AND epgChannelId != ''")
     suspend fun guideKeysIn(providerId: Long, codes: List<String>): List<String>
 
+    /** Search: channels by name or number across several playlists. */
+    @Query(
+        """
+        SELECT * FROM channel
+        WHERE providerId IN (:providerIds)
+          AND (name LIKE '%' || :query || '%' OR CAST(number AS TEXT) = :query)
+        ORDER BY CASE WHEN name LIKE :query || '%' THEN 0 ELSE 1 END, number
+        LIMIT 60
+        """
+    )
+    suspend fun searchChannels(providerIds: List<Long>, query: String): List<ChannelEntity>
+
+    /** Channels whose guide ID is one of [keys] (to show a programme's channel). */
+    @Query("SELECT * FROM channel WHERE providerId = :providerId AND epgChannelId IN (:keys)")
+    suspend fun channelsByGuideKey(providerId: Long, keys: List<String>): List<ChannelEntity>
+
     /** A channel by its number in a playlist (for typing a number on the remote). */
     @Query("SELECT * FROM channel WHERE providerId = :providerId AND number = :number ORDER BY sortKey LIMIT 1")
     suspend fun channelByNumber(providerId: Long, number: Int): ChannelEntity?
@@ -242,6 +258,16 @@ interface GuideDao {
 
     @Query("DELETE FROM programme")
     suspend fun clearAll()
+
+    /** Search: programmes on now or later whose title matches. */
+    @Query(
+        """
+        SELECT * FROM programme
+        WHERE providerId IN (:providerIds) AND title LIKE '%' || :query || '%' AND stop > :now
+        ORDER BY start LIMIT 80
+        """
+    )
+    suspend fun search(providerIds: List<Long>, query: String, now: Long): List<ProgrammeEntity>
 
     @Query("SELECT COUNT(*) FROM programme WHERE providerId = :providerId")
     suspend fun count(providerId: Long): Int

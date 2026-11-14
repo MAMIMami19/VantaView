@@ -112,6 +112,18 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                     FocusCard(onClick = { vm.play(null, true) }) { Text("Choose stream", color = Vanta.Text) }
                 }
             }
+            item {
+                // Watchlist and Watched (shown in Library).
+                val saved by vm.saved.collectAsStateWithLifecycle()
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FocusCard(onClick = vm::toggleWatchlist, selected = saved.first) {
+                        Text(if (saved.first) "✓ On Watchlist" else "+ Watchlist", color = if (saved.first) Vanta.Cyan else Vanta.Text)
+                    }
+                    FocusCard(onClick = vm::toggleWatched, selected = saved.second) {
+                        Text(if (saved.second) "✓ Watched" else "Mark watched", color = if (saved.second) Vanta.Cyan else Vanta.Text)
+                    }
+                }
+            }
             ui.message?.let { m -> item { Text(m, color = Vanta.Error) } }
             meta?.description?.let { d -> item { Text(d, color = Vanta.Text, fontSize = 15.sp, lineHeight = 22.sp) } }
             if (!meta?.director.isNullOrEmpty()) item { Text("Director: " + meta!!.director.joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }

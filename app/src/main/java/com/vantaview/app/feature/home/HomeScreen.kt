@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -131,6 +132,7 @@ fun HomeScreen(
                 weather = weather,
                 showSetUp = weather == null && vm.weatherEnabled && remember(weather) { !vm.weatherHasSource() },
                 onWeather = { showForecast = true },
+                onSearch = { onSection("search") },
                 onSetUp = {
                     val granted = androidx.core.content.ContextCompat.checkSelfPermission(
                         context, android.Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -390,6 +392,7 @@ private fun GreetingRow(
     showSetUp: Boolean,
     onWeather: () -> Unit,
     onSetUp: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     val hour = java.util.Calendar.getInstance().apply { time = now }.get(java.util.Calendar.HOUR_OF_DAY)
     val greeting = when (hour) {
@@ -401,6 +404,9 @@ private fun GreetingRow(
         Column(Modifier.weight(1f)) {
             Text(greeting, color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Black)
             Text(SimpleDateFormat("EEEE d MMMM · HH:mm", Locale.UK).format(now), color = Vanta.TextDim, fontSize = 14.sp)
+        }
+        FocusCard(onClick = onSearch, shape = CircleShape, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.Search, contentDescription = "Search", tint = Vanta.Text)
         }
         when {
             weather != null -> FocusCard(onClick = onWeather, padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {

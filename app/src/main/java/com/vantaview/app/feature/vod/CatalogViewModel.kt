@@ -25,6 +25,25 @@ sealed interface RowState {
     data object Failed : RowState
 }
 
+/** Orders for Movies and TV Series. Recently added keeps the catalogue's own order. */
+enum class CatalogSort(val label: String) {
+    RECENT("Recently added"), AZ("A to Z"), ZA("Z to A"), NEWEST("Newest"), OLDEST("Oldest"), RATED("Top rated");
+
+    fun apply(list: List<MetaPreview>): List<MetaPreview> {
+        fun year(m: MetaPreview) = m.year?.let { Regex("""\d{4}""").find(it)?.value?.toIntOrNull() }
+        fun rating(m: MetaPreview) = m.rating?.replace(',', '.')?.toDoubleOrNull()
+        return when (this) {
+            RECENT -> list
+            AZ -> list.sortedBy { it.name.lowercase().removePrefix("the ") }
+            ZA -> list.sortedByDescending { it.name.lowercase().removePrefix("the ") }
+            // Titles with no year or rating go last.
+            NEWEST -> list.sortedWith(compareBy<MetaPreview> { year(it) == null }.thenByDescending { year(it) ?: 0 })
+            OLDEST -> list.sortedWith(compareBy<MetaPreview> { year(it) == null }.thenBy { year(it) ?: 0 })
+            RATED -> list.sortedWith(compareBy<MetaPreview> { rating(it) == null }.thenByDescending { rating(it) ?: 0.0 })
+        }
+    }
+}
+
 data class CatalogUi(
     val loaded: Boolean = false,
     val kids: Boolean = false,
@@ -40,10 +59,17 @@ data class CatalogUi(
 class CatalogViewModel @Inject constructor(
     private val repo: AddonRepository,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
+    @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     /** "movie" or "series". */
     val type: String = savedState.get<String>("type") ?: "movie"
+
+    // The chosen order, remembered separately for Movies and TV Series.
+    private val sp = context.getSharedPreferences("catalog", android.content.Context.MODE_PRIVATE)
+    private val _sort = MutableStateFlow(runCatching { CatalogSort.valueOf(sp.getString("sort_$type", null)!!) }.getOrDefault(CatalogSort.RECENT))
+    val sort: StateFlow<CatalogSort> = _sort
+    fun setSort(s: CatalogSort) { _sort.value = s; sp.edit().putString("sort_$type", s.name).apply() }
 
     private val _ui = MutableStateFlow(CatalogUi())
     val ui: StateFlow<CatalogUi> = _ui

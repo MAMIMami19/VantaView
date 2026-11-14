@@ -158,7 +158,13 @@ fun GuideScreen(onPlay: (Long) -> Unit, vm: LiveViewModel = hiltViewModel()) {
             Spacer(Modifier.height(8.dp))
 
             // Details of the chosen programme.
-            DetailsPanel(picked, now, wide, onPlay)
+            val remindersSet by vm.reminderList.collectAsStateWithLifecycle()
+            val notify = rememberNotificationAsk()
+            DetailsPanel(
+                picked, now, wide, onPlay,
+                reminded = { c, pr -> remindersSet.any { it.channelId == c.id && it.start == pr.start } },
+                onRemind = { c, pr -> if (vm.toggleReminder(c, pr)) notify() },
+            )
 
             // Time ruler.
             Row(Modifier.fillMaxWidth().height(26.dp)) {
@@ -234,7 +240,11 @@ fun GuideScreen(onPlay: (Long) -> Unit, vm: LiveViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun DetailsPanel(picked: Picked?, now: Long, wide: Boolean, onPlay: (Long) -> Unit) {
+private fun DetailsPanel(
+    picked: Picked?, now: Long, wide: Boolean, onPlay: (Long) -> Unit,
+    reminded: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Boolean,
+    onRemind: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Unit,
+) {
     val p = picked ?: return
     val prog = p.programme
     Column(
@@ -253,6 +263,13 @@ private fun DetailsPanel(picked: Picked?, now: Long, wide: Boolean, onPlay: (Lon
                 )
             }
             val live = prog == null || (prog.start <= now && prog.stop > now)
+            if (prog != null && prog.start > now) {
+                val on = reminded(p.channel, prog)
+                FocusCard(onClick = { onRemind(p.channel, prog) }, selected = on) {
+                    Text(if (on) "🔔 Reminder set" else "🔔 Remind me", color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             FocusCard(onClick = { onPlay(p.channel.id) }) {
                 Text(if (live) "▶ Watch" else "▶ Watch channel", color = Vanta.Text, fontWeight = FontWeight.Bold)
             }
@@ -264,7 +281,10 @@ private fun DetailsPanel(picked: Picked?, now: Long, wide: Boolean, onPlay: (Lon
         if (prog != null && prog.stop <= now) {
             Text("Already aired. Catch-up isn't in the app yet.", color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         } else if (prog != null && prog.start > now) {
-            Text("Starts at ${clock.format(Date(prog.start))}. Reminders are coming in a later update.", color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                "Starts at ${clock.format(Date(prog.start))}." + if (reminded(p.channel, prog)) " You'll be reminded before it starts." else "",
+                color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -353,5 +373,20 @@ private fun GuideRow(
                 }
             }
         }
+    }
+}
+
+/** On Android 13+, asks once for permission to show reminder notifications when VantaView is closed. */
+@Composable
+fun rememberNotificationAsk(): () -> Unit {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
+    return {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) runCatching { launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
     }
 }

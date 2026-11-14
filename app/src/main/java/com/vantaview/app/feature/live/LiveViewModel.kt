@@ -7,6 +7,7 @@ import com.vantaview.app.data.country.CountryDetect
 import com.vantaview.app.data.country.CountryScan
 import com.vantaview.app.data.country.CountryStore
 import com.vantaview.app.data.db.CategoryEntity
+import com.vantaview.app.data.db.ChannelEntity
 import com.vantaview.app.data.db.ChannelRow
 import com.vantaview.app.data.db.ProfileEntity
 import com.vantaview.app.data.db.ProviderEntity
@@ -49,6 +50,9 @@ class LiveViewModel @Inject constructor(
     private val countries: CountryStore,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     private val parental: com.vantaview.app.data.profile.ParentalControl,
+    private val library: com.vantaview.app.data.library.LibraryStore,
+    private val reminders: com.vantaview.app.data.library.ReminderScheduler,
+    private val playback: com.vantaview.app.data.PlaybackSettings,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
@@ -202,6 +206,23 @@ class LiveViewModel @Inject constructor(
     }
 
     /** A channel by number in the active playlist, for typing a number on the remote. */
+    // ---- Programme reminders (the guide's Remind me) ----
+
+    val reminderList = library.reminders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Sets or cancels a reminder; returns true when one is now set. */
+    fun toggleReminder(channel: ChannelEntity, prog: com.vantaview.app.data.db.ProgrammeEntity): Boolean {
+        val existing = library.remindersNow().firstOrNull { it.channelId == channel.id && it.start == prog.start }
+        if (existing != null) {
+            library.removeReminder(existing); reminders.cancel(existing); return false
+        }
+        val r = com.vantaview.app.data.library.Reminder(
+            channel.id, com.vantaview.app.data.ChannelNames.display(channel.name), prog.title, prog.start, prog.stop, playback.reminderMinutes,
+        )
+        library.addReminder(r); reminders.schedule(r)
+        return true
+    }
+
     suspend fun channelIdByNumber(number: Int): Long? {
         val id = active.value?.id ?: return null
         channels.value.firstOrNull { it.channel.number == number }?.let { return it.channel.id }

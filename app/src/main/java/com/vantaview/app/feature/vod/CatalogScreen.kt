@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vantaview.app.data.addon.MetaPreview
 import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.FocusCard
 
 /** Movies or TV Series page: a row per add-on catalogue, plus search. */
 @Composable
@@ -69,9 +70,20 @@ fun CatalogScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        Spacer(Modifier.height(10.dp))
+        // Sort: applies to every row and to search results.
+        val sort by vm.sort.collectAsStateWithLifecycle()
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(CatalogSort.entries.toList(), key = { it.name }) { o ->
+                FocusCard(onClick = { vm.setSort(o) }, selected = o == sort) {
+                    Text(o.label, color = if (o == sort) Vanta.Cyan else Vanta.Text, fontSize = 14.sp,
+                        fontWeight = if (o == sort) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
-        val results = ui.results
+        val results = ui.results?.let { sort.apply(it) }
         when {
             query.isNotBlank() && (ui.searching || results == null) -> Message("Searching…")
             query.isNotBlank() && results != null -> {
@@ -102,7 +114,7 @@ fun CatalogScreen(
                             is RowState.Ready ->
                                 if (st.items.isEmpty()) Text("Empty", color = Vanta.TextDim)
                                 else LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    items(st.items, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                                    items(sort.apply(st.items), key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
                                 }
                             RowState.Failed -> Text("Couldn't load this row", color = Vanta.Error)
                             else -> Text("Loading…", color = Vanta.TextDim)

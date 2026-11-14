@@ -49,6 +49,7 @@ class DetailsViewModel @Inject constructor(
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
+    private val library: com.vantaview.app.data.library.LibraryStore,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
@@ -171,5 +172,27 @@ class DetailsViewModel @Inject constructor(
         session.current = request(c.streams, index, c.video, c.subtitle, chosen = true)
         _ui.update { it.copy(choice = null) }
         viewModelScope.launch { _play.send(Unit) }
+    }
+
+    // ---- Watchlist and Watched ----
+
+    private val _saved = kotlinx.coroutines.flow.MutableStateFlow(library.inWatchlist(type, id) to library.isWatched(type, id))
+    /** (on the Watchlist, watched) */
+    val saved: kotlinx.coroutines.flow.StateFlow<Pair<Boolean, Boolean>> = _saved
+
+    private fun title() = com.vantaview.app.data.library.SavedTitle(
+        type, id, _ui.value.meta?.name ?: fallbackName, _ui.value.meta?.poster ?: fallbackPoster, _ui.value.meta?.year, 0,
+    )
+
+    fun toggleWatchlist() {
+        val on = !_saved.value.first
+        library.setWatchlist(title(), on)
+        _saved.value = library.inWatchlist(type, id) to library.isWatched(type, id)
+    }
+
+    fun toggleWatched() {
+        val on = !_saved.value.second
+        library.setWatched(title(), on)
+        _saved.value = library.inWatchlist(type, id) to library.isWatched(type, id)
     }
 }

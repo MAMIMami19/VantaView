@@ -5,6 +5,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Settings › Updates: install a downloaded VantaView update (Android asks the user first). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Programme reminders when VantaView is closed (Android 13+ asks the user first). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Voice search: find the device's speech recogniser (Android 11+ package visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
     <!-- Rough location, only for Home's weather, and only if the user allows it. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
@@ -37,6 +46,8 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver android:name=".data.library.ReminderReceiver" android:exported="false" />
+
         <!-- Hands a downloaded update to Android's installer. -->
         <provider
             android:name="androidx.core.content.FileProvider"

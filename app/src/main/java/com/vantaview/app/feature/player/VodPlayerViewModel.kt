@@ -45,6 +45,7 @@ class VodPlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     val settings: com.vantaview.app.data.PlaybackSettings,
     aiSubs: com.vantaview.app.data.aisubs.AiSubtitles,
+    private val library: com.vantaview.app.data.library.LibraryStore,
     private val okHttp: OkHttpClient,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
@@ -154,6 +155,10 @@ class VodPlayerViewModel @Inject constructor(
                 updatedAt = System.currentTimeMillis(), knownSeason = r.knownSeason,
             )
         )
+        // A film watched to the end counts as Watched (Library).
+        if (r.type == "movie" && pos >= dur * 0.92) {
+            library.setWatched(com.vantaview.app.data.library.SavedTitle(r.type, r.metaId, r.title, r.poster, null, 0), true)
+        }
     }
 
     /**

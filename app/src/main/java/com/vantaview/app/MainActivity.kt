@@ -59,6 +59,21 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var appearance: com.vantaview.app.data.AppearanceSettings
     @Inject lateinit var updates: com.vantaview.app.data.update.UpdateManager
     @Inject lateinit var sourceSettings: com.vantaview.app.data.SourceSettings
+    @Inject lateinit var library: com.vantaview.app.data.library.LibraryStore
+    @Inject lateinit var reminderAlarms: com.vantaview.app.data.library.ReminderScheduler
+
+    /** A channel to open, from a reminder notification. */
+    private val playRequest = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.getLongExtra(EXTRA_PLAY_CHANNEL, 0).takeIf { it > 0 }?.let { playRequest.value = it }
+    }
+
+    override fun onStart() { super.onStart(); com.vantaview.app.data.library.AppVisible.now = true }
+    override fun onStop() { super.onStop(); com.vantaview.app.data.library.AppVisible.now = false }
+
+    companion object { const val EXTRA_PLAY_CHANNEL = "play_channel" }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,12 +81,15 @@ class MainActivity : ComponentActivity() {
         backups.startAutomatic()
         // Settings › Updates: look for a new version once a day.
         updates.checkIfDue()
+        intent?.getLongExtra(EXTRA_PLAY_CHANNEL, 0)?.takeIf { it > 0 }?.let { playRequest.value = it }
+        // Reminder alarms don't survive a restart of the device, so set them again.
+        reminderAlarms.rescheduleAll(library.allReminders())
         // Settings › Sources and storage: refresh playlists that are out of date.
         lifecycleScope.launch { runCatching { providers.autoRefresh(sourceSettings.playlists) } }
         setContent {
             val look by appearance.state.collectAsState()
             VantaTheme(look) {
-                AppNav(prefs, providers, addons, profiles, parental, updates, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, parental, updates, library, playRequest, onExit = { finish() })
             }
         }
     }
@@ -115,6 +133,8 @@ private fun AppNav(
     profiles: ProfileRepository,
     parental: com.vantaview.app.data.profile.ParentalControl,
     updates: com.vantaview.app.data.update.UpdateManager,
+    library: com.vantaview.app.data.library.LibraryStore,
+    playRequest: kotlinx.coroutines.flow.MutableStateFlow<Long?>,
     onExit: () -> Unit,
 ) {
     val nav = rememberNavController()
@@ -149,6 +169,8 @@ private fun AppNav(
         route == "home" -> Section.HOME
         route == "live" -> Section.LIVE
         route == "guide" -> Section.GUIDE
+        route == "search" -> Section.SEARCH
+        route == "library" -> Section.LIBRARY
         route == "movies" -> Section.MOVIES
         route == "series" -> Section.SERIES
         route.startsWith("sources") -> Section.SOURCES
@@ -235,6 +257,28 @@ private fun AppNav(
                     androidx.compose.material3.Text("Ask a grown-up to change settings.", color = Vanta.TextDim, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
                 } else com.vantaview.app.feature.settings.SettingsScreen(onEditProfile = { id -> nav.navigate("profile/edit/$id") })
             }
+            composable("search") {
+                com.vantaview.app.feature.search.SearchScreen(
+                    onPlayChannel = { id -> nav.navigate("player/$id") },
+                    onOpenTitle = { type, id, name, poster, play ->
+                        nav.navigate(
+                            "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
+                                "&poster=${Uri.encode(poster.orEmpty())}&play=${Uri.encode(play.orEmpty())}"
+                        )
+                    },
+                )
+            }
+            composable("library") {
+                com.vantaview.app.feature.library.LibraryScreen(
+                    onOpenTitle = { type, id, name, poster, play ->
+                        nav.navigate(
+                            "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
+                                "&poster=${Uri.encode(poster.orEmpty())}&play=${Uri.encode(play.orEmpty())}"
+                        )
+                    },
+                    onPlayChannel = { id -> nav.navigate("player/$id") },
+                )
+            }
             composable("guide") {
                 com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
             }
@@ -303,6 +347,14 @@ private fun AppNav(
     var splashShown by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(showLoading) }
     LaunchedEffect(splash) { if (!splash) { kotlinx.coroutines.delay(420); splashShown = false } }
     if (splashShown) com.vantaview.app.ui.SplashScreen(leaving = !splash)
+    // Programme reminders: pop-ups while the app is open, and opening a channel from a notification.
+    if (!splashShown && profile != null) com.vantaview.app.feature.library.ReminderHost(library) { id -> nav.navigate("player/$id") }
+    val play by playRequest.collectAsState()
+    LaunchedEffect(play, splashShown, profile) {
+        val id = play ?: return@LaunchedEffect
+        if (!splashShown && profile != null) { playRequest.value = null; nav.navigate("player/$id") }
+    }
+
     // Update notice on launch (not for Kids profiles, and not over the loading screen).
     val notice by updates.notice.collectAsState()
     notice?.let { info ->

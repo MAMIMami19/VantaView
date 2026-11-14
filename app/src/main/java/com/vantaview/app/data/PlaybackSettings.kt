@@ -103,6 +103,11 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
         get() = sp.getBoolean("sub_box", true)
         set(v) { sp.edit().putBoolean("sub_box", v).apply() }
 
+    /** Programme reminders: minutes before the start. */
+    var reminderMinutes: Int
+        get() = sp.getInt("reminder_minutes", 5)
+        set(v) { sp.edit().putInt("reminder_minutes", v).apply() }
+
     fun loadControl(): LoadControl = buffer.let {
         DefaultLoadControl.Builder().setBufferDurationsMs(it.minMs, it.maxMs, it.startMs, it.rebufferMs).build()
     }
