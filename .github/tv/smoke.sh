@@ -4,7 +4,18 @@
 set -u
 OUT=tv-out; mkdir -p $OUT
 n=0
-shot() { n=$((n+1)); f=$(printf "%s/%02d-%s.png" $OUT $n "$1"); adb exec-out screencap -p > "$f"; echo "shot $f"; }
+shot() {
+  n=$((n+1)); f=$(printf "%s/%02d-%s.png" $OUT $n "$1"); adb exec-out screencap -p > "$f"; echo "shot $f"
+  # What's on screen, as text, for reading the log without the pictures.
+  dump; python3 - <<'PY'
+import re
+x=open('tv-out/ui.xml',encoding='utf-8',errors='ignore').read()
+t=[m.group(1) for m in re.finditer(r' text="([^"]+)"',x)]
+f=[re.search(r' text="([^"]*)"',n.group(0)) for n in re.finditer(r'<node [^>]*focused="true"[^>]*>',x)]
+print("   screen:", " | ".join(t[:40])[:900])
+print("   focused:", [g.group(1) for g in f if g])
+PY
+}
 key() { for k in "$@"; do adb shell input keyevent "KEYCODE_$k"; sleep 0.6; done; }
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml $OUT/ui.xml >/dev/null 2>&1; }
 # Tap the first element whose text contains $1.
@@ -63,4 +74,5 @@ key DPAD_LEFT DPAD_LEFT; tap_text "Home"; sleep 4; shot home
 key BACK; sleep 1; shot back-once
 crashes
 adb logcat -d -t 2000 > $OUT/logcat.txt
+echo "---- crashes ----"; cat $OUT/crashes.txt
 echo "done"
