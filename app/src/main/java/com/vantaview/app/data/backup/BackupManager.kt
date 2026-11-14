@@ -70,12 +70,13 @@ class BackupManager @Inject constructor(
     private val history: WatchHistory,
     private val debrid: DebridStore,
     private val providers: ProviderRepository,
+    private val appearance: com.vantaview.app.data.AppearanceSettings,
     @AppScope private val scope: CoroutineScope,
 ) {
     private val sp = context.getSharedPreferences("backup", Context.MODE_PRIVATE)
 
     /** Settings files copied into a backup. ("guide" is a cache; "debrid" goes in the locked part.) */
-    private val prefNames = listOf("vantaview", "history", "countries", "playback", "parental")
+    private val prefNames = listOf("vantaview", "history", "countries", "playback", "parental", "appearance")
 
     private val _lastAuto = MutableStateFlow(sp.getLong("last_auto", 0))
     val lastAuto: StateFlow<Long> = _lastAuto
@@ -334,6 +335,7 @@ class BackupManager @Inject constructor(
             merge(profiles, playlists, favourites, kids, addons, debridAccounts, settings)
         }
         history.reload()
+        appearance.reload()
         // Download channels for every playlist again.
         db.backup().providers().forEach { p -> providers.sync(p.id) }
     }

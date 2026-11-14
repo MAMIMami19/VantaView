@@ -120,7 +120,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 - [x] Two panes on TV, list on phone, search settings
 - [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures *(trailers and reminders get their settings when those features are built)*
-- [ ] Appearance: Dark/Light/Follow device, accent colour, language
+- [x] Appearance: Dark/Light/Follow device, accent colour, language
 - [ ] Subtitles and audio
 - [ ] Sources and storage, Free channels settings
 - [x] Local backup and restore
@@ -162,6 +162,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Playback settings: mini player on Home on/off, remember picture size
 - [x] Parental control: hide adult categories everywhere, mark your own, lock Sources, PIN unlocks until the app closes
 - [x] Light ripple on the loading screen, and a ripple burst from the profile you pick (still with animations off)
+- [x] Appearance extras: Black (OLED) theme, custom accent colour, text size, sidebar auto-hide switch, loading screen switch
 - [x] Release 0.7.0 published
 
 ## Before release

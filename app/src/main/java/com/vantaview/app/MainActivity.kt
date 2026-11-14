@@ -55,13 +55,15 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var profiles: ProfileRepository
     @Inject lateinit var backups: com.vantaview.app.data.backup.BackupManager
     @Inject lateinit var parental: com.vantaview.app.data.profile.ParentalControl
+    @Inject lateinit var appearance: com.vantaview.app.data.AppearanceSettings
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Automatic backups after playlist or profile changes (when switched on in Settings).
         backups.startAutomatic()
         setContent {
-            VantaTheme {
+            val look by appearance.state.collectAsState()
+            VantaTheme(look) {
                 AppNav(prefs, providers, addons, profiles, parental, onExit = { finish() })
             }
         }
@@ -122,12 +124,13 @@ private fun AppNav(
     }
 
     // Loading screen with the light ripple: shown at least 1.6 seconds when the app starts (not on rotation).
-    var splash by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
+    val showLoading = com.vantaview.app.ui.LocalAppearance.current.loadingScreen
+    var splash by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(showLoading) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(1_600); splash = false }
 
     val startRoute = start
     if (startRoute == null) {
-        com.vantaview.app.ui.SplashScreen()
+        if (showLoading) com.vantaview.app.ui.SplashScreen() else Box(Modifier.fillMaxSize().background(Vanta.Bg))
         return
     }
 
@@ -289,7 +292,7 @@ private fun AppNav(
         if (profile != null) com.vantaview.app.feature.country.CountryChooserHost()
     }
     // The ripple is drawn by OpenGL, which can't be faded as a layer, so the splash dims itself out.
-    var splashShown by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
+    var splashShown by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(showLoading) }
     LaunchedEffect(splash) { if (!splash) { kotlinx.coroutines.delay(420); splashShown = false } }
     if (splashShown) com.vantaview.app.ui.SplashScreen(leaving = !splash)
     }

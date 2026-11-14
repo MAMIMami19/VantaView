@@ -153,6 +153,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
             SettingsSection.ABOUT -> HelpAbout()
             SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
             SettingsSection.PARENTAL -> ParentalSection(onEditProfile)
+            SettingsSection.APPEARANCE -> AppearanceSection(vm.appearance)
             else -> ComingSoon(section)
         }
     }

@@ -41,7 +41,10 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
         "Playback", "Buffer size, how long controls stay, mini player, start on last channel, picture size and phone gestures",
         "buffer buffering controls hide mini player preview start last channel picture size fit fill zoom gestures swipe double tap",
     ),
-    APPEARANCE("Appearance", "Dark, light or follow the device, accent colour and language", "theme dark light accent colour color language"),
+    APPEARANCE(
+        "Appearance", "Theme, accent colour, text size, sidebar, loading screen and language",
+        "theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language",
+    ),
     SUBTITLES("Subtitles and audio", "Preferred languages, subtitle size and style", "subtitle subtitles captions audio language track size"),
     SOURCES("Sources and storage", "Playlist refresh, free channels and clearing saved data", "playlist refresh free tv channels storage cache clear guide epg"),
     WEATHER("Weather", "Weather on Home: on or off, °C or °F, and where", "weather temperature celsius fahrenheit location town city forecast"),

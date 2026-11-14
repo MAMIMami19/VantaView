@@ -97,7 +97,8 @@ fun AppShell(
         val focusManager = LocalFocusManager.current
 
         // Side rail auto-hide: everywhere except Home, 5 seconds after focus leaves the rail.
-        val autoHide = wide && current != null && current != Section.HOME
+        // Settings › Appearance › Hide the sidebar.
+        val autoHide = wide && current != null && current != Section.HOME && LocalAppearance.current.sidebarAutoHide
         var railShown by remember { mutableStateOf(true) }
         var railHasFocus by remember { mutableStateOf(false) }
         var focusRail by remember { mutableStateOf(false) }
