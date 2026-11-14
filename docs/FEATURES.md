@@ -118,7 +118,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Settings
 
-- [ ] Two panes on TV, list on phone, search settings
+- [x] Two panes on TV, list on phone, search settings
 - [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures
 - [ ] Appearance: Dark/Light/Follow device, accent colour, language
 - [ ] Subtitles and audio

@@ -84,75 +84,73 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Vanta.Bg).imePadding(), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("Settings", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-
-            Section("Backup and restore") {
-                Text(
-                    "Saves your profiles, playlists and logins, favourites, watch history, add-ons, debrid accounts and settings. " +
-                        "Logins are locked with a backup password. Channels and the TV guide download again after restoring.",
-                    color = Vanta.TextDim, fontSize = 14.sp,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GradientButton("Back up now", onClick = { ask = Ask.BACKUP })
-                    FocusCard(onClick = {
-                        try { openFile.launch(arrayOf("*/*")) }
-                        catch (_: ActivityNotFoundException) { /* TVs without a file picker use the list below */ }
-                    }) { Text("Restore from a file", color = Vanta.Text) }
-                }
+    val backupContent: @Composable () -> Unit = {
+        Section("Backup and restore") {
+            Text(
+                "Saves your profiles, playlists and logins, favourites, watch history, add-ons, debrid accounts and settings. " +
+                    "Logins are locked with a backup password. Channels and the TV guide download again after restoring.",
+                color = Vanta.TextDim, fontSize = 14.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GradientButton("Back up now", onClick = { ask = Ask.BACKUP })
+                FocusCard(onClick = {
+                    try { openFile.launch(arrayOf("*/*")) }
+                    catch (_: ActivityNotFoundException) { /* TVs without a file picker use the list below */ }
+                }) { Text("Restore from a file", color = Vanta.Text) }
             }
+        }
 
-            Section("Automatic backups") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Back up after every change", color = Vanta.Text)
-                        Text(
-                            "When you add, edit or remove a playlist or profile. Keeps the last 5." +
-                                if (lastAuto > 0) "\nLast one: ${when_.format(Date(lastAuto))}" else "",
-                            color = Vanta.TextDim, fontSize = 13.sp,
-                        )
-                    }
-                    Switch(checked = ui.autoEnabled, onCheckedChange = { on ->
-                        if (on && !ui.hasPassword) ask = Ask.AUTO else vm.setAuto(on)
-                    })
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    FocusCard(onClick = {
-                        try { pickFolder.launch(null) } catch (_: ActivityNotFoundException) { vm.setFolder(null) }
-                    }) { Text("Choose folder", color = Vanta.Text) }
+        Section("Automatic backups") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Back up after every change", color = Vanta.Text)
                     Text(
-                        ui.folderName?.let { "Saving to: $it" } ?: "Saving in the app's folder (removed if the app is uninstalled)",
-                        color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.weight(1f),
+                        "When you add, edit or remove a playlist or profile. Keeps the last 5." +
+                            if (lastAuto > 0) "\nLast one: ${when_.format(Date(lastAuto))}" else "",
+                        color = Vanta.TextDim, fontSize = 13.sp,
                     )
                 }
-                if (ui.hasPassword) {
-                    FocusCard(onClick = vm::forgetPassword) { Text("Forget the backup password", color = Vanta.Text) }
-                }
+                Switch(checked = ui.autoEnabled, onCheckedChange = { on ->
+                    if (on && !ui.hasPassword) ask = Ask.AUTO else vm.setAuto(on)
+                })
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                FocusCard(onClick = {
+                    try { pickFolder.launch(null) } catch (_: ActivityNotFoundException) { vm.setFolder(null) }
+                }) { Text("Choose folder", color = Vanta.Text) }
+                Text(
+                    ui.folderName?.let { "Saving to: $it" } ?: "Saving in the app's folder (removed if the app is uninstalled)",
+                    color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.weight(1f),
+                )
+            }
+            if (ui.hasPassword) {
+                FocusCard(onClick = vm::forgetPassword) { Text("Forget the backup password", color = Vanta.Text) }
+            }
+        }
 
-            WeatherSection(vm)
-
-            if (ui.stored.isNotEmpty()) {
-                Section("Backups on this device") {
-                    ui.stored.take(10).forEach { b ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(if (b.name.startsWith("vantaview-auto-")) "Automatic backup" else "Backup", color = Vanta.Text)
-                                Text(when_.format(Date(b.modified)), color = Vanta.TextDim, fontSize = 13.sp)
-                            }
-                            FocusCard(onClick = { vm.open(b.uri) }) { Text("Restore", color = Vanta.Text) }
+        if (ui.stored.isNotEmpty()) {
+            Section("Backups on this device") {
+                ui.stored.take(10).forEach { b ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (b.name.startsWith("vantaview-auto-")) "Automatic backup" else "Backup", color = Vanta.Text)
+                            Text(when_.format(Date(b.modified)), color = Vanta.TextDim, fontSize = 13.sp)
                         }
+                        FocusCard(onClick = { vm.open(b.uri) }) { Text("Restore", color = Vanta.Text) }
                     }
                 }
             }
+        }
 
-            ui.busy?.let { Text(it, color = Vanta.Cyan) }
-            ui.message?.let { Text(it, color = if (ui.isError) Vanta.Error else Vanta.Cyan) }
-            Spacer(Modifier.height(24.dp))
+        ui.busy?.let { Text(it, color = Vanta.Cyan) }
+        ui.message?.let { Text(it, color = if (ui.isError) Vanta.Error else Vanta.Cyan) }
+    }
+
+    SettingsLayout { section ->
+        when (section) {
+            SettingsSection.WEATHER -> WeatherSection(vm)
+            SettingsSection.BACKUP -> backupContent()
+            else -> ComingSoon(section)
         }
     }
 
