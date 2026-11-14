@@ -51,6 +51,7 @@ private val libraries = listOf(
     Credit("OkHttp", "Apache 2.0"),
     Credit("Coil", "Apache 2.0"),
     Credit("ZXing (QR codes)", "Apache 2.0"),
+    Credit("whisper.cpp and OpenAI Whisper models (AI subtitles)", "MIT"),
 )
 
 /** Settings › Help and about: tour, about, report a problem, terms and credits. */
