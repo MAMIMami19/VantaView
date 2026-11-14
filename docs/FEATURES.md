@@ -173,6 +173,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Release 0.7.0 published
 - [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
+- [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch
 
 ## Before release
 
