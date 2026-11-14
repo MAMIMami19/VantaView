@@ -9,7 +9,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Splash screen with logo and loading bar
 - [x] Terms: Agree or Disagree only (Disagree closes the app)
 - [ ] First launch order: Terms, Create profile, Add Playlist, Home *(Add Playlist is a prompt on Home, not its own step)*
-- [ ] Skip Choose profile when there's only one profile
+- [x] Skip Choose profile when there's only one profile
 - [ ] Update notice on launch
 
 ## Profiles
@@ -124,7 +124,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Subtitles and audio
 - [ ] Sources and storage, Free channels settings
 - [x] Local backup and restore
-- [ ] Parental control and clear history
+- [ ] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN *(after Playback)*
 - [ ] Check for updates (downloads the APK and opens the installer)
 - [ ] Speed test
 - [x] App tour and support
