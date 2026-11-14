@@ -1,3 +1,4 @@
+- TV fixes: works on Android 7 boxes and Fire OS 6; the country chooser fits a TV screen; slimmer sidebar.
 - TV remotes: type a channel number while watching to jump to it; Home's play button shows a focus ring.
 - Live player swipes: left side for brightness, right side for volume (boost up to 200%); swipe sideways to change channel.
 - The favourite star now sits on the left of each channel.
@@ -5,4 +6,3 @@
 - Library: your Watchlist, Continue watching, Watched and Reminders in one place. Add films and series with + Watchlist.
 - Programme reminders: Remind me in the TV Guide, with a pop-up (or a notification when VantaView is closed).
 - Search: one search for channels, programmes, films and series, with recent searches and voice search.
-- Sources and storage: playlists and the TV guide refresh by themselves, Free TV settings, and see or clear the space used.

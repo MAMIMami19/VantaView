@@ -2,6 +2,11 @@ name: Release
 
 # Publish a release: push a tag like v0.1.0, or run this workflow by hand with a version.
 # Notes come from docs/releases/v<version>.md.
+#
+# Two rules so the permanent download link (and Downloader codes) always get the newest version:
+#   1. The APK is always called VantaView.apk.
+#   2. Every release is the latest release, never a pre-release.
+# Permanent link: https://github.com/wardy-uk1/VantaView/releases/latest/download/VantaView.apk
 on:
   push:
     tags: ["v*"]
@@ -37,7 +42,7 @@ jobs:
         run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
       - name: Rename APK
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk "VantaView-${VV_VERSION}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk VantaView.apk
           echo "$VV_VERSION_CODE" > version.txt
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -49,5 +54,5 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            VantaView-${{ env.VV_VERSION }}.apk
+            VantaView.apk
             version.txt

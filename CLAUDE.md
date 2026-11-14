@@ -12,3 +12,12 @@
 ## What's new
 
 `docs/WHATS-NEW.md` is the "What's new" shown in the app's update notice for test builds. In the same commit as any change people will notice, add a short plain-English bullet at the top (newest first) and keep the list to about 8 bullets. Write it for viewers, not developers: what they can now do, not how it was built. For a release, copy the relevant bullets into `docs/releases/v<version>.md`.
+
+## Releases
+
+Every release must keep the permanent download link working (it's used for Downloader codes):
+
+- The APK attached to a release is always named `VantaView.apk`. Never add the version to the file name.
+- Every release is published as the latest release, never as a pre-release. (`test-latest` is the only pre-release.)
+- Permanent link: https://github.com/wardy-uk1/VantaView/releases/latest/download/VantaView.apk
+- Write the notes in `docs/releases/v<version>.md` before running the Release workflow.

@@ -1,5 +1,8 @@
 # VantaView
 
+
+**Download the latest version:** https://github.com/wardy-uk1/VantaView/releases/latest/download/VantaView.apk
+
 **IPTV & VOD player for Android phones, tablets, Android TV and Fire OS.**
 
 VantaView is only a player. It does not include, host or recommend any channels, films or series.
