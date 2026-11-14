@@ -82,6 +82,21 @@ jobs:
         with:
           gradle-version: "8.11.1"
       - run: gradle --no-daemon lintDebug -Plint.abortOnError=false || true
+      - name: Lint summary
+        run: |
+          f=app/build/reports/lint-results-debug.xml
+          echo "== issues by type =="; grep -o 'id="[^"]*"' $f | sort | uniq -c | sort -rn
+          echo "== errors and TV/focus related =="
+          python3 - <<'PY'
+          import re
+          x=open('app/build/reports/lint-results-debug.xml').read()
+          for m in re.finditer(r'<issue\s(.*?)>\s*<location\s(.*?)/>', x, re.S):
+              a,l=m.group(1),m.group(2)
+              g=lambda k,s: (re.search(k+r'="([^"]*)"',s) or [None,''])[1]
+              sev,i=g('severity',a),g('id',a)
+              if sev in ('Error','Fatal') or any(k in i for k in ('Leanback','Touchscreen','Hardware','Focus','Permission','Banner','Television')):
+                  print(sev,i,'|',g('message',a)[:200],'|',g('file',l).split('/app/')[-1]+':'+g('line',l))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
