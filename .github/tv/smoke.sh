@@ -45,6 +45,9 @@ key DPAD_CENTER; sleep 3; shot profile-setup
 tap_text "Profile name"; adb shell input text Tester; key BACK; sleep 1; shot profile-typed
 tap_text "Continue"; sleep 3; shot sources
 tap_text "Add free channels"; sleep 25; shot countries
+# Country chooser with the remote: pick United Kingdom, then go down to Save.
+tap_text "United Kingdom"; sleep 1; shot countries-picked
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do key DPAD_DOWN; done; shot countries-bottom
 tap_text "Save"; sleep 8; shot after-countries
 # Sidebar with the remote: Left opens it; go to each section.
 key BACK; sleep 2; shot back-from-sources

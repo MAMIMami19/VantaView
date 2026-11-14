@@ -49,6 +49,8 @@ jobs:
           api-level: ${{ matrix.api }}
           target: ${{ matrix.target }}
           arch: x86
+          # A real TV screen (1920x1080). Without this the emulator makes a small phone-sized screen.
+          profile: tv_1080p
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
