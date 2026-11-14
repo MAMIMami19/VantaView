@@ -47,6 +47,7 @@ class LiveViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val session: ProfileSession,
     private val countries: CountryStore,
+    private val guide: com.vantaview.app.data.guide.GuideRepository,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
@@ -144,7 +145,32 @@ class LiveViewModel @Inject constructor(
 
     val sync: StateFlow<Map<Long, SyncState>> = repo.syncStates
 
+    /** TV guide state for the active playlist, and a counter that changes when a guide finishes loading. */
+    val guideState = combine(active, guide.states) { p, m -> p?.let { m[it.id] } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val guideVersion: StateFlow<Int> = guide.version
+
+    fun addFreeTv() { viewModelScope.launch { repo.addFreeTv() } }
+
+    fun refreshGuide() { active.value?.let { guide.refresh(it) } }
+
+    /** Now and next on a channel (empty when it has no guide). */
+    suspend fun nowNext(channel: com.vantaview.app.data.db.ChannelEntity): List<com.vantaview.app.data.db.ProgrammeEntity> {
+        val key = channel.epgChannelId ?: return emptyList()
+        return guide.nowNext(channel.providerId, key)
+    }
+
+    /** Programmes on a channel between two times. */
+    suspend fun programmes(channel: com.vantaview.app.data.db.ChannelEntity, from: Long, to: Long): List<com.vantaview.app.data.db.ProgrammeEntity> {
+        val key = channel.epgChannelId ?: return emptyList()
+        return guide.range(channel.providerId, key, from, to)
+    }
+
     init {
+        // Load the TV guide for the playlist in use when it's missing or old.
+        viewModelScope.launch {
+            active.collect { p -> if (p != null) guide.ensureFresh(p) }
+        }
         // A different profile has its own last-used playlist.
         viewModelScope.launch {
             session.current.collect {

@@ -111,3 +111,19 @@ data class CountryRow(val id: Long, val categoryRemoteId: String?, val name: Str
 
 /** How many channels of each country a category has. */
 data class CountryTally(val category: String?, val code: String?, val n: Int)
+
+/**
+ * One programme from a playlist's TV guide (XMLTV). channelKey matches ChannelEntity.epgChannelId.
+ * Times are milliseconds since 1970 (UTC).
+ */
+@Entity(tableName = "programme", indices = [Index(value = ["providerId", "channelKey", "start"])])
+data class ProgrammeEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val providerId: Long,
+    val channelKey: String,
+    val start: Long,
+    val stop: Long,
+    val title: String,
+    val description: String? = null,
+    val category: String? = null,
+)

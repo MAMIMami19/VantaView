@@ -26,6 +26,9 @@ object M3uParser {
     private val vodExt = Regex("\\.(mp4|mkv|avi|mov|wmv|flv)(\\?.*)?$", RegexOption.IGNORE_CASE)
 
     /** GitHub "blob" page links are turned into the raw file link. */
+    /** Video-site page links (not streams). The Free TV list includes some; they can't play here. */
+    private val webPageHosts = Regex("""^https?://([a-z0-9-]+\.)*(youtube\.com|youtu\.be|twitch\.tv|dailymotion\.com|dai\.ly)(/|$)""", RegexOption.IGNORE_CASE)
+
     fun rawGithub(url: String): String {
         val m = Regex("^https?://github\\.com/([^/]+)/([^/]+)/blob/(.+)$").find(url.trim()) ?: return url.trim()
         return "https://raw.githubusercontent.com/${m.groupValues[1]}/${m.groupValues[2]}/${m.groupValues[3]}"
@@ -98,6 +101,7 @@ object M3uParser {
                     val ok = url.startsWith("http", true) || url.startsWith("rtmp", true) ||
                         url.startsWith("rtsp", true) || url.startsWith("udp", true)
                     if (!ok) continue
+                    if (webPageHosts.containsMatchIn(url)) continue
                     if (looksLikeVod(url)) { skipped++; continue }
                     out += M3uEntry(
                         name = name,

@@ -1,0 +1,359 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package com.vantaview.app.feature.guide
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.vantaview.app.data.ChannelNames
+import com.vantaview.app.data.db.ChannelEntity
+import com.vantaview.app.data.db.ProgrammeEntity
+import com.vantaview.app.data.guide.GuideState
+import com.vantaview.app.data.guide.XmltvTime
+import com.vantaview.app.feature.live.CategoryRow
+import com.vantaview.app.feature.live.LiveViewModel
+import com.vantaview.app.ui.FocusCard
+import com.vantaview.app.ui.Vanta
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
+
+private const val MINUTE = 60_000L
+private const val DAY = 24 * 60 * MINUTE
+private val clock = SimpleDateFormat("HH:mm", Locale.UK)
+
+/** One selected programme and the channel it's on, shown in the panel at the top. */
+private data class Picked(val channel: ChannelEntity, val programme: ProgrammeEntity?)
+
+/**
+ * TV Guide: channels down the side, times across the top. Uses the same channel list, categories and
+ * countries as Live TV. Days run from yesterday to a week ahead.
+ */
+@Composable
+fun GuideScreen(onPlay: (Long) -> Unit, vm: LiveViewModel = hiltViewModel()) {
+    val providers by vm.providers.collectAsStateWithLifecycle()
+    val categories by vm.categories.collectAsStateWithLifecycle()
+    val rows by vm.channels.collectAsStateWithLifecycle()
+    val filter by vm.filter.collectAsStateWithLifecycle()
+    val guideState by vm.guideState.collectAsStateWithLifecycle()
+    val guideVersion by vm.guideVersion.collectAsStateWithLifecycle()
+
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
+
+    var day by remember { mutableIntStateOf(0) } // -1 = yesterday … 7
+    val dayStart = remember(day) { XmltvTime.dayStart(day) }
+    var picked by remember { mutableStateOf<Picked?>(null) }
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
+        val wide = maxWidth >= 720.dp
+        val density = LocalDensity.current
+        val minutePx = with(density) { (if (wide) 5.dp else 4.dp).toPx() }
+        val chanW = if (wide) 210.dp else 118.dp
+        val chanPx = with(density) { chanW.toPx() }
+        val gridPx = with(density) { maxWidth.toPx() } - chanPx - with(density) { 32.dp.toPx() }
+        val maxScroll = (24 * 60 * minutePx - gridPx).coerceAtLeast(0f)
+
+        // Horizontal position of the timeline in pixels from the day's midnight.
+        var scrollX by remember { mutableFloatStateOf(0f) }
+        LaunchedEffect(day, gridPx) {
+            val anchor = if (day == 0) now - 30 * MINUTE else dayStart + 18 * 60 * MINUTE
+            scrollX = (((anchor - dayStart) / MINUTE) * minutePx).coerceIn(0f, maxScroll)
+        }
+        fun xOf(t: Long): Float = ((t - dayStart).toFloat() / MINUTE) * minutePx - scrollX
+
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            // Title, status and refresh.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("TV Guide", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(12.dp))
+                val status = when (val s = guideState) {
+                    is GuideState.Loading -> s.stage + "…"
+                    is GuideState.Failed -> s.message
+                    else -> null
+                }
+                if (status != null) {
+                    Text(
+                        status, color = if (guideState is GuideState.Failed) Vanta.Error else Vanta.Cyan, fontSize = 13.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    )
+                } else Spacer(Modifier.weight(1f))
+                if (providers.isNotEmpty()) {
+                    FocusCard(onClick = vm::refreshGuide, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Reload the TV guide", tint = Vanta.Text)
+                    }
+                }
+            }
+            if (providers.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Add a playlist to see its TV guide.", color = Vanta.TextDim)
+                }
+                return@Column
+            }
+            Spacer(Modifier.height(8.dp))
+
+            // Days: yesterday to a week ahead.
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items((-1..7).toList()) { d ->
+                    val label = when (d) {
+                        -1 -> "Yesterday"
+                        0 -> "Today"
+                        1 -> "Tomorrow"
+                        else -> SimpleDateFormat("EEE d", Locale.UK).format(Date(XmltvTime.dayStart(d)))
+                    }
+                    com.vantaview.app.feature.live.FilterChip(label, d == day) { day = d; picked = null }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            CategoryRow(categories, filter) { vm.filter.value = it }
+            Spacer(Modifier.height(8.dp))
+
+            // Details of the chosen programme.
+            DetailsPanel(picked, now, wide, onPlay)
+
+            // Time ruler.
+            Row(Modifier.fillMaxWidth().height(26.dp)) {
+                Spacer(Modifier.width(chanW))
+                Box(Modifier.weight(1f).fillMaxHeight().clipToBounds()) {
+                    for (i in 0 until 48) {
+                        val t = dayStart + i * 30 * MINUTE
+                        val x = xOf(t)
+                        if (x < -100 || x > gridPx + 10) continue
+                        Text(
+                            clock.format(Date(t)), color = Vanta.TextDim, fontSize = 12.sp,
+                            modifier = Modifier.offset { IntOffset(x.roundToInt() + 4, 0) },
+                        )
+                    }
+                }
+            }
+
+            // The grid. Drag sideways anywhere to move through the day; scroll up and down for channels.
+            Box(
+                Modifier.weight(1f).fillMaxWidth().pointerInput(maxScroll) {
+                    detectHorizontalDragGestures { change, dx ->
+                        change.consume()
+                        scrollX = (scrollX - dx).coerceIn(0f, maxScroll)
+                    }
+                }
+            ) {
+                val list = remember(rows) { rows.filter { !ChannelNames.isDivider(it.channel.name) } }
+                if (list.isEmpty()) {
+                    Text("No channels here.", color = Vanta.TextDim, modifier = Modifier.align(Alignment.Center))
+                }
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                ) {
+                    items(list, key = { it.channel.id }) { row ->
+                        GuideRow(
+                            channel = row.channel,
+                            chanW = chanW,
+                            wide = wide,
+                            dayStart = dayStart,
+                            gridPx = gridPx,
+                            version = guideVersion,
+                            xOf = ::xOf,
+                            load = { c -> vm.programmes(c, dayStart, dayStart + DAY) },
+                            picked = picked,
+                            now = now,
+                            onPick = { p -> picked = p },
+                            onFocusProgramme = { p ->
+                                // Keep a focused programme on screen when moving with a remote.
+                                val x = xOf(p.start.coerceAtLeast(dayStart))
+                                if (x < 0 || x > gridPx - 80) {
+                                    scrollX = (((p.start.coerceAtLeast(dayStart) - dayStart) / MINUTE) * minutePx - 40f).coerceIn(0f, maxScroll)
+                                }
+                            },
+                            onPlay = onPlay,
+                        )
+                    }
+                }
+                // Now line.
+                if (day == 0) {
+                    val x = xOf(now)
+                    if (x in 0f..gridPx) {
+                        Box(
+                            Modifier.offset { IntOffset((chanPx + x).roundToInt(), 0) }
+                                .width(2.dp).fillMaxHeight().background(Vanta.Cyan)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailsPanel(picked: Picked?, now: Long, wide: Boolean, onPlay: (Long) -> Unit) {
+    val p = picked ?: return
+    val prog = p.programme
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp)).background(Vanta.Surface).padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (prog != null) "${clock.format(Date(prog.start))} – ${clock.format(Date(prog.stop))} · ${ChannelNames.display(p.channel.name)}"
+                    else ChannelNames.display(p.channel.name),
+                    color = Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    prog?.title ?: "No guide information", color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            val live = prog == null || (prog.start <= now && prog.stop > now)
+            FocusCard(onClick = { onPlay(p.channel.id) }) {
+                Text(if (live) "▶ Watch" else "▶ Watch channel", color = Vanta.Text, fontWeight = FontWeight.Bold)
+            }
+        }
+        val extra = listOfNotNull(prog?.category, prog?.description).joinToString(" · ")
+        if (extra.isNotBlank()) {
+            Text(extra, color = Vanta.TextDim, fontSize = 13.sp, maxLines = if (wide) 3 else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        }
+        if (prog != null && prog.stop <= now) {
+            Text("Already aired. Catch-up isn't in the app yet.", color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        } else if (prog != null && prog.start > now) {
+            Text("Starts at ${clock.format(Date(prog.start))}. Reminders are coming in a later update.", color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
+private fun GuideRow(
+    channel: ChannelEntity,
+    chanW: androidx.compose.ui.unit.Dp,
+    wide: Boolean,
+    dayStart: Long,
+    gridPx: Float,
+    version: Int,
+    xOf: (Long) -> Float,
+    load: suspend (ChannelEntity) -> List<ProgrammeEntity>,
+    picked: Picked?,
+    now: Long,
+    onPick: (Picked) -> Unit,
+    onFocusProgramme: (ProgrammeEntity) -> Unit,
+    onPlay: (Long) -> Unit,
+) {
+    val rowH = if (wide) 60.dp else 56.dp
+    val density = LocalDensity.current
+    val progs by produceState(initialValue = emptyList<ProgrammeEntity>(), channel.id, dayStart, version) {
+        value = runCatching { load(channel) }.getOrDefault(emptyList())
+    }
+    Row(Modifier.fillMaxWidth().height(rowH), verticalAlignment = Alignment.CenterVertically) {
+        // Channel: tap to watch.
+        FocusCard(
+            onClick = { onPlay(channel.id) },
+            modifier = Modifier.width(chanW - 4.dp).fillMaxHeight(),
+            padding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(width = 40.dp, height = 28.dp).clip(RoundedCornerShape(5.dp)).background(Vanta.Bg), contentAlignment = Alignment.Center) {
+                    if (channel.logo != null) AsyncImage(
+                        model = channel.logo, contentDescription = null, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(2.dp),
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Column {
+                    Text(channel.number.toString(), color = Vanta.TextDim, fontSize = 11.sp, maxLines = 1)
+                    Text(
+                        ChannelNames.display(channel.name), color = Vanta.Text, fontSize = if (wide) 13.sp else 11.sp,
+                        maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis, lineHeight = 13.sp,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.width(4.dp))
+        Box(Modifier.weight(1f).fillMaxHeight().clipToBounds()) {
+            if (progs.isEmpty()) {
+                FocusCard(
+                    onClick = { onPick(Picked(channel, null)) },
+                    modifier = Modifier.fillMaxSize(),
+                    padding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                ) { Text("No guide information", color = Vanta.TextDim, fontSize = 12.sp) }
+            }
+            for (p in progs) {
+                val x0 = xOf(p.start).coerceAtLeast(xOf(dayStart))
+                val x1 = xOf(p.stop)
+                if (x1 < 0 || x0 > gridPx) continue
+                val w = with(density) { (x1 - x0 - 3f).coerceAtLeast(6f).toDp() }
+                val isNow = p.start <= now && p.stop > now
+                val past = p.stop <= now
+                val sel = picked?.programme?.id == p.id
+                FocusCard(
+                    onClick = {
+                        // Tap once to see details; tap the live programme again to watch.
+                        if (sel && isNow) onPlay(channel.id) else onPick(Picked(channel, p))
+                    },
+                    selected = sel || isNow,
+                    modifier = Modifier
+                        .offset { IntOffset(x0.roundToInt(), 0) }
+                        .width(w).fillMaxHeight()
+                        .onFocusChanged { if (it.isFocused) { onPick(Picked(channel, p)); onFocusProgramme(p) } },
+                    shape = RoundedCornerShape(8.dp),
+                    padding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Column {
+                        Text(
+                            p.title, color = if (past) Vanta.TextDim else Vanta.Text, fontSize = 13.sp,
+                            fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(clock.format(Date(p.start)), color = Vanta.TextDim, fontSize = 11.sp, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}

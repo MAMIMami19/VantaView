@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -63,7 +64,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vantaview.app.data.ChannelNames
 import com.vantaview.app.data.db.CategoryEntity
+import com.vantaview.app.data.db.ChannelEntity
 import com.vantaview.app.data.db.ChannelRow
+import com.vantaview.app.data.db.ProgrammeEntity
 import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
@@ -94,7 +97,13 @@ fun LiveScreen(
     val sync by vm.sync.collectAsStateWithLifecycle()
     val isKids by vm.isKids.collectAsStateWithLifecycle()
     val countryLabel by vm.countryLabel.collectAsStateWithLifecycle()
+    val guideVersion by vm.guideVersion.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
+
+    // Re-read now and next every minute, and whenever a guide finishes loading.
+    var minute by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { while (true) { delay(60_000); minute++ } }
+    val guideTick = guideVersion * 100_000 + minute
 
     // Typing a channel number: digits collect for a moment, then that channel plays.
     var typed by remember { mutableStateOf("") }
@@ -144,6 +153,7 @@ fun LiveScreen(
                             com.vantaview.app.ui.GradientButton("Add a playlist", onClick = onAddPlaylist)
                             FocusCard(onClick = onAddAddon, contentAlignment = Alignment.Center) { Text("Add an add-on", color = Vanta.Text) }
                         }
+                        if (!isKids) Box(Modifier.widthIn(max = 460.dp)) { com.vantaview.app.feature.playlist.FreeTvCard(onAdd = vm::addFreeTv) }
                     }
                 }
                 return@Column
@@ -178,12 +188,12 @@ fun LiveScreen(
                             }
                         }
                     }
-                    ChannelList(channels, filter, query, wide = true, Modifier.weight(1f).fillMaxHeight(), onPlay, vm::toggleFavourite)
+                    ChannelList(channels, filter, query, wide = true, Modifier.weight(1f).fillMaxHeight(), onPlay, vm::toggleFavourite, guideTick, vm::nowNext)
                 }
             } else {
                 CategoryRow(categories, filter) { vm.filter.value = it }
                 Spacer(Modifier.height(10.dp))
-                ChannelList(channels, filter, query, wide = false, Modifier.fillMaxSize(), onPlay, vm::toggleFavourite)
+                ChannelList(channels, filter, query, wide = false, Modifier.fillMaxSize(), onPlay, vm::toggleFavourite, guideTick, vm::nowNext)
             }
         }
 
@@ -279,7 +289,7 @@ private fun RefreshButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryRow(categories: List<CategoryEntity>, filter: Filter, onSelect: (Filter) -> Unit) {
+internal fun CategoryRow(categories: List<CategoryEntity>, filter: Filter, onSelect: (Filter) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { FilterChip("All", filter == Filter.All) { onSelect(Filter.All) } }
         item { FilterChip("★ Favourites", filter == Filter.Favourites) { onSelect(Filter.Favourites) } }
@@ -290,7 +300,7 @@ private fun CategoryRow(categories: List<CategoryEntity>, filter: Filter, onSele
 }
 
 @Composable
-private fun FilterChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun FilterChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     FocusCard(onClick = onClick, selected = selected, modifier = modifier) {
         Text(
             label,
@@ -311,6 +321,8 @@ private fun ChannelList(
     modifier: Modifier,
     onPlay: (Long) -> Unit,
     onToggleFav: (ChannelRow) -> Unit,
+    guideTick: Int,
+    nowNext: suspend (ChannelEntity) -> List<ProgrammeEntity>,
 ) {
     if (channels.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -335,14 +347,21 @@ private fun ChannelList(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
-            items(channels, key = { it.channel.id }) { row -> ChannelItem(row, wide, onPlay, onToggleFav) }
+            items(channels, key = { it.channel.id }) { row -> ChannelItem(row, wide, onPlay, onToggleFav, guideTick, nowNext) }
         }
         if (channels.size > 60) FastScroller(listState, channels)
     }
 }
 
 @Composable
-private fun ChannelItem(row: ChannelRow, wide: Boolean, onPlay: (Long) -> Unit, onToggleFav: (ChannelRow) -> Unit) {
+private fun ChannelItem(
+    row: ChannelRow,
+    wide: Boolean,
+    onPlay: (Long) -> Unit,
+    onToggleFav: (ChannelRow) -> Unit,
+    guideTick: Int,
+    nowNext: suspend (ChannelEntity) -> List<ProgrammeEntity>,
+) {
     val name = row.channel.name
     if (ChannelNames.isDivider(name)) {
         // The provider's own heading between groups of channels: shown as a heading, not played.
@@ -387,6 +406,7 @@ private fun ChannelItem(row: ChannelRow, wide: Boolean, onPlay: (Long) -> Unit, 
                         maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis,
                     )
                     if (event) Text("Event only · plays while an event is on", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 1)
+                    NowNextLine(row.channel, guideTick, nowNext)
                 }
             }
         }
@@ -439,6 +459,33 @@ private fun FastScroller(state: LazyListState, channels: List<ChannelRow>) {
                 Modifier.align(Alignment.TopEnd).offset(y = top).width(if (dragging) 10.dp else 6.dp).height(thumbH)
                     .clip(RoundedCornerShape(5.dp)).background(if (dragging) Vanta.Cyan else Vanta.TextDim.copy(alpha = 0.6f))
             )
+        }
+    }
+}
+
+private val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK)
+
+/** "Now: title" with a thin progress bar, then "Next: 20:00 title". Nothing when the channel has no guide. */
+@Composable
+internal fun NowNextLine(channel: ChannelEntity, tick: Int, nowNext: suspend (ChannelEntity) -> List<ProgrammeEntity>) {
+    if (channel.epgChannelId == null) return
+    val progs by produceState(initialValue = emptyList<ProgrammeEntity>(), channel.id, tick) {
+        value = runCatching { nowNext(channel) }.getOrDefault(emptyList())
+    }
+    val t = System.currentTimeMillis()
+    val now = progs.firstOrNull()?.takeIf { it.start <= t }
+    val next = if (now != null) progs.getOrNull(1) else progs.firstOrNull()
+    if (now == null && next == null) return
+    Column(Modifier.padding(top = 3.dp)) {
+        if (now != null) {
+            Text("Now: ${now.title}", color = Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val f = ((t - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+            Box(Modifier.padding(vertical = 3.dp).width(140.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Vanta.SurfaceHigh)) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Vanta.Cyan))
+            }
+        }
+        if (next != null) {
+            Text("Next: ${clock.format(java.util.Date(next.start))} ${next.title}", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,6 +39,9 @@ sealed interface SyncState {
 
 /** What the player needs to open a channel. */
 data class PlayTarget(val url: String, val altUrl: String?, val headers: Map<String, String>)
+
+/** Free TV (github.com/Free-TV/IPTV): an M3U playlist of free TV channels around the world. */
+const val FREE_TV_URL = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"
 
 private const val USER_TOKEN = "{{vv_user}}"
 private const val PASS_TOKEN = "{{vv_pass}}"
@@ -86,6 +90,15 @@ class ProviderRepository @Inject constructor(
         )
         sync(id)
         return id
+    }
+
+    /** True when this playlist is the optional Free TV list. */
+    fun isFreeTv(p: ProviderEntity): Boolean = p.kind == "M3U" && p.baseUrl.equals(FREE_TV_URL, ignoreCase = true)
+
+    /** Adds the optional Free TV list (officially free channels), fetched now from its GitHub page, never bundled. */
+    suspend fun addFreeTv(): Long {
+        db.providers().observeFor(session.id).first().firstOrNull { isFreeTv(it) }?.let { return it.id }
+        return addM3u("Free TV", FREE_TV_URL)
     }
 
     suspend fun addXtream(name: String, server: String, username: String, password: String): Long {

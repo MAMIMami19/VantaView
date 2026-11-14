@@ -128,6 +128,7 @@ private fun AppNav(
         route == null -> null
         route == "home" -> Section.HOME
         route == "live" -> Section.LIVE
+        route == "guide" -> Section.GUIDE
         route == "movies" -> Section.MOVIES
         route == "series" -> Section.SERIES
         route.startsWith("sources") -> Section.SOURCES
@@ -205,6 +206,9 @@ private fun AppNav(
                     onAddPlaylist = { nav.goTo("sources?tab=playlists", restore = false) },
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                 )
+            }
+            composable("guide") {
+                com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
             }
             // Movies and TV Series are separate destinations so each keeps its own page and state.
             listOf("movies" to "movie", "series" to "series").forEach { (route, kind) ->

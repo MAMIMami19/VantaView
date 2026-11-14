@@ -71,6 +71,7 @@ class HomeViewModel @Inject constructor(
     private val history: WatchHistory,
     private val session: ProfileSession,
     private val okHttp: OkHttpClient,
+    private val guide: com.vantaview.app.data.guide.GuideRepository,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -80,6 +81,10 @@ class HomeViewModel @Inject constructor(
     val favourites: StateFlow<List<ChannelEntity>> = providerIds
         .flatMapLatest { list -> if (list.isEmpty()) flowOf(emptyList<ChannelEntity>()) else db.content().observeFavouriteChannels(list.map { it.id }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Favourite channels with what's on now (from the TV guide). */
+    private val _onNow = MutableStateFlow<List<Pair<ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity>>>(emptyList())
+    val onNow: StateFlow<List<Pair<ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity>>> = _onNow
 
     private val _tiles = MutableStateFlow<List<Pair<String, Tile>>>(emptyList())
     /** Keyed by section route: "live", "movies", "series". */
@@ -107,6 +112,28 @@ class HomeViewModel @Inject constructor(
             combine(history.entries, profile) { e, _ -> e }.collect { buildContinue(it) }
         }
         viewModelScope.launch { session.current.collect { loadPreview() } }
+        // TV guide: load it when missing or old, then keep "On now" for favourite channels up to date.
+        viewModelScope.launch { providerIds.collect { list -> list.forEach { guide.ensureFresh(it) } } }
+        viewModelScope.launch {
+            combine(favourites, guide.version, minuteTicks()) { f, _, _ -> f }.collect { buildOnNow(it) }
+        }
+    }
+
+    // ---- On now (favourite channels with a guide) ----
+
+
+    private fun minuteTicks() = kotlinx.coroutines.flow.flow {
+        while (true) { emit(System.currentTimeMillis()); kotlinx.coroutines.delay(60_000) }
+    }
+
+    private suspend fun buildOnNow(favs: List<ChannelEntity>) {
+        val out = ArrayList<Pair<ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity>>()
+        favs.filter { it.epgChannelId != null }.groupBy { it.providerId }.forEach { (pid, chans) ->
+            val progs = runCatching { guide.onNow(pid, chans.mapNotNull { it.epgChannelId }) }.getOrDefault(emptyList())
+                .associateBy { it.channelKey }
+            chans.forEach { c -> progs[c.epgChannelId]?.let { out += c to it } }
+        }
+        _onNow.value = out
     }
 
     // ---- Tiles ----
@@ -117,7 +144,9 @@ class HomeViewModel @Inject constructor(
         val out = ArrayList<Pair<String, Tile>>()
         if (ids.isNotEmpty()) {
             val count = db.content().observeChannelCount(ids).first()
-            out += "live" to Tile("LIVE TV", "$count channels", runCatching { db.content().sampleLogos(ids) }.getOrDefault(emptyList()))
+            val logos = runCatching { db.content().sampleLogos(ids) }.getOrDefault(emptyList())
+            out += "live" to Tile("LIVE TV", "$count channels", logos)
+            out += "guide" to Tile("TV GUIDE", "What's on", logos.drop(4).ifEmpty { logos })
         } else {
             out += "live" to Tile("LIVE TV", "Add a playlist", emptyList())
         }

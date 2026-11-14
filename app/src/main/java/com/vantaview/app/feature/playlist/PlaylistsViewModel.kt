@@ -86,6 +86,10 @@ class PlaylistsViewModel @Inject constructor(
 
     fun refresh(id: Long) = repo.sync(id)
 
+    fun hasFreeTv(list: List<ProviderEntity>): Boolean = list.any { repo.isFreeTv(it) }
+
+    fun addFreeTv() { viewModelScope.launch { repo.addFreeTv() } }
+
     fun editCountries(id: Long) { countries.editRequest.value = id }
 
     fun delete(id: Long) {

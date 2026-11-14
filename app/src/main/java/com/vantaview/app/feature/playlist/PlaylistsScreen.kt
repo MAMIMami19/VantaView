@@ -52,6 +52,8 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
             }
 
+            if (!vm.hasFreeTv(providers)) FreeTvCard(onAdd = vm::addFreeTv)
+
             Spacer(Modifier.height(6.dp))
             Text("Add a playlist", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
@@ -154,5 +156,26 @@ private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> 
             }
         }
         Text(line, color = colour, fontSize = 14.sp)
+    }
+}
+
+/** Optional free channels from Free TV, added only when the user asks. */
+@Composable
+fun FreeTvCard(onAdd: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().background(Vanta.Surface, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Try free channels", color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Officially free-to-air TV channels from around the world. Pick your countries after adding. " +
+                "Some channels only play inside their own country.",
+            color = Vanta.TextDim,
+        )
+        GradientButton("Add free channels", onClick = onAdd)
+        Text(
+            "List by Free TV (github.com/Free-TV/IPTV). Thanks to its maintainers and contributors.",
+            color = Vanta.TextDim, fontSize = 12.sp,
+        )
     }
 }

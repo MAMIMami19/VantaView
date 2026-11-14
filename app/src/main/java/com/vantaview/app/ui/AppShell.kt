@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
@@ -65,6 +66,7 @@ import kotlinx.coroutines.launch
 enum class Section(val route: String, val label: String, val icon: ImageVector) {
     HOME("home", "Home", Icons.Filled.Home),
     LIVE("live", "Live TV", Icons.Filled.PlayArrow),
+    GUIDE("guide", "TV Guide", Icons.Filled.DateRange),
     MOVIES("movies", "Movies", Icons.Filled.Star),
     SERIES("series", "TV Series", Icons.Filled.List),
     SOURCES("sources", "Sources", Icons.Filled.Settings),

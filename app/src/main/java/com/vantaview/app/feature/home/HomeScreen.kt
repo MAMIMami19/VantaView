@@ -74,6 +74,7 @@ fun HomeScreen(
     val tiles by vm.tiles.collectAsStateWithLifecycle()
     val cont by vm.continueWatching.collectAsStateWithLifecycle()
     val favs by vm.favourites.collectAsStateWithLifecycle()
+    val onNow by vm.onNow.collectAsStateWithLifecycle()
     val preview by vm.preview.collectAsStateWithLifecycle()
     val newSeason by vm.newSeason.collectAsStateWithLifecycle()
 
@@ -118,6 +119,13 @@ fun HomeScreen(
                             onOpenTitle(c.entry.type, c.entry.metaId, c.entry.title, c.entry.poster, c.playVideoId?.let { v -> if (c.entry.type == "movie") "movie" else v })
                         }
                     }
+                }
+            }
+
+            if (onNow.isNotEmpty()) {
+                Text("On now", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(onNow, key = { it.first.id }) { (ch, p) -> OnNowCard(ch, p, now.time) { onPlayChannel(ch.id) } }
                 }
             }
 
@@ -191,8 +199,8 @@ private fun SectionTile(t: Tile, modifier: Modifier, onClick: () -> Unit) {
                         Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Vanta.SurfaceHigh)) {
                             if (img != null) AsyncImage(
                                 model = img, contentDescription = null,
-                                contentScale = if (t.title == "LIVE TV") ContentScale.Fit else ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().padding(if (t.title == "LIVE TV") 6.dp else 0.dp),
+                                contentScale = if (t.title == "LIVE TV" || t.title == "TV GUIDE") ContentScale.Fit else ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().padding(if (t.title == "LIVE TV" || t.title == "TV GUIDE") 6.dp else 0.dp),
                             )
                         }
                     }
@@ -286,6 +294,33 @@ private fun ChannelCard(ch: ChannelEntity, onClick: () -> Unit) {
             Column {
                 Text(ch.name, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Channel ${ch.number}", color = Vanta.TextDim, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+/** A favourite channel with what's on it now and how far through it is. */
+@Composable
+private fun OnNowCard(ch: ChannelEntity, p: com.vantaview.app.data.db.ProgrammeEntity, now: Long, onClick: () -> Unit) {
+    val clock = SimpleDateFormat("HH:mm", Locale.UK)
+    FocusCard(onClick = onClick, modifier = Modifier.width(260.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(Vanta.Bg), contentAlignment = Alignment.Center) {
+                    if (ch.logo != null) AsyncImage(model = ch.logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(4.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    com.vantaview.app.data.ChannelNames.display(ch.name), color = Vanta.TextDim, fontSize = 13.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(p.title, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${clock.format(Date(p.start))} – ${clock.format(Date(p.stop))}", color = Vanta.TextDim, fontSize = 12.sp)
+            val f = ((now - p.start).toFloat() / (p.stop - p.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+            Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Vanta.SurfaceHigh)) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Vanta.Cyan))
             }
         }
     }

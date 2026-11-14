@@ -92,6 +92,14 @@ interface ContentDao {
     @Query("SELECT * FROM channel WHERE id = :id")
     suspend fun channel(id: Long): ChannelEntity?
 
+    /** Guide IDs used by a playlist's channels. */
+    @Query("SELECT DISTINCT epgChannelId FROM channel WHERE providerId = :providerId AND epgChannelId IS NOT NULL AND epgChannelId != ''")
+    suspend fun guideKeys(providerId: Long): List<String>
+
+    /** Guide IDs used by channels from the chosen countries. */
+    @Query("SELECT DISTINCT epgChannelId FROM channel WHERE providerId = :providerId AND country IN (:codes) AND epgChannelId IS NOT NULL AND epgChannelId != ''")
+    suspend fun guideKeysIn(providerId: Long, codes: List<String>): List<String>
+
     /** A channel by its number in a playlist (for typing a number on the remote). */
     @Query("SELECT * FROM channel WHERE providerId = :providerId AND number = :number ORDER BY sortKey LIMIT 1")
     suspend fun channelByNumber(providerId: Long, number: Int): ChannelEntity?
@@ -222,4 +230,45 @@ interface ProfileDao {
 
     @Query("DELETE FROM kids_category WHERE profileId = :profileId")
     suspend fun clearKidsCategories(profileId: Long)
+}
+
+@Dao
+interface GuideDao {
+    @Insert
+    suspend fun insert(items: List<ProgrammeEntity>)
+
+    @Query("DELETE FROM programme WHERE providerId = :providerId")
+    suspend fun deleteFor(providerId: Long)
+
+    @Query("SELECT COUNT(*) FROM programme WHERE providerId = :providerId")
+    suspend fun count(providerId: Long): Int
+
+    /** Programmes on one channel that overlap [from, to). */
+    @Query(
+        """
+        SELECT * FROM programme
+        WHERE providerId = :providerId AND channelKey = :key AND stop > :from AND start < :to
+        ORDER BY start
+        """
+    )
+    suspend fun range(providerId: Long, key: String, from: Long, to: Long): List<ProgrammeEntity>
+
+    /** What's on now and next on one channel. */
+    @Query(
+        """
+        SELECT * FROM programme
+        WHERE providerId = :providerId AND channelKey = :key AND stop > :now
+        ORDER BY start LIMIT 2
+        """
+    )
+    suspend fun nowNext(providerId: Long, key: String, now: Long): List<ProgrammeEntity>
+
+    /** What's on now across several channels (keys are guide IDs). */
+    @Query(
+        """
+        SELECT * FROM programme
+        WHERE providerId = :providerId AND channelKey IN (:keys) AND start <= :now AND stop > :now
+        """
+    )
+    suspend fun onNow(providerId: Long, keys: List<String>, now: Long): List<ProgrammeEntity>
 }
