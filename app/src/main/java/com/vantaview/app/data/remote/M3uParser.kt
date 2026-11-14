@@ -53,7 +53,7 @@ object M3uParser {
         val options = mutableMapOf<String, String>()
 
         for (raw in lines) {
-            val line = raw.trim().removePrefix("﻿")
+            val line = raw.trim().removePrefix("\uFEFF")
             if (first && line.isNotEmpty()) {
                 first = false
                 if (line.startsWith("<")) throw IllegalArgumentException("This link is a web page, not a playlist")

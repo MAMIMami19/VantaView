@@ -75,7 +75,10 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify((channelId + start).toInt(), n) }
+        val allowed = Build.VERSION.SDK_INT < 33 || androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (allowed) runCatching { NotificationManagerCompat.from(context).notify((channelId + start).toInt(), n) }
     }
 
     companion object { const val CHANNEL = "reminders" }

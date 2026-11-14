@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.vantaview.app.feature.player
 
 import android.app.Activity

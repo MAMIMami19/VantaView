@@ -50,6 +50,8 @@ android {
     }
 
     compileOptions {
+        // java.time (dates from add-ons, debrid and GitHub) needs this on Android 7 and 7.1 (Fire OS 6 and older boxes).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -70,6 +72,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     // Backups: QR codes for sending to a phone, and saving into a folder the user picks.
