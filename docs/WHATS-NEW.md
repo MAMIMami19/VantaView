@@ -1,4 +1,4 @@
-- Films and series in your M3U playlist or Xtream Codes login now show on Movies and TV Series, with posters and details from TMDB. They also appear as "From your playlist" when you open the same title from an add-on. Refresh the playlist once to bring them in.
+- Films and series in your M3U playlist or Xtream Codes login now show on Movies and TV Series, with posters and details from TMDB. They also appear as "From your playlist" when you open the same title from an add-on. Refresh the playlist once to bring them in; they also show when you have no add-ons.
 - While a torrent or debrid stream gets ready, its progress shows for 5 seconds and then hides. Tap the screen to see it again.
 - Torrent results now play without a debrid account. Debrid is still used first when you have one. While a torrent plays it shares with others, and it stops and deletes the file when you close it. You can turn this off in Settings › Playback.
 - VantaView now speaks Spanish, French, German, Italian, Portuguese, Dutch, Polish and Turkish. It follows your device, or pick a language for each profile in Settings › Appearance. Film and series details come in that language too.

@@ -63,6 +63,10 @@ class AddonRepository @Inject constructor(
     fun observePortals(): Flow<List<com.vantaview.app.data.db.ProviderEntity>> =
         session.current.flatMapLatest { db.providers().observeFor(it) }.map { list -> list.filter { it.kind == "STALKER" } }
 
+    /** Playlists that can carry films and series (portals, M3U, Xtream); emits again after each refresh. */
+    fun observeVodSources(): Flow<List<com.vantaview.app.data.db.ProviderEntity>> =
+        session.current.flatMapLatest { db.providers().observeFor(it) }.map { list -> list.filter { it.kind in setOf("STALKER", "M3U", "XTREAM") } }
+
     private suspend fun portals() = db.providers().allFor(session.id).filter { it.kind == "STALKER" }
     private suspend fun playlists() = db.providers().allFor(session.id)
 

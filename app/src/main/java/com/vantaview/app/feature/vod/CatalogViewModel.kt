@@ -119,16 +119,18 @@ class CatalogViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(repo.observe(), repo.observePortals(), profiles.observeCurrent()) { a, portals, p ->
-                Triple(a, portals.size, p)
-            }.collect { (addons, portals, p) ->
+            // Playlists are watched too, so their films and series appear as soon as a refresh finishes.
+            kotlinx.coroutines.flow.combine(repo.observe(), repo.observeVodSources(), profiles.observeCurrent()) { a, sources, p ->
+                Triple(a, sources, p)
+            }.collect { (addons, _, p) ->
                 val kids = p?.isKids == true
                 val rows = if (kids) repo.kidsCatalogs(type) else repo.catalogs(type)
                 _ui.update {
-                    // Stalker portals count as sources here: their films and series are rows too (not on Kids profiles).
-                    val sources = addons.count { a -> a.entity.enabled } + if (kids) 0 else portals
+                    // Portals and playlists with films or series count as sources: their titles are rows too
+                    // (not on Kids profiles). A playlist's rows are read again, as a refresh may have changed them.
+                    val sources = addons.count { a -> a.entity.enabled } + rows.count { r -> r.addon.entity.id < 0 }
                     it.copy(loaded = true, kids = kids, addonCount = sources, rows = rows, tiles = browse.tiles(type, kids),
-                        rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k } })
+                        rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k && r.addon.entity.id > -1_000_000_000L } })
                 }
                 rows.forEach { load(it) }
             }
