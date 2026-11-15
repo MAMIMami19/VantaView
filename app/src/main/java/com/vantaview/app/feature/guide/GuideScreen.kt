@@ -79,7 +79,7 @@ private data class Picked(val channel: ChannelEntity, val programme: ProgrammeEn
  * countries as Live TV. Days run from yesterday to a week ahead.
  */
 @Composable
-fun GuideScreen(onPlay: (Long) -> Unit, vm: LiveViewModel = hiltViewModel()) {
+fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveViewModel = hiltViewModel()) {
     val providers by vm.providers.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
     val rows by vm.channels.collectAsStateWithLifecycle()
@@ -160,10 +160,15 @@ fun GuideScreen(onPlay: (Long) -> Unit, vm: LiveViewModel = hiltViewModel()) {
             // Details of the chosen programme.
             val remindersSet by vm.reminderList.collectAsStateWithLifecycle()
             val notify = rememberNotificationAsk()
+            val catchUpMessage by vm.catchUpMessage.collectAsStateWithLifecycle()
+            LaunchedEffect(picked) { vm.catchUpMessage.value = null }
             DetailsPanel(
                 picked, now, wide, onPlay,
                 reminded = { c, pr -> remindersSet.any { it.channelId == c.id && it.start == pr.start } },
                 onRemind = { c, pr -> if (vm.toggleReminder(c, pr)) notify() },
+                canCatchUp = { c, pr -> vm.hasCatchUp(c, pr) },
+                onCatchUp = { c, pr -> vm.catchUp(c, pr, onCatchUp) },
+                catchUpMessage = catchUpMessage,
             )
 
             // Time ruler.
@@ -244,6 +249,9 @@ private fun DetailsPanel(
     picked: Picked?, now: Long, wide: Boolean, onPlay: (Long) -> Unit,
     reminded: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Boolean,
     onRemind: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Unit,
+    canCatchUp: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Boolean = { _, _ -> false },
+    onCatchUp: (ChannelEntity, com.vantaview.app.data.db.ProgrammeEntity) -> Unit = { _, _ -> },
+    catchUpMessage: String? = null,
 ) {
     val p = picked ?: return
     val prog = p.programme
@@ -270,6 +278,13 @@ private fun DetailsPanel(
                 }
                 Spacer(Modifier.width(8.dp))
             }
+            val catchUp = prog != null && canCatchUp(p.channel, prog)
+            if (catchUp) {
+                FocusCard(onClick = { onCatchUp(p.channel, prog!!) }) {
+                    Text("⟲ Watch from start", color = Vanta.Cyan, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             FocusCard(onClick = { onPlay(p.channel.id) }) {
                 Text(if (live) "▶ Watch" else "▶ Watch channel", color = Vanta.Text, fontWeight = FontWeight.Bold)
             }
@@ -278,8 +293,14 @@ private fun DetailsPanel(
         if (extra.isNotBlank()) {
             Text(extra, color = Vanta.TextDim, fontSize = 13.sp, maxLines = if (wide) 3 else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         }
-        if (prog != null && prog.stop <= now) {
-            Text("Already aired. Catch-up isn't in the app yet.", color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        if (catchUpMessage != null) {
+            Text(catchUpMessage, color = Vanta.Cyan, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        } else if (prog != null && prog.stop <= now) {
+            Text(
+                if (canCatchUp(p.channel, prog)) "Already aired. Your provider keeps a recording you can watch from the start."
+                else "Already aired. This channel has no catch-up.",
+                color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
+            )
         } else if (prog != null && prog.start > now) {
             Text(
                 "Starts at ${clock.format(Date(prog.start))}." + if (reminded(p.channel, prog)) " You'll be reminded before it starts." else "",

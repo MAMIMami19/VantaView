@@ -78,11 +78,15 @@ class CatalogViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(repo.observe(), profiles.observeCurrent()) { a, p -> a to p }.collect { (addons, p) ->
+            kotlinx.coroutines.flow.combine(repo.observe(), repo.observePortals(), profiles.observeCurrent()) { a, portals, p ->
+                Triple(a, portals.size, p)
+            }.collect { (addons, portals, p) ->
                 val kids = p?.isKids == true
                 val rows = if (kids) repo.kidsCatalogs(type) else repo.catalogs(type)
                 _ui.update {
-                    it.copy(loaded = true, kids = kids, addonCount = addons.count { a -> a.entity.enabled }, rows = rows,
+                    // Stalker portals count as sources here: their films and series are rows too (not on Kids profiles).
+                    val sources = addons.count { a -> a.entity.enabled } + if (kids) 0 else portals
+                    it.copy(loaded = true, kids = kids, addonCount = sources, rows = rows,
                         rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k } })
                 }
                 rows.forEach { load(it) }

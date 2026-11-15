@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -57,7 +58,7 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
             Spacer(Modifier.height(6.dp))
             Text("Add a playlist", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SourceTab.entries.forEach { tab ->
                     FocusCard(onClick = { vm.edit { it.copy(tab = tab) } }, selected = form.tab == tab) {
                         Text(
@@ -72,7 +73,7 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
             when (form.tab) {
                 SourceTab.SMART -> {
                     Text(
-                        "Paste the message or link your provider sent you. VantaView will pick out the details.",
+                        "Paste the message or link your provider sent you. VantaView will pick out the details, including a portal address and MAC address.",
                         color = Vanta.TextDim,
                     )
                     Field("Provider message or link", form.smartText, singleLine = false, minLines = 4) { v ->
@@ -94,6 +95,16 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                         "Add playlist", onClick = vm::add,
                         enabled = form.server.isNotBlank() && form.username.isNotBlank() && form.password.isNotBlank(),
                     )
+                }
+                SourceTab.STALKER -> {
+                    Text(
+                        "For a MAG-style portal subscription. Use the portal address and the MAC address your provider registered for you.",
+                        color = Vanta.TextDim,
+                    )
+                    Field("Portal name (optional)", form.name) { v -> vm.edit { it.copy(name = v) } }
+                    Field("Portal address (like http://example.com:8080/c/)", form.portal, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(portal = v) } }
+                    Field("MAC address (like 00:1A:79:12:34:56)", form.mac, keyboard = KeyboardType.Ascii) { v -> vm.edit { it.copy(mac = v) } }
+                    GradientButton("Add portal", onClick = vm::add, enabled = form.portal.isNotBlank() && form.mac.isNotBlank())
                 }
             }
 
@@ -132,7 +143,10 @@ private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(p.name, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (p.kind == "XTREAM") "Xtream Codes" else "M3U playlist", color = Vanta.TextDim, fontSize = 13.sp)
+                Text(
+                    when (p.kind) { "XTREAM" -> "Xtream Codes"; "STALKER" -> "Stalker portal · live TV, films and series"; else -> "M3U playlist" },
+                    color = Vanta.TextDim, fontSize = 13.sp,
+                )
             }
             Spacer(Modifier.width(8.dp))
             if (p.channelCount > 0) {

@@ -53,6 +53,7 @@ class LiveViewModel @Inject constructor(
     private val library: com.vantaview.app.data.library.LibraryStore,
     private val reminders: com.vantaview.app.data.library.ReminderScheduler,
     private val playback: com.vantaview.app.data.PlaybackSettings,
+    private val vodSession: com.vantaview.app.data.addon.VodSession,
     profiles: ProfileRepository,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
@@ -209,6 +210,33 @@ class LiveViewModel @Inject constructor(
     // ---- Programme reminders (the guide's Remind me) ----
 
     val reminderList = library.reminders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun hasCatchUp(channel: ChannelEntity, prog: com.vantaview.app.data.db.ProgrammeEntity): Boolean = repo.hasCatchUp(channel, prog)
+
+    /** Catch-up message for the guide ("Getting the recording…" or a problem); null when there's nothing to say. */
+    val catchUpMessage = MutableStateFlow<String?>(null)
+
+    /** Asks the provider for a past programme's recording, then hands it to the film player. */
+    fun catchUp(channel: ChannelEntity, prog: com.vantaview.app.data.db.ProgrammeEntity, onReady: () -> Unit) {
+        catchUpMessage.value = "Getting the recording…"
+        viewModelScope.launch {
+            val target = runCatching { repo.catchUp(channel, prog) }
+            val t = target.getOrNull()
+            if (t == null) {
+                catchUpMessage.value = target.exceptionOrNull()?.message ?: "This programme isn't available to catch up on."
+                return@launch
+            }
+            val name = com.vantaview.app.data.ChannelNames.display(channel.name)
+            vodSession.current = com.vantaview.app.data.addon.VodRequest(
+                title = prog.title,
+                subtitle = name + " · " + java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.UK).format(java.util.Date(prog.start)),
+                streams = listOf(com.vantaview.app.data.addon.AddonStream(t.url, name, "Catch-up", t.headers, 0, null, 0)),
+                type = "catchup",
+            )
+            catchUpMessage.value = null
+            onReady()
+        }
+    }
 
     /** Sets or cancels a reminder; returns true when one is now set. */
     fun toggleReminder(channel: ChannelEntity, prog: com.vantaview.app.data.db.ProgrammeEntity): Boolean {

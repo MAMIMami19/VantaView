@@ -6,7 +6,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** A playlist the user added. kind is "M3U" or "XTREAM". */
+/** A playlist the user added. kind is "M3U", "XTREAM" or "STALKER" (portal address in baseUrl, MAC address encrypted in passwordEnc). */
 @Entity(tableName = "provider", indices = [Index("profileId")])
 data class ProviderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -58,6 +58,8 @@ data class ChannelEntity(
     val isAdult: Boolean = false,
     /** Country code worked out after each sync (see CountryDetect); null until then. */
     val country: String? = null,
+    /** Days of catch-up the provider keeps for this channel (Stalker tv_archive); 0 = none. */
+    val archiveDays: Int = 0,
 )
 
 @Entity(tableName = "favourite", primaryKeys = ["providerId", "remoteId"])
@@ -126,4 +128,6 @@ data class ProgrammeEntity(
     val title: String,
     val description: String? = null,
     val category: String? = null,
+    /** The provider's own id for this programme, used to ask for its catch-up recording. */
+    val remoteId: String? = null,
 )

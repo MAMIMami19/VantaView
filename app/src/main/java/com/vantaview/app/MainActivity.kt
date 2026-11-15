@@ -280,7 +280,7 @@ private fun AppNav(
                 )
             }
             composable("guide") {
-                com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") })
+                com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") }, onCatchUp = { nav.navigate("vod") })
             }
             // Movies and TV Series are separate destinations so each keeps its own page and state.
             listOf("movies" to "movie", "series" to "series").forEach { (route, kind) ->

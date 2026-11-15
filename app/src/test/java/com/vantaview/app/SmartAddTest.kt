@@ -83,4 +83,36 @@ class SmartAddTest {
         assertEquals("http://a.example.com/panel", SmartAdd.normalizeServer("http://a.example.com/panel/get.php?username=x"))
         assertEquals("http://a.example.com:80", SmartAdd.normalizeServer("a.example.com:80/live/u/p/1.ts"))
     }
+
+    @Test
+    fun stalkerPortalAndMac() {
+        assertEquals(
+            SmartAddResult.Stalker("http://portal.example.com:8080/c/", "00:1A:79:AB:CD:EF"),
+            SmartAdd.parse("Portal: http://portal.example.com:8080/c/\nMAC: 00:1a:79:ab:cd:ef\nExpires 2027"),
+        )
+    }
+
+    @Test
+    fun stalkerMacWithDashesAndUnlabelledPortal() {
+        assertEquals(
+            SmartAddResult.Stalker("http://tv.example.com/stalker_portal/c", "00:1A:79:00:11:22"),
+            SmartAdd.parse("Your box 00-1A-79-00-11-22 is active on http://tv.example.com/stalker_portal/c"),
+        )
+    }
+
+    @Test
+    fun xtreamLinkStillWinsOverAMac() {
+        assertEquals(
+            xtream("http://tv.example.com:8080", "bob", "pw"),
+            SmartAdd.parse("http://tv.example.com:8080/get.php?username=bob&password=pw (box 00:1A:79:00:11:22)"),
+        )
+    }
+
+    @Test
+    fun macNormalising() {
+        assertEquals("00:1A:79:AB:CD:EF", com.vantaview.app.data.stalker.StalkerClient.normalizeMac("001a79abcdef"))
+        assertEquals("00:1A:79:AB:CD:EF", com.vantaview.app.data.stalker.StalkerClient.normalizeMac(" 00-1a-79-ab-cd-ef "))
+        assertEquals(null, com.vantaview.app.data.stalker.StalkerClient.normalizeMac("00:1A:79:AB:CD"))
+        assertEquals(null, com.vantaview.app.data.stalker.StalkerClient.normalizeMac("zz:1A:79:AB:CD:EF"))
+    }
 }

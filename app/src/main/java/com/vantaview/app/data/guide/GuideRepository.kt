@@ -48,6 +48,7 @@ class GuideRepository @Inject constructor(
     private val session: ProfileSession,
     private val countries: CountryStore,
     private val schedule: com.vantaview.app.data.SourceSettings,
+    private val stalker: com.vantaview.app.data.stalker.StalkerClient,
     @AppScope private val scope: CoroutineScope,
 ) {
     private val sp = context.getSharedPreferences("guide", Context.MODE_PRIVATE)
@@ -129,9 +130,10 @@ class GuideRepository @Inject constructor(
     private suspend fun load(provider: ProviderEntity): Int {
         val p = freeTvLinks(provider)
         val all = guideUrls(p)
-        if (all.isEmpty()) throw IllegalStateException("This playlist doesn't include a TV guide link")
         val pick = countries.chosen(session.id, p.id)
         val keys = (if (pick == null) db.content().guideKeys(p.id) else db.content().guideKeysIn(p.id, pick.toList())).toHashSet()
+        if (all.isEmpty() && p.kind == "STALKER") return loadStalker(p, keys)
+        if (all.isEmpty()) throw IllegalStateException("This playlist doesn't include a TV guide link")
         if (keys.isEmpty()) throw IllegalStateException("The channels in this playlist don't have guide IDs")
 
         val urls = GuideSources.pick(all, keys)
@@ -155,6 +157,35 @@ class GuideRepository @Inject constructor(
             throw lastError!!
         }
         return sink.total
+    }
+
+    /** A Stalker portal's own guide (get_epg_info), from yesterday to a week ahead where the portal has it. */
+    private suspend fun loadStalker(p: ProviderEntity, keys: Set<String>): Int {
+        if (keys.isEmpty()) throw IllegalStateException("This portal sent no channels")
+        val from = XmltvTime.dayStart(-1)
+        val to = XmltvTime.dayStart(8)
+        val dao = db.guide()
+        // Portals often only send from now on, so programmes that have finished are kept from earlier
+        // loads: they're the ones catch-up can play.
+        val cut = System.currentTimeMillis()
+        var cleared = false
+        var total = 0
+        var past: HashSet<String>? = null
+        val hours = ((to - cut) / 3_600_000L).toInt().coerceIn(24, 192)
+        stalker.guide(p, hours, keys, from, to) { incoming ->
+            if (!cleared) { dao.keepPast(p.id, from, cut); past = dao.pastKeys(p.id, cut).toHashSet(); cleared = true }
+            val batch = incoming.filter { it.stop > cut || past!!.add("${it.channelId}|${it.start}") }
+            dao.insert(batch.map {
+                ProgrammeEntity(
+                    providerId = p.id, channelKey = it.channelId, start = it.start, stop = it.stop, title = it.title,
+                    description = it.description, category = it.category, remoteId = it.id,
+                )
+            })
+            total += batch.size
+            setState(p.id, GuideState.Loading("Loading the TV guide: ${"%,d".format(total)} programmes"))
+        }
+        if (total == 0) throw IllegalStateException("The portal's TV guide had nothing for the next week")
+        return total
     }
 
     /** Downloads one guide file, trying a few app names because some servers only answer known players. */

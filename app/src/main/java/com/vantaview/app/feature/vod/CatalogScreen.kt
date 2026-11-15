@@ -56,7 +56,7 @@ fun CatalogScreen(
         }
         if (ui.loaded && ui.addonCount == 0) {
             Empty(
-                "No add-ons yet. Install Stremio or Nuvio add-ons on the Sources page and their " +
+                "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their " +
                     (if (vm.type == "series") "series" else "films") + " appear here.",
                 "Add an add-on", onAddAddon,
             )

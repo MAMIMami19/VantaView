@@ -259,6 +259,13 @@ interface GuideDao {
     @Query("DELETE FROM programme")
     suspend fun clearAll()
 
+    /** Keeps programmes that ended after [from] and before [cut] (catch-up), and drops the rest. */
+    @Query("DELETE FROM programme WHERE providerId = :providerId AND (stop <= :from OR stop > :cut)")
+    suspend fun keepPast(providerId: Long, from: Long, cut: Long)
+
+    @Query("SELECT channelKey || '|' || start FROM programme WHERE providerId = :providerId AND stop <= :cut")
+    suspend fun pastKeys(providerId: Long, cut: Long): List<String>
+
     /** Search: programmes on now or later whose title matches. */
     @Query(
         """

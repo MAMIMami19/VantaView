@@ -52,6 +52,7 @@ class ProviderRepository @Inject constructor(
     private val http: OkHttpClient,
     private val crypto: CredentialCrypto,
     private val session: com.vantaview.app.data.profile.ProfileSession,
+    private val stalker: com.vantaview.app.data.stalker.StalkerClient,
     @AppScope private val scope: CoroutineScope,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
@@ -119,7 +120,28 @@ class ProviderRepository @Inject constructor(
         return id
     }
 
+    /** A Stalker (MAG) portal: the portal address and the MAC address your provider registered. */
+    suspend fun addStalker(name: String, portal: String, mac: String): Long {
+        require(portal.isNotBlank()) { "Enter the portal address" }
+        val clean = com.vantaview.app.data.stalker.StalkerClient.normalizeMac(mac)
+            ?: throw IllegalArgumentException("That MAC address doesn't look right. It's 12 letters and numbers, like 00:1A:79:12:34:56")
+        var url = portal.trim()
+        if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) url = "http://$url"
+        val id = db.providers().insert(
+            ProviderEntity(
+                profileId = session.id,
+                name = name.ifBlank { "My portal" },
+                kind = "STALKER",
+                baseUrl = url.substringBefore('#').trimEnd('/'),
+                passwordEnc = crypto.encrypt(clean),
+            )
+        )
+        sync(id)
+        return id
+    }
+
     suspend fun delete(id: Long) {
+        stalker.forget(id)
         db.content().deleteChannels(id)
         db.content().deleteCategories(id)
         db.content().deleteFavourites(id)
@@ -145,7 +167,11 @@ class ProviderRepository @Inject constructor(
         scope.launch(Dispatchers.IO) {
             val provider = db.providers().get(id) ?: return@launch
             try {
-                val done = if (provider.kind == "XTREAM") syncXtream(provider) else syncM3u(provider)
+                val done = when (provider.kind) {
+                    "XTREAM" -> syncXtream(provider)
+                    "STALKER" -> syncStalker(provider)
+                    else -> syncM3u(provider)
+                }
                 db.providers().get(id)?.let {
                     db.providers().update(
                         it.copy(lastSyncAt = System.currentTimeMillis(), channelCount = done.channels, lastError = null)
@@ -376,6 +402,59 @@ class ProviderRepository @Inject constructor(
         )
     }
 
+    private suspend fun syncStalker(p: ProviderEntity): SyncState.Done {
+        setState(p.id, SyncState.Running("Signing in to the portal"))
+        stalker.check(p)
+        setState(p.id, SyncState.Running("Loading categories"))
+        val genres = runCatching { stalker.liveGenres(p) }.getOrDefault(emptyList())
+        val censored = genres.filter { it.censored }.map { it.id }.toSet()
+        val categories = genres.mapIndexed { i, g -> CategoryEntity(providerId = p.id, remoteId = g.id, name = g.title, position = i) }
+        setState(p.id, SyncState.Running("Loading channels"))
+        val list = stalker.liveChannels(p) { setState(p.id, SyncState.Running(it)) }
+        val seen = HashSet<String>()
+        val channels = list.mapIndexedNotNull { i, o ->
+            val id = o.optString("id")
+            val cmd = o.optString("cmd")
+            if (id.isBlank() || cmd.isBlank() || !seen.add(id)) return@mapIndexedNotNull null
+            val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
+            val genre = o.optString("tv_genre_id").ifBlank { null }
+            ChannelEntity(
+                providerId = p.id,
+                remoteId = id,
+                name = name,
+                sortKey = name.lowercase(),
+                number = o.optString("number").toIntOrNull() ?: (i + 1),
+                logo = stalker.absolute(p, o.optString("logo")),
+                categoryRemoteId = genre,
+                streamUrl = "stalker:$cmd",
+                // The portal's own guide is keyed by channel id.
+                epgChannelId = id,
+                isAdult = o.optString("censored") == "1" || (genre != null && genre in censored),
+                archiveDays = if (o.optString("tv_archive") == "1" || o.optInt("tv_archive", 0) == 1)
+                    (o.optInt("tv_archive_duration", 0).let { h -> if (h > 0) (h + 23) / 24 else 1 }) else 0,
+            )
+        }
+        if (channels.isEmpty()) throw IllegalStateException("Signed in, but the portal sent no live channels")
+        setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
+        db.content().replaceLive(p.id, categories, channels)
+        return SyncState.Done(channels.size, 0)
+    }
+
+    /**
+     * Catch-up: an address for a programme that has already aired, when the channel's provider keeps
+     * recordings (Stalker portals with TV archive). Null when there's none.
+     */
+    suspend fun catchUp(channel: ChannelEntity, programme: com.vantaview.app.data.db.ProgrammeEntity): PlayTarget? {
+        if (channel.archiveDays <= 0 || programme.remoteId == null) return null
+        val p = db.providers().get(channel.providerId)?.takeIf { it.kind == "STALKER" } ?: return null
+        return PlayTarget(stalker.archiveLink(p, programme.remoteId), null, stalker.playHeaders)
+    }
+
+    /** True when catch-up can be offered for this programme. */
+    fun hasCatchUp(channel: ChannelEntity, programme: com.vantaview.app.data.db.ProgrammeEntity, now: Long = System.currentTimeMillis()): Boolean =
+        channel.archiveDays > 0 && programme.remoteId != null && programme.stop <= now &&
+            programme.start > now - channel.archiveDays * 86_400_000L
+
     /** Turns a stored channel into a real address (and a second one to try) just before playback. */
     suspend fun resolveStream(channel: ChannelEntity): PlayTarget = withContext(Dispatchers.IO) {
         val headers = channel.headersJson?.let { json ->
@@ -396,6 +475,9 @@ class ProviderRepository @Inject constructor(
                 .replace(PASS_TOKEN, crypto.decrypt(p.passwordEnc))
             val m3u8 = if (url.endsWith(".ts")) url.removeSuffix(".ts") + ".m3u8" else null
             PlayTarget(url, m3u8, headers)
+        } else if (channel.streamUrl.startsWith("stalker:")) {
+            val p = db.providers().get(channel.providerId) ?: throw IllegalStateException("Playlist not found")
+            PlayTarget(stalker.createLink(p, "itv", channel.streamUrl.removePrefix("stalker:")), null, stalker.playHeaders + headers)
         } else {
             PlayTarget(channel.streamUrl, null, headers)
         }

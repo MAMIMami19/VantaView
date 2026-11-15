@@ -1,8 +1,8 @@
+- Catch-up: in the TV Guide, pick a programme that has already aired on a portal channel with catch-up and choose Watch from start.
+- Stalker portals: add one with its portal address and MAC address (or paste your provider's message into Smart Add). Live TV, the portal's TV guide, films and series all appear in the app.
 - Fire TV: smoother loading screen ripple, no black flash before Home, and easier-to-read Home tiles.
 - Opens much faster, especially on Fire TV Sticks, and shows the logo straight away instead of a blank screen.
 - TV fixes: works on Android 7 boxes and Fire OS 6; the country chooser fits a TV screen; slimmer sidebar.
 - TV remotes: type a channel number while watching to jump to it; Home's play button shows a focus ring.
 - Live player swipes: left side for brightness, right side for volume (boost up to 200%); swipe sideways to change channel.
 - The favourite star now sits on the left of each channel.
-- Sort Movies and TV Series: recently added, A to Z, Z to A, newest, oldest or top rated.
-- Library: your Watchlist, Continue watching, Watched and Reminders in one place. Add films and series with + Watchlist.

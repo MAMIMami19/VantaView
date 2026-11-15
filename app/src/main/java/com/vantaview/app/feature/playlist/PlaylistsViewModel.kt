@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class SourceTab(val label: String) { SMART("Smart Add"), M3U("M3U link"), XTREAM("Xtream Codes") }
+enum class SourceTab(val label: String) { SMART("Smart Add"), M3U("M3U link"), XTREAM("Xtream Codes"), STALKER("Stalker portal") }
 
 data class PlaylistForm(
     val tab: SourceTab = SourceTab.SMART,
@@ -28,6 +28,8 @@ data class PlaylistForm(
     val server: String = "",
     val username: String = "",
     val password: String = "",
+    val portal: String = "",
+    val mac: String = "",
     val message: String? = null,
     val isError: Boolean = false,
 )
@@ -61,6 +63,12 @@ class PlaylistsViewModel @Inject constructor(
                     message = "Found an M3U link. Check it and press Add playlist.", isError = false,
                 )
             }
+            is SmartAddResult.Stalker -> _form.update {
+                it.copy(
+                    tab = SourceTab.STALKER, portal = r.portal, mac = r.mac,
+                    message = "Found a Stalker portal and MAC address. Check them and press Add portal.", isError = false,
+                )
+            }
             SmartAddResult.None -> _form.update {
                 it.copy(message = "Couldn't find a playlist link or login in that text.", isError = true)
             }
@@ -74,6 +82,7 @@ class PlaylistsViewModel @Inject constructor(
                 val id = when (f.tab) {
                     SourceTab.M3U -> repo.addM3u(f.name, f.m3uUrl)
                     SourceTab.XTREAM -> repo.addXtream(f.name, f.server, f.username, f.password)
+                    SourceTab.STALKER -> repo.addStalker(f.name, f.portal, f.mac)
                     SourceTab.SMART -> { detect(); return@launch }
                 }
                 session.setLastProvider(id)

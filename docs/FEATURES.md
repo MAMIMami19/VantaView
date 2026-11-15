@@ -26,7 +26,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 - [x] Xtream Codes
 - [ ] M3U link or file *(link only)*
-- [ ] Stalker / MAC portal
+- [x] Stalker / MAC portal
 - [x] Smart Add (paste a provider message)
 - [ ] Optional EPG link per source *(the playlist's own guide link is used; no box to type one)*
 - [x] Free channels (Free TV list, country picker, daily refresh, YouTube/Twitch/Dailymotion removed)
@@ -59,7 +59,7 @@ This file is ticked off in the same commit that finishes a feature.
 ## Catch-up
 
 - [ ] Catch-up page: groups, channels, days, past programmes
-- [ ] Watch from start in the guide
+- [ ] Watch from start in the guide *(Stalker portal channels with catch-up only; not yet for Xtream or M3U)*
 - [ ] Search past programmes
 
 ## Player
@@ -173,6 +173,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Release 0.7.0 published
 - [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
+- [x] Stalker portals: films and series on the Movies and TV Series pages, the portal's own TV guide, and Smart Add spots a portal address with a MAC address
 - [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch
 
 ## Before release

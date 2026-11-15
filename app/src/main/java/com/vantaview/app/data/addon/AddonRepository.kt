@@ -40,6 +40,8 @@ class AddonRepository @Inject constructor(
     private val db: VantaDb,
     private val http: OkHttpClient,
     private val session: com.vantaview.app.data.profile.ProfileSession,
+    private val portalVod: com.vantaview.app.data.stalker.StalkerVod,
+    private val parental: com.vantaview.app.data.profile.ParentalControl,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
     private val cache = ConcurrentHashMap<String, Pair<Long, JSONObject>>()
@@ -50,6 +52,13 @@ class AddonRepository @Inject constructor(
         session.current.flatMapLatest { db.addons().observeFor(it) }.map { list -> list.mapNotNull(::parse) }
 
     suspend fun count(): Int = db.addons().countFor(session.id)
+
+    /** Stalker portals of the profile in use: their films and series show next to add-on catalogues. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observePortals(): Flow<List<com.vantaview.app.data.db.ProviderEntity>> =
+        session.current.flatMapLatest { db.providers().observeFor(it) }.map { list -> list.filter { it.kind == "STALKER" } }
+
+    private suspend fun portals() = db.providers().allFor(session.id).filter { it.kind == "STALKER" }
 
     private fun parse(e: AddonEntity): InstalledAddon? =
         runCatching { InstalledAddon(e, Manifest.parse(JSONObject(e.manifestJson))) }.getOrNull()
@@ -98,7 +107,8 @@ class AddonRepository @Inject constructor(
 
     /** Rows for a page: every catalog of [type] that works without a required extra. */
     suspend fun catalogs(type: String): List<CatalogRef> =
-        enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && !it.needsExtra }.map { CatalogRef(a, it) } }
+        enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && !it.needsExtra }.map { CatalogRef(a, it) } } +
+            portalVod.catalogs(portals(), type, parental.hiding)
 
     /**
      * Rows for a Kids profile: each catalogue filtered to a family genre where it offers one, plus catalogues
@@ -117,6 +127,10 @@ class AddonRepository @Inject constructor(
     }
 
     suspend fun loadCatalog(ref: CatalogRef): List<MetaPreview> {
+        if (portalVod.isPortal(ref)) {
+            val p = db.providers().get(-ref.addon.entity.id) ?: return emptyList()
+            return portalVod.load(p, ref)
+        }
         val extra = ref.genre?.let { "/genre=${enc(it)}" }.orEmpty()
         val url = "${ref.addon.base}/catalog/${enc(ref.catalog.type)}/${enc(ref.catalog.id)}$extra.json"
         return json(url, maxAgeMs = 6 * 3_600_000L)?.optJSONArray("metas")?.let { arr ->
@@ -128,7 +142,8 @@ class AddonRepository @Inject constructor(
     suspend fun search(type: String, query: String): List<MetaPreview> = coroutineScope {
         val q = query.trim()
         if (q.isEmpty()) return@coroutineScope emptyList()
-        enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && it.searchable }.map { a to it } }
+        val fromPortals = async { runCatching { portalVod.search(portals(), type, q) }.getOrDefault(emptyList()) }
+        val fromAddons = enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && it.searchable }.map { a to it } }
             .map { (a, c) ->
                 async {
                     val url = "${a.base}/catalog/${enc(c.type)}/${enc(c.id)}/search=${enc(q)}.json"
@@ -136,11 +151,13 @@ class AddonRepository @Inject constructor(
                         (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { AddonJson.preview(it, type) }
                     }.orEmpty()
                 }
-            }.awaitAll().flatten().distinctBy { it.id }
+            }.awaitAll().flatten()
+        (fromAddons + fromPortals.await()).distinctBy { it.id }
     }
 
     /** Full details from the first add-on that has them. */
     suspend fun meta(type: String, id: String): MetaDetail? {
+        if (portalVod.isPortalId(id)) return portalVod.meta(type, id)
         for (a in enabled().filter { it.manifest.serves("meta", type, id) }) {
             val o = json("${a.base}/meta/${enc(type)}/${enc(id)}.json", maxAgeMs = 6 * 3_600_000L)?.optJSONObject("meta")
             if (o != null && o.optString("name").isNotBlank()) return AddonJson.detail(o, type)
@@ -150,10 +167,11 @@ class AddonRepository @Inject constructor(
 
     /** True when at least one enabled add-on can supply streams for this kind of title. */
     suspend fun hasStreamSource(type: String, id: String): Boolean =
-        enabled().any { it.manifest.serves("stream", type, id) }
+        portalVod.isPortalId(id) || enabled().any { it.manifest.serves("stream", type, id) }
 
     /** Streams from every enabled add-on, best first. [id] is the film's id or the episode's video id. */
     suspend fun streams(type: String, id: String): List<AddonStream> = coroutineScope {
+        if (portalVod.isPortalId(id)) return@coroutineScope portalVod.streams(id)
         val addons = enabled()
         val jobs = addons.withIndex().filter { it.value.manifest.serves("stream", type, id) }.map { (order, a) ->
             async {

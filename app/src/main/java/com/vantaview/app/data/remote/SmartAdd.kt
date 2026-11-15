@@ -5,6 +5,8 @@ package com.vantaview.app.data.remote
 sealed interface SmartAddResult {
     data class Xtream(val server: String, val username: String, val password: String) : SmartAddResult
     data class M3u(val url: String) : SmartAddResult
+    /** A Stalker (MAG) portal: its address and the MAC address the provider registered. */
+    data class Stalker(val portal: String, val mac: String) : SmartAddResult
     data object None : SmartAddResult
 }
 
@@ -14,6 +16,8 @@ object SmartAdd {
     private val pathLogin = Regex("^(https?://[^/\\s]+)/(?:live|movie|series)/([^/\\s]+)/([^/\\s]+)/.+$", RegexOption.IGNORE_CASE)
     private val hostLabel = Regex("(?im)^\\W*(?:host|server|url|portal|dns|link|address)\\s*(?:url)?\\s*[:=]\\s*(\\S+)")
     private val userLabel = Regex("(?im)^\\W*(?:username|user\\s*name|user|login)\\s*[:=]\\s*(\\S+)")
+    private val macRegex = Regex("(?<![0-9A-Fa-f:-])([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}(?![0-9A-Fa-f:-])")
+    private val portalLabel = Regex("(?im)^\\W*(?:portal|portal\\s*url|stalker|mag\\s*portal)\\s*(?:url)?\\s*[:=]\\s*(\\S+)")
     private val passLabel = Regex("(?im)^\\W*(?:password|pass|pwd)\\s*[:=]\\s*(\\S+)")
 
     fun parse(text: String): SmartAddResult {
@@ -33,6 +37,15 @@ object SmartAdd {
             }
         }
 
+        // A MAC address with a portal address is a Stalker (MAG) login.
+        macRegex.find(text)?.value?.let { mac ->
+            val portal = portalLabel.find(text)?.groupValues?.get(1)
+                ?: urls.firstOrNull { looksLikePortal(it) }
+                ?: hostLabel.find(text)?.groupValues?.get(1)
+                ?: urls.firstOrNull()
+            if (!portal.isNullOrBlank()) return SmartAddResult.Stalker(portal.trimEnd('.', ',', ')', ';'), mac.uppercase().replace('-', ':'))
+        }
+
         val user = userLabel.find(text)?.groupValues?.get(1)
         val pass = passLabel.find(text)?.groupValues?.get(1)
         if (!user.isNullOrBlank() && !pass.isNullOrBlank()) {
@@ -44,6 +57,10 @@ object SmartAdd {
         urls.firstOrNull()?.let { return SmartAddResult.M3u(it) }
         return SmartAddResult.None
     }
+
+    /** Portal addresses usually end in /c/ or contain stalker_portal or portal.php. */
+    fun looksLikePortal(url: String): Boolean =
+        Regex("(?i)(/c/?$|/c/index\\.html|stalker_portal|portal\\.php|/server/load\\.php)").containsMatchIn(url.substringBefore('?'))
 
     /**
      * "example.com:8080/player_api.php" becomes "http://example.com:8080".
