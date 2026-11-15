@@ -18,7 +18,9 @@ key() { for k in "$@"; do adb shell input keyevent "KEYCODE_$k"; sleep 0.6; done
 # The emulator's own apps sometimes freeze; their "isn't responding" box would block every tap.
 clear_anr() {
   if grep -q "isn&apos;t responding\|isn't responding" tv-out/ui.xml 2>/dev/null; then
-    echo "dismissing a system 'not responding' box"; adb shell input keyevent KEYCODE_BACK; sleep 1; dump
+    echo "dismissing a system 'not responding' box"
+    xy=$(python3 -c "import re;x=open('tv-out/ui.xml',encoding='utf-8',errors='ignore').read();m=re.search(r'text=\"Wait\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"',x);print('' if not m else f'{(int(m[1])+int(m[3]))//2} {(int(m[2])+int(m[4]))//2}')")
+    if [ -n "$xy" ]; then adb shell input tap $xy; else adb shell input keyevent KEYCODE_BACK; fi; sleep 1; dump
   fi
 }
 tap_text() {
@@ -63,6 +65,9 @@ crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime: |ANR in com
 
 adb install -r VantaView-test.apk || exit 1
 adb shell settings put global hide_error_dialogs 1
+# The emulator's home screen app keeps freezing and its "not responding" box blocks every tap; VantaView
+# doesn't need it, so it's switched off for the test.
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
 adb shell settings put global anr_show_background 0
 sleep 20  # let the emulator's own apps settle first
 adb shell settings put system accelerometer_rotation 0
