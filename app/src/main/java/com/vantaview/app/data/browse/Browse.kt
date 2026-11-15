@@ -143,7 +143,12 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
         val url = "https://api.themoviedb.org/3/$path"
         cache[url]?.let { (at, j) -> if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext j }
         runCatching {
-            val r = Request.Builder().url(url).header("Authorization", "Bearer $token").header("Accept", "application/json").build()
+            // Works with either TMDB credential: the long API Read Access Token (sent as a Bearer
+            // header) or the short 32-character API key (sent as ?api_key=).
+            val shortKey = token.length == 32 && token.all { it.isLetterOrDigit() }
+            val b = Request.Builder().header("Accept", "application/json")
+            if (shortKey) b.url(url + (if ('?' in url) "&" else "?") + "api_key=$token") else b.url(url).header("Authorization", "Bearer $token")
+            val r = b.build()
             http.newCall(r).execute().use { res -> if (res.isSuccessful) JSONObject(res.body!!.string()) else null }
         }.getOrNull()?.also { cache[url] = System.currentTimeMillis() to it }
     }
