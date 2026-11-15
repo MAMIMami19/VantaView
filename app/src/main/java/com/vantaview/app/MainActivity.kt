@@ -225,7 +225,8 @@ private fun AppNav(
                     first = true,
                     onDone = { id ->
                         profiles.select(id)
-                        nav.navigate("setup/playlist")
+                        // The profile is made: Back from the next step mustn't return here (it would make a second one).
+                        nav.navigate("setup/playlist") { popUpTo(nav.graph.id) { inclusive = true } }
                     },
                     onBack = null,
                 )
