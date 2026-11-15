@@ -88,6 +88,7 @@ fun LiveScreen(
     onPlay: (Long) -> Unit,
     onAddPlaylist: () -> Unit,
     onAddAddon: () -> Unit,
+    onCatchUpPage: () -> Unit = {},
     vm: LiveViewModel = hiltViewModel(),
 ) {
     val providers by vm.providers.collectAsStateWithLifecycle()
@@ -140,6 +141,7 @@ fun LiveScreen(
                 onPickProvider = vm::selectProvider,
                 onCountries = vm::editCountries,
                 onRefresh = vm::refresh,
+                onCatchUp = onCatchUpPage,
             )
             if (providers.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -237,6 +239,7 @@ private fun Header(
     onPickProvider: (Long) -> Unit,
     onCountries: () -> Unit,
     onRefresh: () -> Unit,
+    onCatchUp: () -> Unit,
 ) {
     if (wide) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -244,6 +247,7 @@ private fun Header(
             PlaylistChip(playlistName, providers, onPickProvider)
             if (countryLabel != null) CountriesChip(countryLabel, onCountries)
             Spacer(Modifier.weight(1f))
+            if (showRefresh) CatchUpButton(onCatchUp)
             if (showRefresh) RefreshButton(onRefresh)
         }
     } else {
@@ -252,6 +256,8 @@ private fun Header(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 com.vantaview.app.ui.PageTitle("Live TV")
                 Spacer(Modifier.weight(1f))
+                if (showRefresh) CatchUpButton(onCatchUp)
+                Spacer(Modifier.width(8.dp))
                 if (showRefresh) RefreshButton(onRefresh)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -290,6 +296,12 @@ private fun CountriesChip(label: String, onClick: () -> Unit, modifier: Modifier
     FocusCard(onClick = onClick, modifier = modifier) {
         Text("Countries: $label", color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** Opens the Catch-up page (programmes from the last few days on channels that keep them). */
+@Composable
+internal fun CatchUpButton(onClick: () -> Unit) {
+    FocusCard(onClick = onClick) { Text("⟲ Catch-up", color = Vanta.Text, maxLines = 1, softWrap = false) }
 }
 
 @Composable

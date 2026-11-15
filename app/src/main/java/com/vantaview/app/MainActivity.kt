@@ -181,6 +181,7 @@ private fun AppNav(
         route == null -> null
         route == "home" -> Section.HOME
         route == "live" -> Section.LIVE
+        route == "catchup" -> Section.LIVE // Catch-up sits under Live TV in the menu
         route == "guide" -> Section.GUIDE
         route == "search" -> Section.SEARCH
         route == "library" -> Section.LIBRARY
@@ -196,7 +197,7 @@ private fun AppNav(
         current = section,
         profile = profile,
         // Choosing the page you're already on starts it over (Settings goes back to its list) instead of navigating.
-        onSelect = { if (it == section) com.vantaview.app.ui.Reselect.events.tryEmit(it) else nav.goTo(it.route) },
+        onSelect = { if (it == section && route != "catchup") com.vantaview.app.ui.Reselect.events.tryEmit(it) else nav.goTo(it.route) },
         onProfiles = { nav.navigate("profiles") },
     ) {
         NavHost(navController = nav, startDestination = startRoute) {
@@ -263,7 +264,11 @@ private fun AppNav(
                     onPlay = { id -> nav.navigate("player/$id") },
                     onAddPlaylist = { nav.goTo("sources?tab=playlists", restore = false) },
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
+                    onCatchUpPage = { nav.navigate("catchup") },
                 )
+            }
+            composable("catchup") {
+                com.vantaview.app.feature.catchup.CatchUpScreen(onPlayRecording = { nav.navigate("vod") })
             }
             composable("settings") {
                 // Kids profiles can't change settings.
@@ -295,7 +300,7 @@ private fun AppNav(
                 )
             }
             composable("guide") {
-                com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") }, onCatchUp = { nav.navigate("vod") })
+                com.vantaview.app.feature.guide.GuideScreen(onPlay = { id -> nav.navigate("player/$id") }, onCatchUp = { nav.navigate("vod") }, onCatchUpPage = { nav.navigate("catchup") })
             }
             // Movies and TV Series are separate destinations so each keeps its own page and state.
             listOf("movies" to "movie", "series" to "series").forEach { (route, kind) ->

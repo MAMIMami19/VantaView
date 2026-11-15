@@ -80,7 +80,7 @@ private data class Picked(val channel: ChannelEntity, val programme: ProgrammeEn
  * countries as Live TV. Days run from yesterday to a week ahead.
  */
 @Composable
-fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveViewModel = hiltViewModel()) {
+fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, onCatchUpPage: () -> Unit = {}, vm: LiveViewModel = hiltViewModel()) {
     val providers by vm.providers.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
     val rows by vm.channels.collectAsStateWithLifecycle()
@@ -129,6 +129,8 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveView
                     )
                 } else Spacer(Modifier.weight(1f))
                 if (providers.isNotEmpty()) {
+                    com.vantaview.app.feature.live.CatchUpButton(onCatchUpPage)
+                    Spacer(Modifier.width(8.dp))
                     FocusCard(onClick = vm::refreshGuide, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Reload the TV guide", tint = Vanta.Text)
                     }

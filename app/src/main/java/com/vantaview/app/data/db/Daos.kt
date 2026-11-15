@@ -119,6 +119,10 @@ interface ContentDao {
     suspend fun searchChannels(providerIds: List<Long>, query: String): List<ChannelEntity>
 
     /** Channels whose guide ID is one of [keys] (to show a programme's channel). */
+    /** Channels with catch-up (Catch-up page), in channel-number order. */
+    @Query("SELECT * FROM channel WHERE providerId IN (:providerIds) AND archiveDays > 0 ORDER BY number, sortKey")
+    suspend fun catchUpChannels(providerIds: List<Long>): List<ChannelEntity>
+
     @Query("SELECT * FROM channel WHERE providerId = :providerId AND epgChannelId IN (:keys)")
     suspend fun channelsByGuideKey(providerId: Long, keys: List<String>): List<ChannelEntity>
 
@@ -287,6 +291,16 @@ interface GuideDao {
         """
     )
     suspend fun search(providerIds: List<Long>, query: String, now: Long): List<ProgrammeEntity>
+
+    /** Search: programmes that have finished (since [from]) whose title matches, newest first. */
+    @Query(
+        """
+        SELECT * FROM programme
+        WHERE providerId IN (:providerIds) AND title LIKE '%' || :query || '%' AND stop <= :now AND stop > :from
+        ORDER BY start DESC LIMIT 80
+        """
+    )
+    suspend fun searchPast(providerIds: List<Long>, query: String, now: Long, from: Long): List<ProgrammeEntity>
 
     @Query("SELECT COUNT(*) FROM programme WHERE providerId = :providerId")
     suspend fun count(providerId: Long): Int
