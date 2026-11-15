@@ -31,9 +31,22 @@ jobs:
           - name: android9-tv
             api: 28
             target: android-tv
+            profile: tv_1080p
+            script: smoke.sh
+            arch: x86
           - name: googletv14
             api: 34
             target: google-tv
+            profile: tv_1080p
+            script: smoke.sh
+            arch: x86
+          # A phone held upright (and turned on its side part-way), for layout checks.
+          - name: phone34
+            api: 34
+            target: google_apis
+            profile: pixel_6
+            script: phone.sh
+            arch: x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Enable KVM
@@ -48,13 +61,13 @@ jobs:
         with:
           api-level: ${{ matrix.api }}
           target: ${{ matrix.target }}
-          arch: x86
-          # A real TV screen (1920x1080). Without this the emulator makes a small phone-sized screen.
-          profile: tv_1080p
+          arch: ${{ matrix.arch }}
+          # A real TV screen (1920x1080) for TVs; a Pixel 6 screen for the phone.
+          profile: ${{ matrix.profile }}
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
-          script: bash .github/tv/smoke.sh
+          script: bash .github/tv/${{ matrix.script }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
