@@ -286,17 +286,34 @@ private fun PhoneAddCard(vm: PlaylistsViewModel) {
             )
             GradientButton("Show QR code", onClick = vm::startPhone)
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                com.vantaview.app.feature.settings.QrCode(u, Modifier.width(200.dp).height(200.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Scan this with your phone's camera. Your phone needs to be on the same Wi-Fi as this device.", color = Vanta.Text)
-                    Text("Or open this address in a browser:", color = Vanta.TextDim, fontSize = 13.sp)
-                    Text(u, color = Vanta.Cyan, fontSize = 13.sp)
-                    Text(
-                        "It only works on your home network, and stops after 15 minutes or when you leave this page.",
-                        color = Vanta.TextDim, fontSize = 12.sp,
-                    )
-                    FocusCard(onClick = vm::stopPhone) { Text("Stop", color = Vanta.Text) }
+            // Side by side on a TV or tablet; on a phone held upright the code sits above the words.
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val narrow = maxWidth < 520.dp
+                val qr: @Composable () -> Unit = {
+                    com.vantaview.app.feature.settings.QrCode(u, Modifier.width(200.dp).height(200.dp))
+                }
+                val words: @Composable (Modifier) -> Unit = { m ->
+                    Column(m, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Scan this with your phone's camera. Your phone needs to be on the same Wi-Fi as this device.", color = Vanta.Text)
+                        Text("Or open this address in a browser:", color = Vanta.TextDim, fontSize = 13.sp)
+                        Text(u, color = Vanta.Cyan, fontSize = 13.sp)
+                        Text(
+                            "It only works on your home network, and stops after 15 minutes or when you leave this page.",
+                            color = Vanta.TextDim, fontSize = 12.sp,
+                        )
+                        FocusCard(onClick = vm::stopPhone) { Text("Stop", color = Vanta.Text) }
+                    }
+                }
+                if (narrow) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { qr() }
+                        words(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        qr()
+                        words(Modifier.weight(1f))
+                    }
                 }
             }
         }
