@@ -1,3 +1,4 @@
+- O Catch-up agora tem seu próprio bloco no Início, ao lado de TV ao vivo e do Guia de TV, quando sua lista tem canais que guardam programas passados. O botão Catch-up saiu do Guia de TV.
 - Os links de listas M3U agora são guardados criptografados, e o acesso dentro deles fica oculto em todos os endereços salvos de canais e filmes. As listas existentes são criptografadas e recarregadas uma vez depois de atualizar.
 - Filmes e séries da sua lista M3U ou do seu acesso Xtream Codes agora aparecem em Filmes e Séries, com pôsteres e detalhes do TMDB. Eles também aparecem como "Da sua lista" quando você abre o mesmo título por um complemento. Atualize a lista uma vez para trazê-los; eles aparecem mesmo sem complementos.
 - Enquanto um torrent ou uma transmissão debrid se prepara, o progresso aparece por 5 segundos e depois some. Toque na tela para ver de novo.
@@ -5,4 +6,3 @@
 - O VantaView agora fala espanhol, francês, alemão, italiano, português, holandês, polonês e turco. Ele segue o idioma do aparelho, ou escolha um para cada perfil em Configurações › Aparência. Os detalhes de filmes e séries também vêm nesse idioma.
 - Correção: na TV, tocar em Atualizar agora não pula mais para as configurações de Reprodução; o progresso do download fica na tela.
 - Novos passos no primeiro início: adicione sua TV (Adição inteligente ou canais gratuitos) e depois filmes e séries (Cinemeta com um toque). Os dois podem ser pulados.
-- Os nomes das seções abrem a lista completa: Continuar assistindo e Minha lista no Início, e cada fileira de Filmes e Séries.

@@ -124,6 +124,9 @@ interface ContentDao {
     suspend fun channelsPage(providerId: Long, n: Int): List<ChannelEntity>
 
     /** Channels with catch-up (Catch-up page), in channel-number order. */
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId IN (:providerIds) AND archiveDays > 0")
+    suspend fun catchUpCount(providerIds: List<Long>): Int
+
     @Query("SELECT * FROM channel WHERE providerId IN (:providerIds) AND archiveDays > 0 ORDER BY number, sortKey")
     suspend fun catchUpChannels(providerIds: List<Long>): List<ChannelEntity>
 

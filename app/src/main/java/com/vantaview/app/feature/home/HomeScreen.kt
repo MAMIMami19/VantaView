@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -157,9 +158,9 @@ fun HomeScreen(
                 },
             )
 
-            // Four big tiles.
+            // The big tiles: Catch-up joins them when a playlist has channels that keep past programmes.
             val byRoute = tiles.toMap()
-            val order = listOf("live", "guide", "movies", "series")
+            val order = listOf("live", "guide", "movies", "series") + listOfNotNull("catchup".takeIf { it in byRoute })
             if (wide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().height(150.dp)) {
                     order.forEach { r -> BigTile(r, byRoute[r]?.subtitle, Modifier.weight(1f).fillMaxHeight()) { onSection(r) } }
@@ -513,6 +514,7 @@ private val tileLook = mapOf(
     "guide" to Triple("TV Guide", Icons.Filled.DateRange, listOf(Color(0xFF7B5CFF), Color(0xFF2F7BFF))),
     "movies" to Triple("Movies", Icons.Filled.Star, listOf(Color(0xFFFF5A14), Color(0xFFFFC81A))),
     "series" to Triple("TV Series", Icons.Filled.List, listOf(Color(0xFF19E57A), Color(0xFF0F8C78))),
+    "catchup" to Triple("Catch-up", Icons.Filled.Refresh, listOf(Color(0xFFE5197A), Color(0xFF8C2FFF))),
 )
 
 /** A big coloured tile with an icon, the section name and a short line. */

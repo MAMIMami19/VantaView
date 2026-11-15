@@ -1,3 +1,4 @@
+- Archiwum ma teraz własny kafelek na stronie Start, obok TV na żywo i Programu TV, gdy Twoja playlista ma kanały z minionymi audycjami. Przycisk Archiwum zniknął z Programu TV.
 - Linki do playlist M3U są teraz przechowywane w postaci zaszyfrowanej, a dane logowania w nich są ukryte we wszystkich zapisanych adresach kanałów i filmów. Istniejące playlisty zostaną raz zaszyfrowane i wczytane ponownie po aktualizacji.
 - Filmy i seriale z playlisty M3U lub konta Xtream Codes pojawiają się teraz w Filmach i Serialach, z plakatami i szczegółami z TMDB. Pojawiają się też jako „Z Twojej playlisty”, gdy otworzysz ten sam tytuł z dodatku. Odśwież playlistę raz, aby je pobrać; widać je nawet bez dodatków.
 - Gdy torrent lub strumień debrid się przygotowuje, postęp jest widoczny przez 5 sekund, a potem znika. Stuknij ekran, aby zobaczyć go ponownie.
@@ -5,4 +6,3 @@
 - VantaView mówi teraz po hiszpańsku, francusku, niemiecku, włosku, portugalsku, niderlandzku, polsku i turecku. Używa języka urządzenia albo wybierz język dla każdego profilu w Ustawienia › Wygląd. Szczegóły filmów i seriali też są w tym języku.
 - Poprawka: na telewizorze naciśnięcie Aktualizuj teraz nie przenosi już do ustawień Odtwarzania; postęp pobierania zostaje na ekranie.
 - Nowe kroki przy pierwszym uruchomieniu: dodaj swoją telewizję (Inteligentne dodawanie lub darmowe kanały), potem filmy i seriale (Cinemeta jednym naciśnięciem). Oba można pominąć.
-- Nazwy sekcji otwierają pełną listę: Oglądaj dalej i Do obejrzenia na stronie Start oraz każdy rząd w Filmach i Serialach.

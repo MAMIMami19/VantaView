@@ -206,6 +206,9 @@ class HomeViewModel @Inject constructor(
             val logos = runCatching { db.content().sampleLogos(ids) }.getOrDefault(emptyList())
             out += "live" to Tile("LIVE TV", "$count channels", logos)
             out += "guide" to Tile("TV GUIDE", "What's on", logos.drop(4).ifEmpty { logos })
+            // Catch-up, when any channel keeps past programmes.
+            val past = runCatching { db.content().catchUpCount(ids) }.getOrDefault(0)
+            if (past > 0) out += "catchup" to Tile("CATCH-UP", "$past channels", emptyList())
         } else {
             out += "live" to Tile("LIVE TV", "Add a playlist", emptyList())
         }

@@ -1,3 +1,4 @@
+- Terugkijken heeft nu een eigen tegel op Home, naast Live-tv en de tv-gids, als je playlist zenders heeft die eerdere programma's bewaren. De knop Terugkijken staat niet meer in de tv-gids.
 - M3U-playlistlinks worden nu versleuteld opgeslagen, en de login erin wordt verborgen in elk opgeslagen zender- en filmadres. Bestaande playlists worden na de update één keer versleuteld en opnieuw geladen.
 - Films en series uit je M3U-playlist of Xtream Codes-login verschijnen nu bij Films en Series, met posters en details van TMDB. Ze verschijnen ook als "Uit je playlist" als je dezelfde titel via een add-on opent. Vernieuw de playlist één keer om ze binnen te halen; ze verschijnen ook zonder add-ons.
 - Terwijl een torrent of debrid-stream klaargemaakt wordt, is de voortgang 5 seconden te zien en verdwijnt dan. Tik op het scherm om hem weer te zien.
@@ -5,4 +6,3 @@
 - VantaView spreekt nu Spaans, Frans, Duits, Italiaans, Portugees, Nederlands, Pools en Turks. Het volgt je apparaat, of kies per profiel een taal bij Instellingen › Weergave. Film- en seriedetails komen ook in die taal.
 - Opgelost: op een tv springt Nu bijwerken niet meer naar de afspeelinstellingen; de downloadvoortgang blijft in beeld.
 - Nieuwe stappen bij de eerste start: voeg je tv toe (Slim toevoegen of gratis zenders), daarna films en series (Cinemeta met één druk). Beide kun je overslaan.
-- Sectienamen openen hun volledige lijst: Verder kijken en Je kijklijst op Home, en elke rij bij Films en Series.

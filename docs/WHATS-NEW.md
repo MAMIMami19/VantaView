@@ -1,3 +1,4 @@
+- Catch-up now has its own tile on Home, next to Live TV and the TV Guide, when your playlist has channels that keep past programmes. The Catch-up button has moved off the TV Guide.
 - M3U playlist links are now stored encrypted, and the login inside them is hidden in every saved channel and film address. Existing playlists are encrypted and reloaded once after updating.
 - Films and series in your M3U playlist or Xtream Codes login now show on Movies and TV Series, with posters and details from TMDB. They also appear as "From your playlist" when you open the same title from an add-on. Refresh the playlist once to bring them in; they also show when you have no add-ons.
 - While a torrent or debrid stream gets ready, its progress shows for 5 seconds and then hides. Tap the screen to see it again.
@@ -5,4 +6,3 @@
 - VantaView now speaks Spanish, French, German, Italian, Portuguese, Dutch, Polish and Turkish. It follows your device, or pick a language for each profile in Settings › Appearance. Film and series details come in that language too.
 - Fix: on a TV, pressing Update now no longer jumps to the Playback settings; the download progress stays on screen.
 - New setup steps on first start: add your TV (Smart Add or free channels), then films and series (Cinemeta in one press). Both can be skipped.
-- Section names open their full list: Continue watching and Your Watchlist on Home, and every row on Movies and TV Series.

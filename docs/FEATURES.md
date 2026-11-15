@@ -58,7 +58,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Catch-up
 
-- [x] Catch-up page: groups, channels, days, past programmes
+- [x] Catch-up page: groups, channels, days, past programmes (opened from its own Home tile, or Live TV)
 - [x] Watch from start in the guide
 - [x] Search past programmes
 

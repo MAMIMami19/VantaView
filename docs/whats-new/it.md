@@ -1,3 +1,4 @@
+- Il Replay ora ha il suo riquadro nella Home, accanto a TV in diretta e Guida TV, quando la tua playlist ha canali che conservano i programmi passati. Il pulsante Replay non è più nella Guida TV.
 - I link delle playlist M3U ora sono salvati cifrati, e l'accesso che contengono è nascosto in tutti gli indirizzi salvati di canali e film. Le playlist esistenti vengono cifrate e ricaricate una volta dopo l'aggiornamento.
 - Film e serie della tua playlist M3U o del tuo accesso Xtream Codes ora compaiono in Film e Serie TV, con poster e dettagli da TMDB. Compaiono anche come "Dalla tua playlist" quando apri lo stesso titolo da un add-on. Aggiorna la playlist una volta per caricarli; compaiono anche senza add-on.
 - Mentre un torrent o uno stream debrid si prepara, il suo avanzamento resta visibile 5 secondi e poi si nasconde. Tocca lo schermo per rivederlo.
@@ -5,4 +6,3 @@
 - VantaView ora parla spagnolo, francese, tedesco, italiano, portoghese, olandese, polacco e turco. Segue la lingua del dispositivo, oppure scegline una per ogni profilo in Impostazioni › Aspetto. Anche i dettagli di film e serie arrivano in quella lingua.
 - Correzione: su una TV, premere Aggiorna ora non salta più alle impostazioni di Riproduzione; l'avanzamento del download resta sullo schermo.
 - Nuovi passaggi al primo avvio: aggiungi la tua TV (Aggiunta intelligente o canali gratuiti), poi film e serie (Cinemeta con un tocco). Entrambi si possono saltare.
-- I nomi delle sezioni aprono l'elenco completo: Continua a guardare e La mia lista nella Home, e ogni riga di Film e Serie TV.

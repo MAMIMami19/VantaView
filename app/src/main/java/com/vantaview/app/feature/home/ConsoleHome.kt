@@ -230,6 +230,7 @@ private fun BladesHome(d: Dash) {
         add(Blade("LIVE TV", buildList {
             add("All channels" to { d.onSection("live") })
             add("TV Guide" to { d.onSection("guide") })
+            add("Catch-up" to { d.onSection("catchup") })
             d.favs.take(4).forEach { ch -> add(ChannelNames.display(ch.name) to { d.onPlayChannel(ch.id) }) }
         }, "live"))
         add(Blade("MOVIES & SERIES", listOf(

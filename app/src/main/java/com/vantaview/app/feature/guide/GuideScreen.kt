@@ -129,8 +129,6 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, onCatchUpPag
                     )
                 } else Spacer(Modifier.weight(1f))
                 if (providers.isNotEmpty()) {
-                    com.vantaview.app.feature.live.CatchUpButton(onCatchUpPage)
-                    Spacer(Modifier.width(8.dp))
                     FocusCard(onClick = vm::refreshGuide, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Reload the TV guide", tint = Vanta.Text)
                     }
