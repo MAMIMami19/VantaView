@@ -21,6 +21,8 @@ data class M3uResult(
     val entries: List<M3uEntry>,
     val epgUrl: String?,
     val skippedVod: Int,
+    /** Film and series entries, for the Movies and TV Series pages. */
+    val vod: List<M3uEntry> = emptyList(),
 )
 
 object M3uParser {
@@ -60,10 +62,11 @@ object M3uParser {
 
     /**
      * Reads a playlist line by line: #EXTINF attributes, #EXTGRP, #EXTVLCOPT headers and the
-     * "url|Header=value&Header2=value" form. Movie and series entries are counted and left out for now.
+     * "url|Header=value&Header2=value" form. Movie and series entries are kept apart, for the Movies and TV Series pages.
      */
     fun parse(lines: Sequence<String>): M3uResult {
         val out = ArrayList<M3uEntry>()
+        val vod = ArrayList<M3uEntry>()
         var info: String? = null
         var extGroup: String? = null
         var epgUrl: String? = null
@@ -131,7 +134,15 @@ object M3uParser {
                         url.startsWith("rtsp", true) || url.startsWith("udp", true)
                     if (!ok) continue
                     if (webPageHosts.containsMatchIn(url)) continue
-                    if (looksLikeVod(url)) { skipped++; continue }
+                    if (looksLikeVod(url)) {
+                        skipped++
+                        vod += M3uEntry(
+                            name = name, url = url, logo = attrs["tvg-logo"]?.ifBlank { null },
+                            group = (attrs["group-title"] ?: extGroup)?.substringBefore(';')?.trim()?.ifBlank { null },
+                            tvgId = null, number = null, headers = headers,
+                        )
+                        continue
+                    }
                     out += M3uEntry(
                         name = name,
                         url = url,
@@ -152,6 +163,6 @@ object M3uParser {
             }
         }
         if (first) throw IllegalArgumentException("The playlist is empty")
-        return M3uResult(out, epgUrl, skipped)
+        return M3uResult(out, epgUrl, skipped, vod)
     }
 }

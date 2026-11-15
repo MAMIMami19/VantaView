@@ -144,3 +144,46 @@ data class ProgrammeEntity(
     /** The provider's own id for this programme, used to ask for its catch-up recording. */
     val remoteId: String? = null,
 )
+
+/**
+ * A film or series from a playlist (M3U or Xtream Codes), shown on Movies and TV Series. [remoteId] is the
+ * Xtream id, or for an M3U a key made from the address (films) or the show's name (series). [url] is the
+ * M3U address of a film; Xtream addresses are made when it plays, from the saved login.
+ */
+@Entity(
+    tableName = "vod",
+    indices = [Index("providerId", "kind", "groupName"), Index("providerId", "kind", "remoteId"), Index("norm")],
+)
+data class VodEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val providerId: Long,
+    /** "movie" or "series". */
+    val kind: String,
+    val remoteId: String,
+    val name: String,
+    /** The name in lower case without year, quality or punctuation, for matching other sources' titles. */
+    val norm: String,
+    val year: Int? = null,
+    val groupName: String? = null,
+    val poster: String? = null,
+    val url: String? = null,
+    val ext: String? = null,
+    val plot: String? = null,
+    val rating: String? = null,
+    /** IMDb id once known (from the provider, or matched on TMDB when the title is opened). */
+    val imdb: String? = null,
+    val added: Long = 0,
+    val position: Int = 0,
+)
+
+/** An episode of an M3U series ([seriesId] is its [VodEntity.remoteId]). */
+@Entity(tableName = "vod_episode", indices = [Index("providerId", "seriesId")])
+data class VodEpisodeEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val providerId: Long,
+    val seriesId: String,
+    val season: Int,
+    val episode: Int,
+    val title: String? = null,
+    val url: String,
+)

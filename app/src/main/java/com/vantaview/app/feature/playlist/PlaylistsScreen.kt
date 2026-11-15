@@ -215,7 +215,7 @@ private fun ProviderCard(
             is SyncState.Failed -> state.message to Vanta.Error
             is SyncState.Done ->
                 ("${state.channels} channels ready" +
-                    if (state.skippedVod > 0) " · ${state.skippedVod} movie/series entries left out for now" else "") to Vanta.TextDim
+                    if (state.skippedVod > 0) " · ${state.skippedVod} films and series" else "") to Vanta.TextDim
             null -> when {
                 p.lastError != null -> p.lastError to Vanta.Error
                 p.channelCount > 0 -> "${p.channelCount} channels" to Vanta.TextDim

@@ -45,6 +45,7 @@ class AddonRepository @Inject constructor(
     private val http: OkHttpClient,
     private val session: com.vantaview.app.data.profile.ProfileSession,
     private val portalVod: com.vantaview.app.data.stalker.StalkerVod,
+    private val playlistVod: com.vantaview.app.data.vod.PlaylistVod,
     private val parental: com.vantaview.app.data.profile.ParentalControl,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
@@ -63,6 +64,7 @@ class AddonRepository @Inject constructor(
         session.current.flatMapLatest { db.providers().observeFor(it) }.map { list -> list.filter { it.kind == "STALKER" } }
 
     private suspend fun portals() = db.providers().allFor(session.id).filter { it.kind == "STALKER" }
+    private suspend fun playlists() = db.providers().allFor(session.id)
 
     private fun parse(e: AddonEntity): InstalledAddon? =
         runCatching { InstalledAddon(e, Manifest.parse(JSONObject(e.manifestJson))) }.getOrNull()
@@ -122,7 +124,8 @@ class AddonRepository @Inject constructor(
     /** Rows for a page: every catalog of [type] that works without a required extra. */
     suspend fun catalogs(type: String): List<CatalogRef> =
         enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && !it.needsExtra }.map { CatalogRef(a, it) } } +
-            portalVod.catalogs(portals(), type, parental.hiding)
+            portalVod.catalogs(portals(), type, parental.hiding) +
+            playlistVod.catalogs(playlists(), type, parental.hiding)
 
     /**
      * Rows for a Kids profile: each catalogue filtered to a family genre where it offers one, plus catalogues
@@ -141,6 +144,7 @@ class AddonRepository @Inject constructor(
     }
 
     suspend fun loadCatalog(ref: CatalogRef, skip: Int = 0): List<MetaPreview> {
+        if (playlistVod.isPlaylist(ref)) return playlistVod.load(ref, skip)
         if (portalVod.isPortal(ref)) {
             if (skip > 0) return emptyList()
             val p = db.providers().get(-ref.addon.entity.id) ?: return emptyList()
@@ -159,6 +163,7 @@ class AddonRepository @Inject constructor(
         val q = query.trim()
         if (q.isEmpty()) return@coroutineScope emptyList()
         val fromPortals = async { runCatching { portalVod.search(portals(), type, q) }.getOrDefault(emptyList()) }
+        val fromPlaylists = async { runCatching { playlistVod.search(playlists(), type, q) }.getOrDefault(emptyList()) }
         val fromAddons = enabled().flatMap { a -> a.manifest.catalogs.filter { it.type == type && it.searchable }.map { a to it } }
             .map { (a, c) ->
                 async {
@@ -168,12 +173,13 @@ class AddonRepository @Inject constructor(
                     }.orEmpty()
                 }
             }.awaitAll().flatten()
-        (fromAddons + fromPortals.await()).distinctBy { it.id }
+        (fromAddons + fromPortals.await() + fromPlaylists.await()).distinctBy { it.id }
     }
 
     /** Full details from the first add-on that has them. */
     suspend fun meta(type: String, id: String): MetaDetail? {
         if (portalVod.isPortalId(id)) return portalVod.meta(type, id)
+        if (playlistVod.isPlaylistId(id)) return playlistVod.meta(type, id)
         for (a in enabled().filter { it.manifest.serves("meta", type, id) }) {
             val o = json("${a.base}/meta/${enc(type)}/${enc(id)}.json", maxAgeMs = 6 * 3_600_000L)?.optJSONObject("meta")
             if (o != null && o.optString("name").isNotBlank()) return AddonJson.detail(o, type)
@@ -183,11 +189,30 @@ class AddonRepository @Inject constructor(
 
     /** True when at least one enabled add-on can supply streams for this kind of title. */
     suspend fun hasStreamSource(type: String, id: String): Boolean =
-        portalVod.isPortalId(id) || enabled().any { it.manifest.serves("stream", type, id) }
+        portalVod.isPortalId(id) || playlistVod.isPlaylistId(id) || enabled().any { it.manifest.serves("stream", type, id) } ||
+            playlistVod.eligible(playlists()).isNotEmpty()
 
-    /** Streams from every enabled add-on, best first. [id] is the film's id or the episode's video id. */
-    suspend fun streams(type: String, id: String): List<AddonStream> = coroutineScope {
-        if (portalVod.isPortalId(id)) return@coroutineScope portalVod.streams(id)
+    /** True when an add-on (not just a playlist) could have streams for this title. */
+    suspend fun hasAddonStreams(type: String, id: String): Boolean =
+        portalVod.isPortalId(id) || playlistVod.isPlaylistId(id) || enabled().any { it.manifest.serves("stream", type, id) }
+
+    /**
+     * Streams for a film or episode ([id] is the film's id or the episode's video id): the playlist's own
+     * "From your playlist" first (matched by IMDb id, or [title] and [year]), then every enabled add-on's,
+     * best first. A playlist title also gets add-on streams once it's matched to an IMDb id.
+     */
+    suspend fun streams(type: String, id: String, title: String? = null, year: String? = null): List<AddonStream> {
+        if (portalVod.isPortalId(id)) return portalVod.streams(id)
+        if (playlistVod.isPlaylistId(id)) {
+            val own = runCatching { playlistVod.streams(id) }.getOrDefault(emptyList())
+            val other = runCatching { playlistVod.addonIdFor(id) }.getOrNull()?.let { addonStreams(type, it) }.orEmpty()
+            return own + other
+        }
+        val mine = runCatching { playlistVod.matches(playlists(), type, id, title, year) }.getOrDefault(emptyList())
+        return (mine + addonStreams(type, id)).distinctBy { it.key }
+    }
+
+    private suspend fun addonStreams(type: String, id: String): List<AddonStream> = coroutineScope {
         val addons = enabled()
         val jobs = addons.withIndex().filter { it.value.manifest.serves("stream", type, id) }.map { (order, a) ->
             async {

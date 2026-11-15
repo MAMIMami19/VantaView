@@ -199,6 +199,23 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
         }
     }
 
+    /**
+     * The IMDb id for a title known only by name (a playlist's films and series), from TMDB's search: the
+     * first result whose year is within one of [year]. Null without a TMDB key or a match.
+     */
+    suspend fun findImdb(type: String, name: String, year: Int?): String? {
+        if (!hasTmdb || name.isBlank()) return null
+        val tv = type == "series"
+        val path = (if (tv) "search/tv" else "search/movie") + "?query=" + enc(name) +
+            (year?.let { if (tv) "&first_air_date_year=$it" else "&year=$it" } ?: "")
+        val results = tmdb(path)?.optJSONArray("results") ?: return null
+        val hit = (0 until results.length()).mapNotNull { results.optJSONObject(it) }.firstOrNull { o ->
+            val y = o.optString(if (tv) "first_air_date" else "release_date").take(4).toIntOrNull()
+            year == null || y == null || kotlin.math.abs(y - year) <= 1
+        } ?: return null
+        return tmdb("${if (tv) "tv" else "movie"}/${hit.optString("id")}/external_ids")?.optString("imdb_id")?.takeIf { it.startsWith("tt") }
+    }
+
     /** The IMDb id add-ons use, for a TMDB title. Null if TMDB doesn't know it. */
     suspend fun imdbId(id: String): String? {
         val (_, kind, n) = id.split(':').let { Triple(it.getOrNull(0), it.getOrNull(1), it.getOrNull(2)) }

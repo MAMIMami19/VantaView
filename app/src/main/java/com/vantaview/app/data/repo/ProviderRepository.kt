@@ -9,6 +9,7 @@ import com.vantaview.app.data.db.ChannelEntity
 import com.vantaview.app.data.db.FavouriteEntity
 import com.vantaview.app.data.db.ProviderEntity
 import com.vantaview.app.data.db.VantaDb
+import com.vantaview.app.data.db.VodEntity
 import com.vantaview.app.data.remote.M3uParser
 import com.vantaview.app.data.remote.RadioDetect
 import com.vantaview.app.data.remote.SmartAdd
@@ -193,6 +194,8 @@ class ProviderRepository @Inject constructor(
         db.content().deleteChannels(id)
         db.content().deleteCategories(id)
         db.content().deleteFavourites(id)
+        db.vod().deleteFor(id)
+        db.vod().deleteEpisodesFor(id)
         db.providers().delete(id)
         _syncStates.update { it - id }
     }
@@ -266,12 +269,7 @@ class ProviderRepository @Inject constructor(
                 body.charStream().buffered().useLines { M3uParser.parse(it) }
             }
         }
-        if (result.entries.isEmpty()) {
-            throw IllegalStateException(
-                if (result.skippedVod > 0) "This playlist only has movies or series, which this test build does not show yet"
-                else "No channels were found in this playlist"
-            )
-        }
+        if (result.entries.isEmpty() && result.vod.isEmpty()) throw IllegalStateException("No channels were found in this playlist")
         return saveM3uResult(p, result, hideCredentials = null)
     }
 
@@ -314,7 +312,76 @@ class ProviderRepository @Inject constructor(
         }
         db.content().replaceLive(p.id, categories, channels)
         if (result.epgUrl != null) db.providers().get(p.id)?.let { db.providers().update(it.copy(epgUrl = result.epgUrl)) }
-        return SyncState.Done(channels.size, result.skippedVod)
+        // Films and series go to the Movies and TV Series pages.
+        if (result.vod.isNotEmpty()) setState(p.id, SyncState.Running("Saving films and series"))
+        val (items, episodes) = com.vantaview.app.data.vod.VodImport.fromM3u(p.id, result.vod) { url ->
+            hideCredentials?.let { (u, pw) -> "xtreamurl:" + url.replace("/$u/", "/$USER_TOKEN/").replace("/$pw/", "/$PASS_TOKEN/") } ?: url
+        }
+        db.vod().replace(p.id, items, episodes)
+        return SyncState.Done(channels.size, items.size)
+    }
+
+    /**
+     * An Xtream account's films and series (the whole list, read as it downloads so big lists fit in memory).
+     * A failed download keeps what was there. Returns how many there are.
+     */
+    private suspend fun syncXtreamVod(p: ProviderEntity, ua: String?): Int {
+        setState(p.id, SyncState.Running("Loading films and series"))
+        fun groups(action: String): List<Pair<String, String>> = runCatching {
+            jsonItems(text(xtreamApi(p, action), ua)).map { it.optString("category_id") to it.optString("category_name") }
+        }.getOrDefault(emptyList())
+        fun stream(action: String, each: (Map<String, String>) -> Unit): Boolean = runCatching {
+            val b = Request.Builder().url(xtreamApi(p, action))
+            if (ua != null) b.header("User-Agent", ua)
+            http.newCall(b.build()).execute().use { r ->
+                if (!r.isSuccessful) return@runCatching false
+                r.body?.charStream()?.let { com.vantaview.app.data.vod.VodImport.readItems(it, each) }
+                true
+            }
+        }.getOrDefault(false)
+        val items = ArrayList<VodEntity>()
+        for ((kind, cats, list) in listOf(
+            Triple("movie", "get_vod_categories", "get_vod_streams"),
+            Triple("series", "get_series_categories", "get_series"),
+        )) {
+            val g = groups(cats)
+            val names = g.toMap()
+            val order = g.withIndex().associate { (i, c) -> c.first to i }
+            var i = 0
+            val ok = stream(list) { o ->
+                // Rows follow the provider's category order; titles keep their order within each.
+                val pos = (order[o["category_id"]] ?: g.size) * 1_000_000 + i++
+                val v = if (kind == "movie") com.vantaview.app.data.vod.VodImport.xtreamFilm(p.id, o, names, pos)
+                    else com.vantaview.app.data.vod.VodImport.xtreamSeries(p.id, o, names, pos)
+                if (v != null) items += v
+            }
+            if (!ok) return db.vod().count(p.id, "movie") + db.vod().count(p.id, "series")
+        }
+        db.vod().replace(p.id, items, emptyList())
+        return items.size
+    }
+
+    /** The address to play for a playlist film or episode, from how it was stored. */
+    suspend fun vodAddress(providerId: Long, stored: String): String = withContext(Dispatchers.IO) {
+        val p = db.providers().get(providerId) ?: throw IllegalStateException("Playlist not found")
+        val pass by lazy { crypto.decrypt(p.passwordEnc) }
+        when {
+            stored.startsWith("xtreamurl:") -> stored.removePrefix("xtreamurl:").replace(USER_TOKEN, p.username).replace(PASS_TOKEN, pass)
+            stored.startsWith("xtream-movie:") -> "${p.baseUrl}/movie/${p.username}/$pass/${stored.removePrefix("xtream-movie:")}"
+            stored.startsWith("xtream-series:") -> "${p.baseUrl}/series/${p.username}/$pass/${stored.removePrefix("xtream-series:")}"
+            else -> stored
+        }
+    }
+
+    /** An Xtream series' seasons and episodes (get_series_info), or null. */
+    suspend fun xtreamSeriesInfo(providerId: Long, seriesId: String): JSONObject? = withContext(Dispatchers.IO) {
+        val p = db.providers().get(providerId)?.takeIf { it.kind == "XTREAM" } ?: return@withContext null
+        val url = xtreamApi(p, "get_series_info") + "&series_id=" + URLEncoder.encode(seriesId, "UTF-8")
+        for (ua in xtreamAgents) {
+            val o = runCatching { JSONObject(text(url, ua)) }.getOrNull()
+            if (o != null && (o.has("episodes") || o.has("info"))) return@withContext o
+        }
+        null
     }
 
     private fun xtreamApi(p: ProviderEntity, action: String? = null): String {
@@ -411,11 +478,12 @@ class ProviderRepository @Inject constructor(
 
         var categories: List<CategoryEntity> = emptyList()
         var streams: List<JSONObject> = emptyList()
+        var goodUa: String? = userAgent
         for ((i, ua) in xtreamAgents.withIndex()) {
             setState(p.id, SyncState.Running("Loading channels (attempt ${i + 1} of ${xtreamAgents.size + 1})"))
             val (c, s) = load(ua)
             if (c.size > categories.size) categories = c
-            if (s.isNotEmpty()) { categories = c; streams = s; break }
+            if (s.isNotEmpty()) { categories = c; streams = s; goodUa = ua; break }
         }
         if (streams.isEmpty()) notes += "the channel list came back empty"
 
@@ -444,7 +512,9 @@ class ProviderRepository @Inject constructor(
             }
             setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
             db.content().replaceLive(p.id, categories, channels)
-            return SyncState.Done(channels.size, 0)
+            // Films and series too; a problem there never stops the channels working.
+            val vod = runCatching { syncXtreamVod(p, goodUa) }.getOrDefault(0)
+            return SyncState.Done(channels.size, vod)
         }
 
         // Last resort: the same account's M3U download (get.php), which some servers still serve.

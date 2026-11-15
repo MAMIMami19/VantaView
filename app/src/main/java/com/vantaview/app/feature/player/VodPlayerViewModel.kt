@@ -214,7 +214,7 @@ class VodPlayerViewModel @Inject constructor(
         _ui.update { it.copy(preparing = "Finding streams for S${v.season} E${v.episode}…", failed = null) }
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch {
-            val raw = runCatching { addons.streams("series", v.id) }.getOrDefault(emptyList())
+            val raw = runCatching { addons.streams("series", v.id, r.title) }.getOrDefault(emptyList())
             val streams = runCatching { debrid.annotate(raw, settings.playTorrents) }.getOrDefault(raw.filter { !it.isTorrent })
             if (streams.isEmpty()) {
                 _ui.update { it.copy(preparing = null, failed = "No playable streams for S${v.season} E${v.episode}.") }

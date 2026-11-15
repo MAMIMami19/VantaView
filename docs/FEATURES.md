@@ -147,6 +147,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Built that wasn't on the original list
 
+- [x] Films and series from M3U playlists and Xtream Codes: their own rows on Movies and TV Series, matched on TMDB for details, and offered as "From your playlist" on matching titles
 - [x] Play torrents without a debrid account (built-in engine, debrid tried first; shares only while playing and deletes the file on close; switch in Settings › Playback)
 - [x] Languages: Spanish, French, German, Italian, Portuguese (Brazil), Dutch, Polish and Turkish. Follows the device, with a picker per profile in Settings › Appearance; film and series details from TMDB in the same language
 

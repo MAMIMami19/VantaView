@@ -365,3 +365,66 @@ interface BackupDao {
     @Query("SELECT id || '|' || name || '|' || avatar || '|' || isKids || '|' || IFNULL(pinHash, '') FROM profile ORDER BY id")
     fun watchProfiles(): Flow<List<String>>
 }
+
+/** A playlist's films and series. */
+@Dao
+interface VodDao {
+    @Query("DELETE FROM vod WHERE providerId = :providerId")
+    suspend fun deleteFor(providerId: Long)
+
+    @Query("DELETE FROM vod_episode WHERE providerId = :providerId")
+    suspend fun deleteEpisodesFor(providerId: Long)
+
+    @Insert
+    suspend fun insert(items: List<VodEntity>)
+
+    @Insert
+    suspend fun insertEpisodes(items: List<VodEpisodeEntity>)
+
+    /** Swaps a playlist's films and series for a fresh list, keeping IMDb ids already matched. */
+    @Transaction
+    suspend fun replace(providerId: Long, items: List<VodEntity>, episodes: List<VodEpisodeEntity>) {
+        val known = imdbIds(providerId).associate { it.remoteId to it.imdb }
+        deleteFor(providerId)
+        deleteEpisodesFor(providerId)
+        items.chunked(500).forEach { c -> insert(c.map { v -> if (v.imdb == null) v.copy(imdb = known[v.remoteId]) else v }) }
+        episodes.chunked(500).forEach { insertEpisodes(it) }
+    }
+
+    data class KnownImdb(val remoteId: String, val imdb: String?)
+
+    @Query("SELECT remoteId, imdb FROM vod WHERE providerId = :providerId AND imdb IS NOT NULL")
+    suspend fun imdbIds(providerId: Long): List<KnownImdb>
+
+    data class Group(val groupName: String?, val count: Int)
+
+    @Query("SELECT groupName, COUNT(*) AS count FROM vod WHERE providerId = :providerId AND kind = :kind GROUP BY groupName ORDER BY MIN(position)")
+    suspend fun groups(providerId: Long, kind: String): List<Group>
+
+    @Query("SELECT COUNT(*) FROM vod WHERE providerId = :providerId AND kind = :kind")
+    suspend fun count(providerId: Long, kind: String): Int
+
+    @Query("SELECT * FROM vod WHERE providerId = :providerId AND kind = :kind AND groupName = :group ORDER BY position LIMIT :limit OFFSET :offset")
+    suspend fun inGroup(providerId: Long, kind: String, group: String, limit: Int, offset: Int): List<VodEntity>
+
+    @Query("SELECT * FROM vod WHERE providerId = :providerId AND kind = :kind ORDER BY position LIMIT :limit OFFSET :offset")
+    suspend fun all(providerId: Long, kind: String, limit: Int, offset: Int): List<VodEntity>
+
+    @Query("SELECT * FROM vod WHERE providerId = :providerId AND kind = :kind ORDER BY added DESC, position LIMIT :limit OFFSET :offset")
+    suspend fun newest(providerId: Long, kind: String, limit: Int, offset: Int): List<VodEntity>
+
+    @Query("SELECT * FROM vod WHERE providerId IN (:providerIds) AND kind = :kind AND norm LIKE :like ORDER BY LENGTH(norm) LIMIT :limit")
+    suspend fun search(providerIds: List<Long>, kind: String, like: String, limit: Int): List<VodEntity>
+
+    @Query("SELECT * FROM vod WHERE providerId IN (:providerIds) AND kind = :kind AND (norm = :norm OR imdb = :imdb)")
+    suspend fun matches(providerIds: List<Long>, kind: String, norm: String, imdb: String): List<VodEntity>
+
+    @Query("SELECT * FROM vod WHERE providerId = :providerId AND kind = :kind AND remoteId = :remoteId LIMIT 1")
+    suspend fun find(providerId: Long, kind: String, remoteId: String): VodEntity?
+
+    @Query("UPDATE vod SET imdb = :imdb WHERE id = :id")
+    suspend fun setImdb(id: Long, imdb: String)
+
+    @Query("SELECT * FROM vod_episode WHERE providerId = :providerId AND seriesId = :seriesId ORDER BY season, episode")
+    suspend fun episodes(providerId: Long, seriesId: String): List<VodEpisodeEntity>
+}

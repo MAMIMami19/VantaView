@@ -194,13 +194,13 @@ class DetailsViewModel @Inject constructor(
         _ui.update { it.copy(finding = streamId, message = null, messageFor = video?.id) }
         findJob = viewModelScope.launch {
             val hasSource = repo.hasStreamSource(type, streamId)
-            val raw = if (hasSource) runCatching { repo.streams(type, streamId) }.getOrDefault(emptyList()) else emptyList()
+            val raw = if (hasSource) runCatching { repo.streams(type, streamId, title, _ui.value.meta?.year) }.getOrDefault(emptyList()) else emptyList()
             // Torrent results only stay when a debrid account is connected; cached ones are moved up.
             val streams = runCatching { debrid.annotate(raw, playback.playTorrents) }.getOrDefault(raw.filter { !it.isTorrent })
             val season = video?.season?.takeIf { it > 0 }
             val episode = video?.episode?.takeIf { video.season > 0 }
             when {
-                !hasSource -> _ui.update {
+                !hasSource || (raw.isEmpty() && !repo.hasAddonStreams(type, streamId)) -> _ui.update {
                     it.copy(finding = null, message = "None of your add-ons supply streams for this. Add a stream add-on on the Sources page.")
                 }
                 streams.isEmpty() && raw.any { it.isTorrent } -> _ui.update {

@@ -10,9 +10,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         ProviderEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class,
         AddonEntity::class, ProfileEntity::class, KidsCategoryEntity::class, ProgrammeEntity::class,
+        VodEntity::class, VodEpisodeEntity::class,
     ],
     // Version 3 (profiles) starts the test database afresh: playlists and add-ons are added again.
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class VantaDb : RoomDatabase() {
@@ -22,8 +23,29 @@ abstract class VantaDb : RoomDatabase() {
     abstract fun profiles(): ProfileDao
     abstract fun guide(): GuideDao
     abstract fun backup(): BackupDao
+    abstract fun vod(): VodDao
 
     companion object {
+        /** Version 9: films and series from playlists (M3U and Xtream Codes), filled on the next refresh. */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `vod` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, " +
+                        "`kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `norm` TEXT NOT NULL, `year` INTEGER, " +
+                        "`groupName` TEXT, `poster` TEXT, `url` TEXT, `ext` TEXT, `plot` TEXT, `rating` TEXT, `imdb` TEXT, " +
+                        "`added` INTEGER NOT NULL, `position` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_vod_providerId_kind_groupName` ON `vod` (`providerId`, `kind`, `groupName`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_vod_providerId_kind_remoteId` ON `vod` (`providerId`, `kind`, `remoteId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_vod_norm` ON `vod` (`norm`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `vod_episode` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, " +
+                        "`seriesId` TEXT NOT NULL, `season` INTEGER NOT NULL, `episode` INTEGER NOT NULL, `title` TEXT, `url` TEXT NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_vod_episode_providerId_seriesId` ON `vod_episode` (`providerId`, `seriesId`)")
+            }
+        }
+
         /** Version 8: radio stations are marked, for Live TV's Radio tab (set on the next refresh). */
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
