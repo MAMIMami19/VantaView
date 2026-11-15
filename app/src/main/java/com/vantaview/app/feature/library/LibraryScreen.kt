@@ -112,7 +112,6 @@ fun LibraryScreen(
                 watchlist.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
                 "Nothing here yet. Use + Watchlist on a film or series to save it for later.",
                 badges = withNew.associateWith { "New episode" },
-                onRemove = { m -> vm.unlist(m.type, m.id) },
             ) { m -> onOpenTitle(m.type, m.id, m.name, m.poster, null) }
             Tab.WATCHED -> Posters(
                 watched.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
@@ -146,12 +145,6 @@ private fun Posters(
         items(items, key = { it.type + it.id }) { m ->
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth(), badge = badges[m.id])
-                onRemove?.let { remove ->
-                    FocusCard(onClick = { remove(m) }, modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center,
-                        padding = androidx.compose.foundation.layout.PaddingValues(vertical = 6.dp)) {
-                        Text("✕ Remove", color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1)
-                    }
-                }
             }
         }
     }

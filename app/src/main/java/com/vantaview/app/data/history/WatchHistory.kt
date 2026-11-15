@@ -77,7 +77,14 @@ class WatchHistory @Inject constructor(
     }
 
     @Synchronized
-    fun remove(type: String, metaId: String) = save(session.id, load(session.id).filter { !(it.type == type && it.metaId == metaId) })
+    fun remove(type: String, metaId: String) {
+        // Remembered so a Trakt sync doesn't bring back something the viewer removed.
+        sp.edit().putLong("gone_${session.id}_$type:$metaId", System.currentTimeMillis()).apply()
+        save(session.id, load(session.id).filter { !(it.type == type && it.metaId == metaId) })
+    }
+
+    /** When the viewer removed a title from Continue watching (0 = never). */
+    fun removedAt(profile: Long, type: String, metaId: String): Long = sp.getLong("gone_${profile}_$type:$metaId", 0L)
 
     /** "New season" pop-ups already seen, per profile, as "seriesId:season". */
     fun newSeasonSeen(seriesId: String, season: Int): Boolean =

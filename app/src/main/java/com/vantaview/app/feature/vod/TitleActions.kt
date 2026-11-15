@@ -68,7 +68,11 @@ class TitleActionsViewModel @Inject constructor(
     private val library: LibraryStore,
     private val browse: BrowseRepository,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
+    private val history: com.vantaview.app.data.history.WatchHistory,
 ) : ViewModel() {
+    fun inContinue(m: MetaPreview) = history.get(m.type, m.id) != null
+    fun removeContinue(m: MetaPreview) = history.remove(m.type, m.id)
+
     /** The other profiles a title can be shared with. */
     val others = kotlinx.coroutines.flow.MutableStateFlow<List<com.vantaview.app.data.db.ProfileEntity>>(emptyList())
     init {
@@ -152,6 +156,7 @@ fun TitleActionsDialog(item: MetaPreview, onDismiss: () -> Unit, vm: TitleAction
     var sharing by remember { androidx.compose.runtime.mutableStateOf(false) }
     var sent by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val listed = remember(tick) { vm.inWatchlist(item) }
+    val continuing = remember(tick) { vm.inContinue(item) }
     val watched = remember(tick) { vm.isWatched(item) }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
@@ -177,6 +182,10 @@ fun TitleActionsDialog(item: MetaPreview, onDismiss: () -> Unit, vm: TitleAction
                 if (watched) "Mark as not watched" else "Mark as watched", if (watched) "✓" else "○",
                 onClick = { vm.setWatched(item, !watched) { tick++ } },
             )
+            if (continuing) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x22FFFFFF)))
+                ActionRow("Remove from Continue watching", "✕", onClick = { vm.removeContinue(item); tick++ })
+            }
             val others by vm.others.collectAsStateWithLifecycle()
             if (others.isNotEmpty()) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x22FFFFFF)))

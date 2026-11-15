@@ -1,4 +1,4 @@
-- Library › Watchlist has a Remove button under each poster.
+- Press and hold a poster or a Continue watching card to remove it from your Watchlist or Continue watching.
 - Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
 - Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
 - New Catch-up page (from Live TV or the TV Guide), with search of past programmes.

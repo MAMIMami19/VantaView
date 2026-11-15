@@ -365,8 +365,14 @@ internal fun PreviewBox(p: Preview?, vm: HomeViewModel, modifier: Modifier, onFu
 
 @Composable
 private fun ContinueCard(c: ContinueItem, modifier: Modifier, onClick: () -> Unit) {
+    // Press and hold (or Menu on a remote): remove from Continue watching, Watchlist, Watched, Share.
+    var actions by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    if (actions) com.vantaview.app.feature.vod.TitleActionsDialog(
+        com.vantaview.app.data.addon.MetaPreview(c.entry.metaId, c.entry.type, c.entry.title, c.entry.poster, null, null),
+        onDismiss = { actions = false },
+    )
     Column(modifier) {
-        FocusCard(onClick = onClick, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+        FocusCard(onClick = onClick, onLongClick = { actions = true }, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
             Box(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Vanta.SurfaceHigh)) {
                 (c.entry.background ?: c.entry.poster)?.let {
                     AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

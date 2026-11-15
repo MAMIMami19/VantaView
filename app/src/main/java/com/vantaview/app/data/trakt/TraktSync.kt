@@ -202,6 +202,7 @@ class TraktSync @Inject constructor(
         var added = 0
         for (p in api.playback(tok).sortedBy { it.pausedAt }) {
             val type = p.title.type
+            if (history.removedAt(profile, type, p.title.imdb) >= p.pausedAt) continue // removed here since
             val have = history.getFor(profile, type, p.title.imdb)
             if (have != null && have.updatedAt >= p.pausedAt) continue
             val runtime = (p.runtimeMin.takeIf { it > 0 } ?: if (type == "movie") 100 else 45) * 60_000L
