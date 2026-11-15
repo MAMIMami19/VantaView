@@ -41,8 +41,10 @@ fun CatalogScreen(
     title: String,
     onOpen: (MetaPreview) -> Unit,
     onAddAddon: () -> Unit,
+    onTile: (com.vantaview.app.data.browse.BrowseTile) -> Unit = {},
     vm: CatalogViewModel = hiltViewModel(),
 ) {
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 720
     val ui by vm.ui.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
 
@@ -92,14 +94,15 @@ fun CatalogScreen(
                     items(results, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, modifier = Modifier) }
                 }
             }
-            ui.loaded && ui.rows.isEmpty() && ui.kids -> Message(
+            ui.loaded && ui.rows.isEmpty() && ui.tiles.isEmpty() && ui.kids -> Message(
                 "None of this profile's add-ons has a family or kids catalogue for ${if (vm.type == "series") "series" else "films"}."
             )
-            ui.loaded && ui.rows.isEmpty() -> Message(
+            ui.loaded && ui.rows.isEmpty() && ui.tiles.isEmpty() -> Message(
                 "Your add-ons have no ${if (vm.type == "series") "series" else "film"} catalogues to browse. " +
                     "You can still search above, or add a catalogue add-on such as Cinemeta on the Sources page."
             )
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                if (ui.tiles.isNotEmpty()) item(key = "browse") { BrowseGroups(ui.tiles, wide, onTile) }
                 items(ui.rows, key = { it.key }) { row ->
                     Column {
                         Text(row.title, color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)

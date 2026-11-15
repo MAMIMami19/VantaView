@@ -79,11 +79,11 @@ This file is ticked off in the same commit that finishes a feature.
 ## Movies and TV Series
 
 - [ ] Recently added banner (Nuvio style)
-- [ ] Genre tiles
+- [x] Genre tiles
 - [ ] Sort, Genre, Year and Source filters *(sort done: recently added, A to Z, Z to A, newest, oldest, top rated; filters not yet)*
 - [ ] Posters-only grid (Stremio style)
 - [ ] Info on focus on TV
-- [ ] TMDB artwork and details (Bearer token)
+- [ ] TMDB artwork and details (Bearer token) *(TMDB fills the Movies and TV Series tiles when the build has a key; details pages still use add-ons)*
 
 ## Details pages
 
@@ -174,6 +174,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
 - [x] Looks (Settings › Appearance): VantaView, Glass, Broadcast, Wave and Classic, with previews; each changes colours, background, menu (Broadcast and Classic have a top menu on wide screens) and the TV Guide; appearance is saved per profile
+- [x] Movies and TV Series tiles: Watch now (Trending, Latest, Top rated), Genres, Decades, Themed and International, each opening a full page of titles; the app's own tile pictures
 - [x] Console-style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight, each with its own Home dashboard on wide screens, plus its colours, background and menu on every page
 - [x] Stalker portals: films and series on the Movies and TV Series pages, the portal's own TV guide, and Smart Add spots a portal address with a MAC address; full MAG sign-in, portal logos, optional box details (credit: Stalker-Portal by Jitendra Unatti)
 - [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch

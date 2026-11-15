@@ -41,6 +41,8 @@ private val services = listOf(
     Credit("Free TV", "The optional free channels list · github.com/Free-TV/IPTV"),
     Credit("epgshare01", "TV guide for the free channels · epgshare01.online"),
     Credit("Open-Meteo", "Weather on Home · open-meteo.com (CC BY 4.0)"),
+    Credit("TMDB", "Films and series behind the Movies and TV Series tiles · themoviedb.org. This product uses the TMDB API but is not endorsed or certified by TMDB."),
+    Credit("Cinemeta", "Films and series behind the tiles when there's no TMDB key · v3-cinemeta.strem.io"),
 )
 
 /** Open-source libraries VantaView is built with, and their licences. */
@@ -52,6 +54,9 @@ private val libraries = listOf(
     Credit("Coil", "Apache 2.0"),
     Credit("ZXing (QR codes)", "Apache 2.0"),
     Credit("whisper.cpp and OpenAI Whisper models (AI subtitles)", "MIT"),
+    Credit("Tabler Icons (tile pictures) · tabler.io", "MIT"),
+    Credit("flag-icons (International tile pictures) · github.com/lipis/flag-icons", "MIT"),
+    Credit("Bebas Neue by Ryoichi Tsunekawa (tile titles)", "SIL Open Font License 1.1"),
     Credit("Stalker-Portal by Jitendra Unatti (how a MAG box signs in to a portal) · github.com/Jitendraunatti/Stalker-Portal", "GPL 3.0"),
     Credit("Stream Goat by Syed Ali Hamza (Xtream sign-in check) · github.com/sherazi5110/stream-goat", "GPL 3.0"),
 )

@@ -293,8 +293,17 @@ private fun AppNav(
                             )
                         },
                         onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
+                        onTile = { t -> nav.navigate("browse/$kind/${t.key}") },
                     )
                 }
+            }
+            composable(
+                "browse/{type}/{key}",
+                arguments = listOf(navArgument("type") { type = NavType.StringType }, navArgument("key") { type = NavType.StringType }),
+            ) {
+                com.vantaview.app.feature.vod.BrowseScreen(onOpen = { m ->
+                    nav.navigate("details/${Uri.encode(m.type)}?id=${Uri.encode(m.id)}&name=${Uri.encode(m.name)}&poster=${Uri.encode(m.poster.orEmpty())}")
+                })
             }
             composable(
                 "sources?tab={tab}",

@@ -52,4 +52,7 @@ logo for modified builds.
   parser and Xtream login check are adapted from its `LiveTv.kt`.
 - [CloudStream](https://github.com/recloudstream/cloudstream) (GPL-3.0), upstream of Stream Goat.
 - [Stalker-Portal](https://github.com/Jitendraunatti/Stalker-Portal) by Jitendra Unatti (GPL-3.0): how a MAG box signs in to a Stalker portal (the full profile details, hardware codes and logo folder), used as a reference for VantaView's own Stalker client.
+- [TMDB](https://www.themoviedb.org): films and series behind the Movies and TV Series tiles. This product uses the TMDB API but is not endorsed or certified by TMDB. Builds get the key from `local.properties` or a `TMDB_ACCESS_TOKEN` Actions secret; without one the tiles use Cinemeta.
+- [Tabler Icons](https://github.com/tabler/tabler-icons) (MIT) and [flag-icons](https://github.com/lipis/flag-icons) (MIT): drawn into the app's own tile pictures by `tools/browse-art/make.py`.
+- [Bebas Neue](https://github.com/google/fonts/tree/main/ofl/bebasneue) by Ryoichi Tsunekawa (SIL Open Font License 1.1, `tools/browse-art/BebasNeue-OFL.txt`): tile titles.
 - AndroidX, Jetpack Compose, Media3, Room, Hilt, OkHttp, Coil, Kotlin (Apache-2.0).

@@ -39,6 +39,9 @@ jobs:
           echo "VV_VERSION=$V" >> $GITHUB_ENV
           echo "VV_VERSION_CODE=$(( $(git rev-list --count HEAD) * 10 + 1 ))" >> $GITHUB_ENV
       - name: Unit tests and APK
+        env:
+          # Optional: add a TMDB_ACCESS_TOKEN repository secret to fill every Movies and TV Series tile.
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
         run: gradle --no-daemon --stacktrace testReleaseUnitTest assembleRelease
       - name: Rename APK
         run: |

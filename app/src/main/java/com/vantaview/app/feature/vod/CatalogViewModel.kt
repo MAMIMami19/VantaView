@@ -52,6 +52,8 @@ data class CatalogUi(
     val rowStates: Map<String, RowState> = emptyMap(),
     val searching: Boolean = false,
     val results: List<MetaPreview>? = null,
+    /** Watch now, genres, decades, themes and countries at the top of the page. */
+    val tiles: List<com.vantaview.app.data.browse.BrowseTile> = emptyList(),
 )
 
 @OptIn(FlowPreview::class)
@@ -59,6 +61,7 @@ data class CatalogUi(
 class CatalogViewModel @Inject constructor(
     private val repo: AddonRepository,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
+    private val browse: com.vantaview.app.data.browse.BrowseRepository,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
     savedState: SavedStateHandle,
 ) : ViewModel() {
@@ -86,7 +89,7 @@ class CatalogViewModel @Inject constructor(
                 _ui.update {
                     // Stalker portals count as sources here: their films and series are rows too (not on Kids profiles).
                     val sources = addons.count { a -> a.entity.enabled } + if (kids) 0 else portals
-                    it.copy(loaded = true, kids = kids, addonCount = sources, rows = rows,
+                    it.copy(loaded = true, kids = kids, addonCount = sources, rows = rows, tiles = browse.tiles(type, kids),
                         rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k } })
                 }
                 rows.forEach { load(it) }

@@ -14,6 +14,13 @@ android {
         applicationId = "com.vantaview.app"
         // When this APK was built (for the update check when a release has no version.txt).
         buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
+        // TMDB read access token for Movies and TV Series tiles: from local.properties, or the
+        // TMDB_ACCESS_TOKEN environment variable (a GitHub Actions secret on CI). Never in the repo.
+        val localProps = java.util.Properties().apply {
+            rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+        }
+        val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
+        buildConfigField("String", "TMDB_ACCESS_TOKEN", "\"$tmdb\"")
         minSdk = 24
         targetSdk = 34
         versionCode = (System.getenv("VV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
