@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -46,9 +47,19 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
     val providers by vm.providers.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
     val form by vm.form.collectAsStateWithLifecycle()
+    val pickFile = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) vm.addFile(uri) }
+    var guideFor by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ProviderEntity?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            providers.forEach { p -> ProviderCard(p, sync[p.id], onRefresh = { vm.refresh(p.id) }, onCountries = { vm.editCountries(p.id) }, onDelete = { vm.delete(p.id) }) }
+            providers.forEach { p ->
+                ProviderCard(
+                    p, sync[p.id], onRefresh = { vm.refresh(p.id) }, onCountries = { vm.editCountries(p.id) }, onDelete = { vm.delete(p.id) },
+                    onGuide = if (p.kind == "STALKER") null else ({ guideFor = p }),
+                )
+            }
+            guideFor?.let { p -> GuideLinkDialog(p, onSave = { link, done -> vm.setGuideLink(p, link, done) }, onClose = { guideFor = null }) }
             if (providers.isEmpty()) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
             }
@@ -84,13 +95,21 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                 SourceTab.M3U -> {
                     Field("Playlist name (optional)", form.name) { v -> vm.edit { it.copy(name = v) } }
                     Field("M3U link", form.m3uUrl, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(m3uUrl = v) } }
-                    GradientButton("Add playlist", onClick = vm::add, enabled = form.m3uUrl.isNotBlank())
+                    Field("TV guide link (optional)", form.guide, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(guide = v) } }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        GradientButton("Add playlist", onClick = vm::add, enabled = form.m3uUrl.isNotBlank())
+                        FocusCard(onClick = {
+                            runCatching { pickFile.launch(arrayOf("*/*")) }
+                                .onFailure { vm.fileError("This device has no file picker. Use a link instead, or add the file from a phone.") }
+                        }) { Text("Choose a file…", color = Vanta.Text) }
+                    }
                 }
                 SourceTab.XTREAM -> {
                     Field("Playlist name (optional)", form.name) { v -> vm.edit { it.copy(name = v) } }
                     Field("Server address", form.server, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(server = v) } }
                     Field("Username", form.username) { v -> vm.edit { it.copy(username = v) } }
                     Field("Password", form.password, password = true) { v -> vm.edit { it.copy(password = v) } }
+                    Field("TV guide link (optional)", form.guide, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(guide = v) } }
                     GradientButton(
                         "Add playlist", onClick = vm::add,
                         enabled = form.server.isNotBlank() && form.username.isNotBlank() && form.password.isNotBlank(),
@@ -156,7 +175,9 @@ private fun Field(
 }
 
 @Composable
-private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> Unit, onCountries: () -> Unit, onDelete: () -> Unit) {
+private fun ProviderCard(
+    p: ProviderEntity, state: SyncState?, onRefresh: () -> Unit, onCountries: () -> Unit, onDelete: () -> Unit, onGuide: (() -> Unit)? = null,
+) {
     Column(
         Modifier.fillMaxWidth().background(Vanta.Surface, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -172,6 +193,10 @@ private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> 
             Spacer(Modifier.width(8.dp))
             if (p.channelCount > 0) {
                 FocusCard(onClick = onCountries) { Text("Countries", color = Vanta.Text) }
+                Spacer(Modifier.width(8.dp))
+            }
+            onGuide?.let {
+                FocusCard(onClick = it) { Text(if (p.customEpg != null) "Guide ✓" else "Guide", color = Vanta.Text) }
                 Spacer(Modifier.width(8.dp))
             }
             FocusCard(onClick = onRefresh) { Text("Refresh", color = Vanta.Text) }
@@ -192,6 +217,29 @@ private fun ProviderCard(p: ProviderEntity, state: SyncState?, onRefresh: () -> 
         }
         Text(line, color = colour, fontSize = 14.sp)
     }
+}
+
+/** Type your own TV guide (XMLTV) link for a playlist, or clear it to use the playlist's own. */
+@Composable
+private fun GuideLinkDialog(p: ProviderEntity, onSave: (String, (String?) -> Unit) -> Unit, onClose: () -> Unit) {
+    var link by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(p.customEpg.orEmpty()) }
+    var error by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("TV guide for ${p.name}", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Paste an XMLTV guide link (plain or .gz). Several links can be separated by commas. Leave it empty to use the playlist's own guide.",
+                    color = Vanta.TextDim, fontSize = 13.sp,
+                )
+                Field("TV guide link", link, keyboard = KeyboardType.Uri) { link = it; error = null }
+                error?.let { Text(it, color = Vanta.Error, fontSize = 13.sp) }
+            }
+        },
+        confirmButton = { GradientButton("Save", onClick = { onSave(link) { e -> if (e == null) onClose() else error = e } }) },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Cancel") } },
+    )
 }
 
 /** Optional free channels from Free TV, added only when the user asks. */

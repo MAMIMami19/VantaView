@@ -75,6 +75,17 @@ class MainActivity : ComponentActivity() {
 
     companion object { const val EXTRA_PLAY_CHANNEL = "play_channel" }
 
+    /** Pressing Home while a film or channel plays shrinks it into picture-in-picture (phones). */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (com.vantaview.app.feature.player.PlayerPip.playing) com.vantaview.app.feature.player.PlayerPip.enter(this)
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        com.vantaview.app.feature.player.PlayerPip.inPip = isInPictureInPictureMode
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Automatic backups after playlist or profile changes (when switched on in Settings).
@@ -260,6 +271,7 @@ private fun AppNav(
             composable("search") {
                 com.vantaview.app.feature.search.SearchScreen(
                     onPlayChannel = { id -> nav.navigate("player/$id") },
+                    onPerson = { id -> nav.navigate("browse/movie/${Uri.encode("person:$id")}") },
                     onOpenTitle = { type, id, name, poster, play ->
                         nav.navigate(
                             "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
@@ -338,7 +350,13 @@ private fun AppNav(
                     navArgument("play") { type = NavType.StringType; defaultValue = "" },
                 ),
             ) {
-                DetailsScreen(onPlay = { nav.navigate("vod") }, onBack = { nav.popBackStack() })
+                DetailsScreen(
+                    onPlay = { nav.navigate("vod") }, onBack = { nav.popBackStack() },
+                    onOpenTitle = { m ->
+                        nav.navigate("details/${Uri.encode(m.type)}?id=${Uri.encode(m.id)}&name=${Uri.encode(m.name)}&poster=${Uri.encode(m.poster.orEmpty())}")
+                    },
+                    onPerson = { name -> nav.navigate("browse/movie/${Uri.encode("name:$name")}") },
+                )
             }
             composable(
                 route = "player/{channelId}",

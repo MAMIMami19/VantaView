@@ -18,6 +18,8 @@ data class ProviderEntity(
     val username: String = "",
     val passwordEnc: String = "",
     val epgUrl: String? = null,
+    /** A TV guide link the user typed; used instead of the playlist's own. */
+    val customEpg: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val lastSyncAt: Long = 0,
     val channelCount: Int = 0,
@@ -60,6 +62,11 @@ data class ChannelEntity(
     val country: String? = null,
     /** Days of catch-up the provider keeps for this channel (Stalker tv_archive); 0 = none. */
     val archiveDays: Int = 0,
+    /**
+     * How to ask for a past programme: "xc" (Xtream timeshift) or an M3U catch-up rule
+     * ("default|<template>", "append|<template>", "shift", "flussonic"). Null = none.
+     */
+    val catchupSource: String? = null,
 )
 
 @Entity(tableName = "favourite", primaryKeys = ["providerId", "remoteId"])
@@ -67,11 +74,15 @@ data class FavouriteEntity(
     val providerId: Long,
     val remoteId: String,
     val addedAt: Long = System.currentTimeMillis(),
+    /** Your own order for favourites (Live TV › Favourites › Edit). */
+    val position: Int = 0,
 )
 
 data class ChannelRow(
     @Embedded val channel: ChannelEntity,
     val isFav: Boolean,
+    val favPos: Int = 0,
+    val favAt: Long = 0,
 )
 
 /** An installed Stremio-compatible add-on (works the same in Stremio and Nuvio). */

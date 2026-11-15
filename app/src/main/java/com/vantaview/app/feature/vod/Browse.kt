@@ -115,15 +115,28 @@ class BrowseViewModel @Inject constructor(
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
-    private val tile = repo.tile(savedState.get<String>("key").orEmpty())
-    private val _ui = MutableStateFlow(BrowseUi(title = tile?.title.orEmpty()))
+    private val key = savedState.get<String>("key").orEmpty()
+    private val tile = repo.tile(key)
+    /** A person's page: "person:<TMDB id>" or "name:<their name>" (from a details page's cast). */
+    private val personKey = key.takeIf { it.startsWith("person:") || it.startsWith("name:") }
+    private val _ui = MutableStateFlow(BrowseUi(title = tile?.title ?: personKey?.substringAfter(':').orEmpty()))
     val ui: StateFlow<BrowseUi> = _ui
     private var page = 0
     private var busy = false
 
-    init { more() }
+    init { if (personKey != null) person(personKey) else more() }
+
+    private fun person(k: String) {
+        viewModelScope.launch {
+            val id = if (k.startsWith("person:")) k.substringAfter(':')
+            else runCatching { repo.people(k.substringAfter(':')).firstOrNull()?.id }.getOrNull()
+            val list = id?.let { runCatching { repo.personCredits(it) }.getOrDefault(emptyList()) }.orEmpty()
+            _ui.update { it.copy(items = list, loading = false, end = true, message = if (id == null) "Couldn't find them on TMDB." else null) }
+        }
+    }
 
     fun more() {
+        if (personKey != null) return
         val t = tile ?: run { _ui.update { it.copy(loading = false, end = true) }; return }
         if (busy || _ui.value.end || page >= 10) return
         busy = true

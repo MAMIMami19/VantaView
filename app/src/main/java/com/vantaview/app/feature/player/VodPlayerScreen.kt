@@ -7,6 +7,9 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,11 +56,23 @@ import kotlinx.coroutines.delay
 @Composable
 fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsStateWithLifecycle()
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
     val context = LocalContext.current
     val activity = context as? Activity
     val isTv = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
     var controls by remember { mutableStateOf(true) }
     var picking by remember { mutableStateOf(false) }
+    var speedOpen by remember { mutableStateOf(false) }
+    var episodesOpen by remember { mutableStateOf(false) }
+    // Phones: the lock stops stray touches (pocket, child); tap the screen, then Unlock.
+    var locked by remember { mutableStateOf(false) }
+    var showUnlock by remember { mutableStateOf(false) }
+    val pip = PlayerPip.inPip
+    // While this player is open and playing, Home shrinks it into picture-in-picture.
+    DisposableEffect(Unit) { onDispose { PlayerPip.playing = false } }
+    LaunchedEffect(Unit) { while (true) { PlayerPip.playing = vm.player.isPlaying; delay(1000) } }
+    LaunchedEffect(locked, pip) { playerView?.useController = !locked && !pip; if (locked || pip) playerView?.hideController() }
+    LaunchedEffect(showUnlock) { if (showUnlock) { delay(3000); showUnlock = false } }
 
     // Full screen. The screen keeps following the device's own rotation (and its rotation lock).
     DisposableEffect(Unit) {
@@ -69,7 +84,6 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
     }
 
     // Back: the first press hides the controls, the next one leaves the player.
-    var playerView by remember { mutableStateOf<PlayerView?>(null) }
     BackHandler(enabled = controls && !picking && ui.failed == null && ui.preparing == null) { playerView?.hideController() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.pause() }
     LaunchedEffect(ui.notice) { if (ui.notice != null) { delay(4000); vm.clearNotice() } }
@@ -101,7 +115,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         // AI subtitles (beta), kept clear of the playback controls.
         vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (controls) 120.dp else 28.dp)) }
 
-        if (controls || ui.failed != null || ui.preparing != null) {
+        if (!locked && !pip && (controls || ui.failed != null || ui.preparing != null)) {
             Row(
                 Modifier.fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
@@ -116,11 +130,28 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
                     Text(ui.title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     ui.subtitle?.let { Text(it, color = Vanta.TextDim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                if (ui.streams.size > 1) {
-                    val cur = ui.streams.getOrNull(ui.index)
-                    FocusCard(onClick = { picking = true }) {
-                        Text("Streams" + (cur?.let { "  (${qualityLabel(it)})" } ?: ""), color = Vanta.Text)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (ui.isSeries) FocusCard(onClick = { vm.loadEpisodes(); episodesOpen = true }) { Text("Episodes", color = Vanta.Text) }
+                    FocusCard(onClick = { speedOpen = true }) { Text(if (ui.speed == 1f) "Speed" else "${ui.speed}×", color = Vanta.Text) }
+                    if (ui.streams.size > 1) {
+                        val cur = ui.streams.getOrNull(ui.index)
+                        FocusCard(onClick = { picking = true }) {
+                            Text("Streams" + (cur?.let { "  (${qualityLabel(it)})" } ?: ""), color = Vanta.Text)
+                        }
                     }
+                    if (!isTv) {
+                        FocusCard(onClick = { locked = true; showUnlock = false }) { Text("🔒", color = Vanta.Text) }
+                        if (PlayerPip.supported(activity)) FocusCard(onClick = { PlayerPip.enter(activity) }) { Text("⧉", color = Vanta.Text) }
+                    }
+                }
+            }
+        }
+        if (locked) {
+            Box(
+                Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { showUnlock = true } },
+            ) {
+                if (showUnlock) FocusCard(onClick = { locked = false; showUnlock = false }, modifier = Modifier.align(Alignment.Center)) {
+                    Text("🔓  Unlock", color = Vanta.Text, fontSize = 18.sp)
                 }
             }
         }
@@ -152,6 +183,12 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         }
     }
 
+    if (speedOpen) SpeedDialog(ui.speed, onPick = { vm.setSpeed(it); speedOpen = false }, onClose = { speedOpen = false })
+    if (episodesOpen) {
+        val eps by vm.episodes.collectAsStateWithLifecycle()
+        EpisodesDialog(eps, vm.currentVideoId, onPick = { episodesOpen = false; vm.playEpisode(it) }, onClose = { episodesOpen = false })
+    }
+
     if (picking) {
         StreamListDialog(
             title = "Streams",
@@ -161,4 +198,60 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             onDismiss = { picking = false },
         )
     }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SpeedDialog(current: Float, onPick: (Float) -> Unit, onClose: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Playback speed", color = Vanta.Text) },
+        text = {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { sp ->
+                    FocusCard(onClick = { onPick(sp) }, selected = sp == current) {
+                        Text(if (sp == 1f) "Normal" else "$sp×", color = if (sp == current) Vanta.Cyan else Vanta.Text)
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Close") } },
+    )
+}
+
+@Composable
+private fun EpisodesDialog(
+    episodes: List<com.vantaview.app.data.addon.Video>, current: String,
+    onPick: (com.vantaview.app.data.addon.Video) -> Unit, onClose: () -> Unit,
+) {
+    val seasons = episodes.map { it.season }.distinct()
+    var season by remember(episodes) { mutableStateOf(episodes.firstOrNull { it.id == current }?.season ?: seasons.firstOrNull() ?: 1) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Episodes", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (episodes.isEmpty()) Text("Loading episodes…", color = Vanta.TextDim)
+                if (seasons.size > 1) androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(seasons.size) { i ->
+                        val s = seasons[i]
+                        FocusCard(onClick = { season = s }, selected = s == season) { Text("Season $s", color = if (s == season) Vanta.Cyan else Vanta.Text) }
+                    }
+                }
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 380.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val list = episodes.filter { it.season == season }
+                    items(list.size) { i ->
+                        val v = list[i]
+                        FocusCard(onClick = { onPick(v) }, selected = v.id == current, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "${v.episode}. ${v.title.ifBlank { "Episode ${v.episode}" }}" + if (v.id == current) "  · playing" else "",
+                                color = if (v.id == current) Vanta.Cyan else Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Close") } },
+    )
 }

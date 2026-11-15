@@ -36,6 +36,10 @@ data class VodUi(
     val failed: String? = null,
     /** "Getting link…" or download progress on a debrid service, while a torrent is being prepared. */
     val preparing: String? = null,
+    /** Playback speed (1 = normal). */
+    val speed: Float = 1f,
+    /** True for an episode of a series: the player offers Episodes. */
+    val isSeries: Boolean = false,
 )
 
 /** Plays a film or episode from add-on streams, moving to the next stream if one fails. */
@@ -49,7 +53,8 @@ class VodPlayerViewModel @Inject constructor(
     private val okHttp: OkHttpClient,
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
-    session: VodSession,
+    private val addons: com.vantaview.app.data.addon.AddonRepository,
+    private val session: VodSession,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(VodUi())
     val ui: StateFlow<VodUi> = _ui
@@ -113,7 +118,7 @@ class VodPlayerViewModel @Inject constructor(
         if (req == null || req.streams.isEmpty()) {
             _ui.value = VodUi(failed = "Nothing to play")
         } else {
-            _ui.value = VodUi(title = req.title, subtitle = req.subtitle, streams = req.streams, index = req.startIndex)
+            _ui.value = VodUi(title = req.title, subtitle = req.subtitle, streams = req.streams, index = req.startIndex, isSeries = req.type == "series")
             season = req.season
             episode = req.episode
             request = req
@@ -137,6 +142,57 @@ class VodPlayerViewModel @Inject constructor(
     }
 
     fun clearNotice() = _ui.update { it.copy(notice = null) }
+
+    // ---- Speed ----
+
+    fun setSpeed(speed: Float) {
+        player.setPlaybackSpeed(speed)
+        _ui.update { it.copy(speed = speed, notice = if (speed == 1f) "Normal speed" else "Speed ${speed}×") }
+    }
+
+    // ---- Episodes (series only) ----
+
+    /** The series' episodes, loaded when Episodes is opened. */
+    private val _episodes = MutableStateFlow<List<com.vantaview.app.data.addon.Video>>(emptyList())
+    val episodes: StateFlow<List<com.vantaview.app.data.addon.Video>> = _episodes
+    val currentVideoId: String get() = request?.videoId.orEmpty()
+
+    fun loadEpisodes() {
+        val r = request ?: return
+        if (_episodes.value.isNotEmpty()) return
+        viewModelScope.launch {
+            val meta = runCatching { addons.meta("series", r.metaId) }.getOrNull()
+            _episodes.value = meta?.videos.orEmpty().filter { it.season > 0 }.sortedWith(compareBy({ it.season }, { it.episode }))
+        }
+    }
+
+    /** Plays another episode: finds its streams, then starts the best one. */
+    fun playEpisode(v: com.vantaview.app.data.addon.Video) {
+        val r = request ?: return
+        saveProgress()
+        _ui.update { it.copy(preparing = "Finding streams for S${v.season} E${v.episode}…", failed = null) }
+        resolveJob?.cancel()
+        resolveJob = viewModelScope.launch {
+            val raw = runCatching { addons.streams("series", v.id) }.getOrDefault(emptyList())
+            val streams = runCatching { debrid.annotate(raw) }.getOrDefault(raw.filter { !it.isTorrent })
+            if (streams.isEmpty()) {
+                _ui.update { it.copy(preparing = null, failed = "No playable streams for S${v.season} E${v.episode}.") }
+                return@launch
+            }
+            val sub = listOf("S${v.season} E${v.episode}", v.title).filter { it.isNotBlank() }.joinToString(" · ")
+            val next = r.copy(
+                subtitle = sub, streams = streams, startIndex = 0, season = v.season, episode = v.episode,
+                videoId = v.id, episodeTitle = v.title.ifBlank { null }, startPositionMs = 0, chosen = false,
+            )
+            request = next
+            session.current = next
+            season = v.season
+            episode = v.episode
+            startedOk = false
+            _ui.update { it.copy(subtitle = sub, streams = streams, index = 0, preparing = null, failed = null) }
+            playIndex(0, 0, explicit = false)
+        }
+    }
 
     fun pause() { player.playWhenReady = false; saveProgress() }
 

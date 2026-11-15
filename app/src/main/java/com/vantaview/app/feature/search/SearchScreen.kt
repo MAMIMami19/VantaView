@@ -7,6 +7,14 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,8 +85,9 @@ data class SearchResults(
     val programmes: List<Pair<ProgrammeEntity, ChannelEntity>> = emptyList(),
     val films: List<MetaPreview> = emptyList(),
     val series: List<MetaPreview> = emptyList(),
+    val people: List<com.vantaview.app.data.browse.BrowseRepository.Person> = emptyList(),
 ) {
-    val empty get() = channels.isEmpty() && programmes.isEmpty() && films.isEmpty() && series.isEmpty()
+    val empty get() = channels.isEmpty() && programmes.isEmpty() && films.isEmpty() && series.isEmpty() && people.isEmpty()
 }
 
 @OptIn(FlowPreview::class)
@@ -90,6 +99,7 @@ class SearchViewModel @Inject constructor(
     private val session: ProfileSession,
     private val profiles: ProfileRepository,
     private val parental: ParentalControl,
+    private val browse: com.vantaview.app.data.browse.BrowseRepository,
 ) : ViewModel() {
     private val sp = context.getSharedPreferences("search", Context.MODE_PRIVATE)
     val query = MutableStateFlow("")
@@ -131,6 +141,7 @@ class SearchViewModel @Inject constructor(
         coroutineScope {
             val films = async { runCatching { addons.search("movie", q) }.getOrDefault(emptyList()) }
             val series = async { runCatching { addons.search("series", q) }.getOrDefault(emptyList()) }
+            val people = async { if (kids) emptyList() else runCatching { browse.people(q) }.getOrDefault(emptyList()) }
             val channels = if (ids.isEmpty()) emptyList() else allowed(db.content().searchChannels(ids, q).filter { !ChannelNames.isDivider(it.name) })
             val progs = if (ids.isEmpty()) emptyList() else db.guide().search(ids, q, now)
             // Match each programme to a channel the profile can see.
@@ -141,7 +152,7 @@ class SearchViewModel @Inject constructor(
             }.sortedBy { it.first.start }.take(40)
             _results.value = _results.value.copy(channels = channels.take(30), programmes = byKey)
             fun family(l: List<MetaPreview>) = if (kids) l.filter { KidsFilter.hasFamilyGenre(it.genres) } else l
-            _results.value = _results.value.copy(films = family(films.await()), series = family(series.await()), busy = false)
+            _results.value = _results.value.copy(films = family(films.await()), series = family(series.await()), people = people.await(), busy = false)
         }
     }
 
@@ -168,6 +179,7 @@ class SearchViewModel @Inject constructor(
 fun SearchScreen(
     onPlayChannel: (Long) -> Unit,
     onOpenTitle: (type: String, id: String, name: String, poster: String?, play: String?) -> Unit,
+    onPerson: (String) -> Unit = {},
     vm: SearchViewModel = hiltViewModel(),
 ) {
     val q by vm.query.collectAsStateWithLifecycle()
@@ -265,6 +277,28 @@ fun SearchScreen(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(list, key = { it.type + it.id }) { m ->
                             PosterCard(m, onClick = { vm.remember(); onOpenTitle(m.type, m.id, m.name, m.poster, null) })
+                        }
+                    }
+                }
+            }
+        }
+        if (r.people.isNotEmpty()) {
+            item { Heading("People") }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(r.people, key = { it.id }) { p ->
+                        FocusCard(onClick = { vm.remember(); onPerson(p.id) }, padding = PaddingValues(8.dp), modifier = Modifier.width(120.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                Box(Modifier.size(84.dp).clip(CircleShape).background(Vanta.SurfaceHigh), contentAlignment = Alignment.Center) {
+                                    if (p.photo != null) coil.compose.AsyncImage(
+                                        model = p.photo, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    ) else Text(p.name.take(1), color = Vanta.TextDim, fontSize = 28.sp)
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(p.name, color = Vanta.Text, fontSize = 13.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                p.job?.let { Text(it, color = Vanta.TextDim, fontSize = 11.sp, maxLines = 1) }
+                            }
                         }
                     }
                 }

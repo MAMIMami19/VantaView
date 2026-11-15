@@ -11,6 +11,9 @@ data class M3uEntry(
     val tvgId: String?,
     val number: Int?,
     val headers: Map<String, String>,
+    /** Catch-up rule for [com.vantaview.app.data.repo.CatchUp] ("mode|template"), or null. */
+    val catchup: String? = null,
+    val catchupDays: Int = 0,
 )
 
 data class M3uResult(
@@ -39,6 +42,21 @@ object M3uParser {
         return vodExt.containsMatchIn(u) || u.contains("/movie/") || u.contains("/series/")
     }
 
+    /** Turns a playlist's catch-up attributes into a rule for CatchUp, or null when there's none. */
+    fun catchupRule(type: String?, source: String?, rec: String?): String? {
+        val t = type?.trim()?.lowercase().orEmpty()
+        return when {
+            t == "xc" -> "xc|"
+            t == "shift" || t == "timeshift" -> "shift"
+            t.startsWith("flussonic") || t == "fs" -> "flussonic"
+            t == "append" && !source.isNullOrBlank() -> "append|$source"
+            (t == "default" || t.isEmpty()) && !source.isNullOrBlank() -> "default|$source"
+            t == "default" -> "shift"
+            !rec.isNullOrBlank() && (rec.toIntOrNull() ?: 0) > 0 -> "shift"
+            else -> null
+        }
+    }
+
     /**
      * Reads a playlist line by line: #EXTINF attributes, #EXTGRP, #EXTVLCOPT headers and the
      * "url|Header=value&Header2=value" form. Movie and series entries are counted and left out for now.
@@ -51,6 +69,10 @@ object M3uParser {
         var skipped = 0
         var first = true
         val options = mutableMapOf<String, String>()
+        // Catch-up given once for the whole list on the #EXTM3U line.
+        var listCatchup: String? = null
+        var listSource: String? = null
+        var listDays: Int? = null
 
         for (raw in lines) {
             val line = raw.trim().removePrefix("\uFEFF")
@@ -63,6 +85,9 @@ object M3uParser {
                     epgUrl = (attrs["url-tvg"] ?: attrs["x-tvg-url"])?.split(',')
                         ?.map { it.trim() }?.filter { it.startsWith("http", true) }
                         ?.joinToString(",")?.ifBlank { null }
+                    listCatchup = attrs["catchup"] ?: attrs["catchup-type"]
+                    listSource = attrs["catchup-source"]
+                    listDays = attrs["catchup-days"]?.toIntOrNull()
                     continue
                 }
             }
@@ -114,7 +139,13 @@ object M3uParser {
                         tvgId = attrs["tvg-id"]?.ifBlank { null },
                         number = attrs["tvg-chno"]?.toIntOrNull(),
                         headers = headers,
-                    )
+                        catchup = catchupRule(
+                            attrs["catchup"] ?: attrs["catchup-type"] ?: listCatchup,
+                            attrs["catchup-source"] ?: listSource,
+                            attrs["tvg-rec"],
+                        ),
+                        catchupDays = (attrs["catchup-days"]?.toIntOrNull() ?: attrs["tvg-rec"]?.toIntOrNull() ?: listDays ?: 0),
+                    ).let { e -> if (e.catchup != null && e.catchupDays <= 0) e.copy(catchupDays = 7) else e }
                 }
             }
         }

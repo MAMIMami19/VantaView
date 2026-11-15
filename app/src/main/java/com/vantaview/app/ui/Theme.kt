@@ -2,6 +2,7 @@
 package com.vantaview.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -154,6 +155,15 @@ object Vanta {
     val GradientBrush: Brush get() = androidx.compose.ui.graphics.SolidColor(Accent)
 }
 
+/** True inside a focused [FocusCard] or [FillCard], so long titles can scroll only there. */
+val LocalCardFocused = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Scrolls text that doesn't fit, while its card has focus. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.scrollWhenFocused(): Modifier =
+    if (LocalCardFocused.current) this.basicMarquee(initialDelayMillis = 900) else this
+
 /** Settings › Appearance for the whole app (sidebar auto-hide, loading screen...). */
 val LocalAppearance = androidx.compose.runtime.staticCompositionLocalOf { com.vantaview.app.data.Appearance() }
 
@@ -221,7 +231,7 @@ fun FocusCard(
             .clickable(onClick = onClick)
             .padding(padding),
         contentAlignment = contentAlignment,
-    ) { content() }
+    ) { androidx.compose.runtime.CompositionLocalProvider(LocalCardFocused provides focused) { content() } }
 }
 
 /** Main action button filled with the logo gradient. */
@@ -269,6 +279,8 @@ fun FillCard(
             .padding(padding),
         contentAlignment = Alignment.CenterStart,
     ) {
-        if (filled) content(Vanta.palette.onFill, Vanta.palette.onFill.copy(alpha = 0.75f)) else content(Vanta.Text, Vanta.TextDim)
+        androidx.compose.runtime.CompositionLocalProvider(LocalCardFocused provides focused) {
+            if (filled) content(Vanta.palette.onFill, Vanta.palette.onFill.copy(alpha = 0.75f)) else content(Vanta.Text, Vanta.TextDim)
+        }
     }
 }

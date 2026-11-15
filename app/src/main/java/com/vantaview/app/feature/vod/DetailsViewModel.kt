@@ -42,6 +42,8 @@ data class DetailsUi(
     val blocked: Boolean = false,
     /** Where this profile got to in this film or series. */
     val progress: com.vantaview.app.data.history.HistoryEntry? = null,
+    /** "More like this" (TMDB recommendations). */
+    val moreLike: List<com.vantaview.app.data.addon.MetaPreview> = emptyList(),
 )
 
 @HiltViewModel
@@ -52,6 +54,7 @@ class DetailsViewModel @Inject constructor(
     private val debrid: com.vantaview.app.data.debrid.DebridManager,
     private val history: com.vantaview.app.data.history.WatchHistory,
     private val library: com.vantaview.app.data.library.LibraryStore,
+    val browse: com.vantaview.app.data.browse.BrowseRepository,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
@@ -81,6 +84,11 @@ class DetailsViewModel @Inject constructor(
             val seasons = meta?.videos?.map { it.season }?.distinct()?.sorted().orEmpty()
             val firstSeason = progress?.season?.takeIf { it in seasons } ?: seasons.firstOrNull { it > 0 } ?: seasons.firstOrNull()
             _ui.update { it.copy(loading = false, meta = meta, season = firstSeason, progress = progress) }
+            launch {
+                val more = runCatching { browse.moreLikeThis(type, id) }.getOrDefault(emptyList())
+                    .let { l -> if (profiles.isKids()) emptyList() else l }
+                _ui.update { it.copy(moreLike = more) }
+            }
             when {
                 autoplay == null -> Unit
                 autoplay == "movie" || type != "series" -> play(null, false)
@@ -106,6 +114,15 @@ class DetailsViewModel @Inject constructor(
     }
 
     fun dismissChoice() = _ui.update { it.copy(choice = null) }
+
+    /** Opens a "More like this" title: TMDB titles are opened by their IMDb id, which add-ons use. */
+    fun openSimilar(m: com.vantaview.app.data.addon.MetaPreview, go: (com.vantaview.app.data.addon.MetaPreview) -> Unit) {
+        if (!m.id.startsWith("tmdb:")) { go(m); return }
+        viewModelScope.launch {
+            val tt = runCatching { browse.imdbId(m.id) }.getOrNull()
+            if (tt != null) go(m.copy(id = tt)) else _ui.update { it.copy(message = "Your add-ons can't look up ${m.name} yet.", messageFor = null) }
+        }
+    }
 
     fun clearMessage() = _ui.update { it.copy(message = null) }
 

@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -77,9 +81,46 @@ fun CatalogScreen(
                 }
             }
         }
+        // Filters: genre, decade and source (add-on or portal).
+        val filter by vm.filter.collectAsStateWithLifecycle()
+        var picking by remember { mutableStateOf<String?>(null) }
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { FocusCard(onClick = { picking = "genre" }, selected = filter.genre != null) { Text("Genre: ${filter.genre ?: "Any"} ▾", color = Vanta.Text, fontSize = 14.sp) } }
+            item {
+                FocusCard(onClick = { picking = "year" }, selected = filter.decade != null) {
+                    Text("Year: ${filter.decade?.let { CatalogFilter.decadeLabel(it) } ?: "Any"} ▾", color = Vanta.Text, fontSize = 14.sp)
+                }
+            }
+            item { FocusCard(onClick = { picking = "source" }, selected = filter.source != null) { Text("Source: ${filter.source ?: "Any"} ▾", color = Vanta.Text, fontSize = 14.sp) } }
+            if (filter.any) item { FocusCard(onClick = { vm.filter.value = CatalogFilter() }) { Text("Clear filters", color = Vanta.Cyan, fontSize = 14.sp) } }
+        }
+        picking?.let { what ->
+            val options: List<Pair<String, () -> Unit>> = when (what) {
+                "genre" -> listOf("Any" to { vm.filter.value = filter.copy(genre = null) }) +
+                    vm.genres().map { g -> g to { vm.filter.value = filter.copy(genre = g) } }
+                "year" -> listOf("Any" to { vm.filter.value = filter.copy(decade = null) }) +
+                    CatalogFilter.DECADES.map { d -> CatalogFilter.decadeLabel(d) to { vm.filter.value = filter.copy(decade = d) } }
+                else -> listOf("Any" to { vm.filter.value = filter.copy(source = null) }) +
+                    vm.sources().map { n -> n to { vm.filter.value = filter.copy(source = n) } }
+            }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { picking = null }, containerColor = Vanta.Panel,
+                title = { Text(when (what) { "genre" -> "Genre"; "year" -> "Year"; else -> "Source" }, color = Vanta.Text) },
+                text = {
+                    androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(options.size) { i ->
+                            val (label, go) = options[i]
+                            FocusCard(onClick = { go(); picking = null }, modifier = Modifier.fillMaxWidth()) { Text(label, color = Vanta.Text) }
+                        }
+                    }
+                },
+                confirmButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("Close") } },
+            )
+        }
         Spacer(Modifier.height(12.dp))
 
-        val results = ui.results?.let { sort.apply(it) }
+        val results = ui.results?.let { sort.apply(it) }?.filter(filter::keep)
         when {
             query.isNotBlank() && (ui.searching || results == null) -> Message("Searching…")
             query.isNotBlank() && results != null -> {
@@ -102,16 +143,18 @@ fun CatalogScreen(
                     "You can still search above, or add a catalogue add-on such as Cinemeta on the Sources page."
             )
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                if (ui.tiles.isNotEmpty()) item(key = "browse") { BrowseGroups(ui.tiles, wide, onTile) }
-                items(ui.rows, key = { it.key }) { row ->
+                if (ui.tiles.isNotEmpty() && !filter.any) item(key = "browse") { BrowseGroups(ui.tiles, wide, onTile) }
+                items(ui.rows.filter(filter::keepRow), key = { it.key }) { row ->
                     Column {
                         Text(row.title, color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         when (val st = ui.rowStates[row.key]) {
                             is RowState.Ready ->
-                                if (st.items.isEmpty()) Text("Empty", color = Vanta.TextDim)
-                                else LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    items(sort.apply(st.items), key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                                st.items.filter(filter::keep).let { shown ->
+                                    if (shown.isEmpty()) Text(if (filter.any) "Nothing here matches the filters" else "Empty", color = Vanta.TextDim)
+                                    else LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(sort.apply(shown), key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                                    }
                                 }
                             RowState.Failed -> Text("Couldn't load this row", color = Vanta.Error)
                             else -> Text("Loading…", color = Vanta.TextDim)

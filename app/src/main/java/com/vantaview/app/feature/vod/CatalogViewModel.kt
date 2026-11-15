@@ -44,6 +44,28 @@ enum class CatalogSort(val label: String) {
     }
 }
 
+/** Genre, decade and source filters for Movies and TV Series (null = any). */
+data class CatalogFilter(val genre: String? = null, val decade: Int? = null, val source: String? = null) {
+    val any get() = genre != null || decade != null || source != null
+
+    fun keep(m: MetaPreview): Boolean {
+        if (genre != null && m.genres.none { it.equals(genre, true) }) return false
+        if (decade != null) {
+            val y = m.year?.let { Regex("""\d{4}""").find(it)?.value?.toIntOrNull() } ?: return false
+            if (decade == 0) { if (y >= 1950) return false } else if (y !in decade..decade + 9) return false
+        }
+        return true
+    }
+
+    fun keepRow(r: CatalogRef) = source == null || r.addon.manifest.name == source
+
+    companion object {
+        /** Decades offered (0 = before 1950). */
+        val DECADES = listOf(2020, 2010, 2000, 1990, 1980, 1970, 1960, 1950, 0)
+        fun decadeLabel(d: Int) = if (d == 0) "Before 1950" else "${d}s"
+    }
+}
+
 data class CatalogUi(
     val loaded: Boolean = false,
     val kids: Boolean = false,
@@ -76,6 +98,14 @@ class CatalogViewModel @Inject constructor(
 
     private val _ui = MutableStateFlow(CatalogUi())
     val ui: StateFlow<CatalogUi> = _ui
+    val filter = MutableStateFlow(CatalogFilter())
+
+    /** Genres found in the loaded rows, for the Genre filter. */
+    fun genres(): List<String> = _ui.value.rowStates.values.filterIsInstance<RowState.Ready>()
+        .flatMap { r -> r.items.flatMap { it.genres } }.map { it.trim() }.filter { it.isNotBlank() }
+        .distinctBy { it.lowercase() }.sorted()
+
+    fun sources(): List<String> = _ui.value.rows.map { it.addon.manifest.name }.distinct()
     val query = MutableStateFlow("")
     private var searchJob: Job? = null
 

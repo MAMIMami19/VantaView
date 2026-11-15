@@ -61,6 +61,7 @@ import com.vantaview.app.feature.live.CategoryRow
 import com.vantaview.app.feature.live.LiveViewModel
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.scrollWhenFocused
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -393,6 +394,7 @@ private fun GuideRow(
                     Text(channel.number.toString(), color = dimColour, fontSize = 11.sp, maxLines = 1)
                     Text(
                         ChannelNames.display(channel.name), color = textColour, fontSize = if (wide) 13.sp else 11.sp,
+                        modifier = if (wide) Modifier.scrollWhenFocused() else Modifier,
                         maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis, lineHeight = 13.sp,
                     )
                 }
@@ -430,7 +432,7 @@ private fun GuideRow(
                         Text(
                             p.title, color = if (past) dimColour else textColour, fontSize = 13.sp,
                             fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            maxLines = 1, overflow = TextOverflow.Clip, modifier = Modifier.scrollWhenFocused(),
                         )
                         Text(clock.format(Date(p.start)), color = dimColour, fontSize = 11.sp, maxLines = 1)
                     }

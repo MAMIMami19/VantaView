@@ -40,6 +40,10 @@ sealed interface SyncState {
 /** What the player needs to open a channel. */
 data class PlayTarget(val url: String, val altUrl: String?, val headers: Map<String, String>)
 
+object GuideLinks {
+    fun valid(link: String) = link.split(',').map { it.trim() }.filter { it.isNotEmpty() }.all { it.startsWith("http://", true) || it.startsWith("https://", true) }
+}
+
 /** Free TV (github.com/Free-TV/IPTV): an M3U playlist of free TV channels around the world. */
 const val FREE_TV_URL = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"
 
@@ -48,6 +52,7 @@ private const val PASS_TOKEN = "{{vv_pass}}"
 
 @Singleton
 class ProviderRepository @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val db: VantaDb,
     private val http: OkHttpClient,
     private val crypto: CredentialCrypto,
@@ -81,13 +86,42 @@ class ProviderRepository @Inject constructor(
         db.providers().allFor(profileId).forEach { delete(it.id) }
     }
 
-    suspend fun addM3u(name: String, url: String): Long {
+    /** Sources: a guide link typed for a playlist (blank clears it and goes back to the playlist's own). */
+    suspend fun setGuideLink(id: Long, link: String) {
+        val p = db.providers().get(id) ?: return
+        val clean = link.trim().ifBlank { null }
+        require(clean == null || GuideLinks.valid(clean)) { "The guide link must start with http:// or https://" }
+        db.providers().update(p.copy(customEpg = clean))
+    }
+
+    /**
+     * An M3U playlist from a file on this device. A copy is kept inside the app (the original may
+     * move or be deleted); pick the file again to update it.
+     */
+    suspend fun addM3uFile(name: String, uri: android.net.Uri, guide: String = ""): Long = withContext(Dispatchers.IO) {
+        val dir = java.io.File(context.filesDir, "playlists").apply { mkdirs() }
+        val file = java.io.File(dir, "playlist-${System.currentTimeMillis()}.m3u")
+        val input = context.contentResolver.openInputStream(uri) ?: throw IllegalArgumentException("Couldn't open that file")
+        input.use { i -> file.outputStream().use { o -> i.copyTo(o) } }
+        val shown = name.ifBlank {
+            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0)?.substringBeforeLast('.') else null
+            } ?: "My playlist"
+        }
+        val id = db.providers().insert(
+            ProviderEntity(profileId = session.id, name = shown, kind = "M3U", baseUrl = file.toURI().toString(), customEpg = guide.trim().ifBlank { null })
+        )
+        sync(id)
+        id
+    }
+
+    suspend fun addM3u(name: String, url: String, guide: String = ""): Long {
         val clean = M3uParser.rawGithub(url)
         require(clean.startsWith("http://", true) || clean.startsWith("https://", true)) {
             "The playlist link must start with http:// or https://"
         }
         val id = db.providers().insert(
-            ProviderEntity(profileId = session.id, name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = clean)
+            ProviderEntity(profileId = session.id, name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = clean, customEpg = guide.trim().ifBlank { null })
         )
         sync(id)
         return id
@@ -102,7 +136,7 @@ class ProviderRepository @Inject constructor(
         return addM3u("Free TV", FREE_TV_URL)
     }
 
-    suspend fun addXtream(name: String, server: String, username: String, password: String): Long {
+    suspend fun addXtream(name: String, server: String, username: String, password: String, guide: String = ""): Long {
         require(server.isNotBlank() && username.isNotBlank() && password.isNotBlank()) {
             "Server, username and password are all needed"
         }
@@ -114,10 +148,16 @@ class ProviderRepository @Inject constructor(
                 baseUrl = SmartAdd.normalizeServer(server),
                 username = username.trim(),
                 passwordEnc = crypto.encrypt(password.trim()),
+                customEpg = guide.trim().ifBlank { null },
             )
         )
         sync(id)
         return id
+    }
+
+    /** Live TV › Favourites › Edit: saves the new order. */
+    suspend fun reorderFavourites(rows: List<ChannelEntity>) {
+        rows.forEachIndexed { i, c -> db.content().setFavouritePosition(c.providerId, c.remoteId, i + 1) }
     }
 
     /** A Stalker (MAG) portal: the portal address and the MAC address your provider registered. */
@@ -157,7 +197,9 @@ class ProviderRepository @Inject constructor(
     }
 
     suspend fun setFavourite(channel: ChannelEntity, on: Boolean) {
-        if (on) db.content().addFavourite(FavouriteEntity(channel.providerId, channel.remoteId))
+        if (on) db.content().addFavourite(
+            FavouriteEntity(channel.providerId, channel.remoteId, position = db.content().maxFavouritePosition(channel.providerId) + 1)
+        )
         else db.content().removeFavourite(channel.providerId, channel.remoteId)
     }
 
@@ -193,6 +235,10 @@ class ProviderRepository @Inject constructor(
         }
     }
 
+    /** Xtream servers' time zones (from sign-in), for catch-up. */
+    private val zones = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private fun xtreamZone(id: Long): String = zones[id] ?: "UTC"
+
     private fun setState(id: Long, state: SyncState) = _syncStates.update { it + (id to state) }
 
     private fun friendly(e: Exception): String = when (e) {
@@ -205,12 +251,19 @@ class ProviderRepository @Inject constructor(
     }
 
     private suspend fun syncM3u(p: ProviderEntity): SyncState.Done {
-        setState(p.id, SyncState.Running("Downloading playlist"))
-        val request = Request.Builder().url(p.baseUrl).header("User-Agent", userAgent).build()
-        val result = http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("The server answered with error ${response.code}")
-            val body = response.body ?: throw IllegalStateException("The playlist is empty")
-            body.charStream().buffered().useLines { M3uParser.parse(it) }
+        val result = if (p.baseUrl.startsWith("file:")) {
+            setState(p.id, SyncState.Running("Reading playlist file"))
+            val f = java.io.File(java.net.URI(p.baseUrl))
+            if (!f.exists()) throw IllegalStateException("The playlist file is gone. Remove this playlist and add the file again.")
+            f.bufferedReader().useLines { M3uParser.parse(it) }
+        } else {
+            setState(p.id, SyncState.Running("Downloading playlist"))
+            val request = Request.Builder().url(p.baseUrl).header("User-Agent", userAgent).build()
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IllegalStateException("The server answered with error ${response.code}")
+                val body = response.body ?: throw IllegalStateException("The playlist is empty")
+                body.charStream().buffered().useLines { M3uParser.parse(it) }
+            }
         }
         if (result.entries.isEmpty()) {
             throw IllegalStateException(
@@ -249,6 +302,9 @@ class ProviderRepository @Inject constructor(
                 streamUrl = stored,
                 epgChannelId = e.tvgId,
                 headersJson = if (e.headers.isEmpty()) null else JSONObject(e.headers as Map<*, *>).toString(),
+                archiveDays = if (e.catchup != null) e.catchupDays else 0,
+                // An Xtream playlist download with catchup="xc" needs the server's time zone.
+                catchupSource = e.catchup?.let { if (it == "xc|") "xc|" + xtreamZone(p.id) else it },
             )
         }
         db.content().replaceLive(p.id, categories, channels)
@@ -312,6 +368,8 @@ class ProviderRepository @Inject constructor(
         val auth = info?.optString("auth")
         if (auth == null || auth == "0") throw IllegalStateException("The provider refused the username or password")
         val status = info?.optString("status").orEmpty().ifBlank { "unknown" }
+        // Catch-up (timeshift) times are in the server's own time zone.
+        login.optJSONObject("server_info")?.optString("timezone")?.ifBlank { null }?.let { zones[p.id] = it }
         val notes = ArrayList<String>()
 
         // Tries the whole list first, then one category at a time (some servers only answer that way).
@@ -373,6 +431,8 @@ class ProviderRepository @Inject constructor(
                     streamUrl = "xtream:$id",
                     epgChannelId = o.optString("epg_channel_id").ifBlank { null },
                     isAdult = o.optString("is_adult") == "1",
+                    archiveDays = if (o.optString("tv_archive") == "1") o.optInt("tv_archive_duration", 0).coerceAtLeast(1) else 0,
+                    catchupSource = if (o.optString("tv_archive") == "1") "xc|" + xtreamZone(p.id) else null,
                 )
             }
             setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
@@ -452,14 +512,22 @@ class ProviderRepository @Inject constructor(
      * recordings (Stalker portals with TV archive). Null when there's none.
      */
     suspend fun catchUp(channel: ChannelEntity, programme: com.vantaview.app.data.db.ProgrammeEntity): PlayTarget? {
-        if (channel.archiveDays <= 0 || programme.remoteId == null) return null
-        val p = db.providers().get(channel.providerId)?.takeIf { it.kind == "STALKER" } ?: return null
-        return PlayTarget(stalker.archiveLink(p, programme.remoteId), null, stalker.playHeaders)
+        if (channel.archiveDays <= 0) return null
+        val p = db.providers().get(channel.providerId) ?: return null
+        if (p.kind == "STALKER") {
+            val id = programme.remoteId ?: return null
+            return PlayTarget(stalker.archiveLink(p, id), null, stalker.playHeaders)
+        }
+        val rule = channel.catchupSource ?: return null
+        val live = resolveStream(channel)
+        val url = CatchUp.build(rule, live.url, programme.start, programme.stop, System.currentTimeMillis())
+            ?: throw IllegalStateException("This channel's catch-up address isn't one VantaView understands yet")
+        return PlayTarget(url, null, live.headers)
     }
 
     /** True when catch-up can be offered for this programme. */
     fun hasCatchUp(channel: ChannelEntity, programme: com.vantaview.app.data.db.ProgrammeEntity, now: Long = System.currentTimeMillis()): Boolean =
-        channel.archiveDays > 0 && programme.remoteId != null && programme.stop <= now &&
+        channel.archiveDays > 0 && (programme.remoteId != null || channel.catchupSource != null) && programme.stop <= now &&
             programme.start > now - channel.archiveDays * 86_400_000L
 
     /** Turns a stored channel into a real address (and a second one to try) just before playback. */

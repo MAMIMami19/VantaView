@@ -42,6 +42,26 @@ sealed interface Filter {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+/** Orders for the Live TV channel list. MINE is the order you set for favourites. */
+enum class ChannelSort(val label: String) {
+    NUMBER("Number"), AZ("A to Z"), ZA("Z to A"), RECENT("Recently starred"), MINE("My order");
+
+    fun apply(list: List<ChannelRow>, favourites: Boolean): List<ChannelRow> = when (this) {
+        NUMBER -> list
+        AZ -> list.sortedBy { it.channel.sortKey }
+        ZA -> list.sortedByDescending { it.channel.sortKey }
+        RECENT -> list.sortedWith(compareByDescending<ChannelRow> { it.isFav }.thenByDescending { it.favAt })
+        MINE -> if (favourites) list.sortedBy { it.favPos } else list
+    }
+
+    fun save(p: com.vantaview.app.data.PlaybackSettings) = p.setString("channel_sort", name)
+
+    companion object {
+        fun load(p: com.vantaview.app.data.PlaybackSettings) =
+            entries.firstOrNull { it.name == p.getString("channel_sort") } ?: NUMBER
+    }
+}
+
 @HiltViewModel
 class LiveViewModel @Inject constructor(
     private val db: VantaDb,
@@ -65,6 +85,9 @@ class LiveViewModel @Inject constructor(
     private val providerId = MutableStateFlow(session.lastProvider())
     val filter = MutableStateFlow<Filter>(Filter.All)
     val query = MutableStateFlow("")
+    /** How the channel list is ordered (remembered on this device). */
+    val sort = MutableStateFlow(ChannelSort.load(playback))
+    fun setSort(s: ChannelSort) { sort.value = s; s.save(playback) }
 
     val active: StateFlow<ProviderEntity?> =
         combine(providers, providerId) { list, id -> list.firstOrNull { it.id == id } ?: list.firstOrNull() }
@@ -139,6 +162,7 @@ class LiveViewModel @Inject constructor(
                     else -> db.content().observeChannelsIn(id, cat, pick.toList(), q, fav)
                 }
             }
+            .let { rows -> combine(rows, sort, filter) { list, so, f -> so.apply(list, f is Filter.Favourites) } }
             .let { rows ->
                 combine(rows, allCategories, allowed, parental.changes) { list, cats, allow, _ ->
                     if (allow == null) {
@@ -204,6 +228,12 @@ class LiveViewModel @Inject constructor(
 
     fun refresh() {
         active.value?.let { repo.sync(it.id) }
+    }
+
+    /** Live TV › Favourites › Edit: the new order of the favourites shown. */
+    fun saveFavouriteOrder(rows: List<ChannelRow>) {
+        viewModelScope.launch { repo.reorderFavourites(rows.map { it.channel }) }
+        setSort(ChannelSort.MINE)
     }
 
     /** A channel by number in the active playlist, for typing a number on the remote. */

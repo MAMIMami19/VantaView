@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AddonEntity::class, ProfileEntity::class, KidsCategoryEntity::class, ProgrammeEntity::class,
     ],
     // Version 3 (profiles) starts the test database afresh: playlists and add-ons are added again.
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class VantaDb : RoomDatabase() {
@@ -24,6 +24,15 @@ abstract class VantaDb : RoomDatabase() {
     abstract fun backup(): BackupDao
 
     companion object {
+        /** Version 7: favourites order, M3U/Xtream catch-up rules, and a typed TV guide link per playlist. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `favourite` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `catchupSource` TEXT")
+                db.execSQL("ALTER TABLE `provider` ADD COLUMN `customEpg` TEXT")
+            }
+        }
+
         /** Version 6 adds catch-up: how many days each channel keeps, and each programme's own id. */
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {

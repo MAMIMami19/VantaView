@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -44,8 +47,16 @@ import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
 
 @Composable
-fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel = hiltViewModel()) {
+fun DetailsScreen(
+    onPlay: () -> Unit,
+    onBack: () -> Unit,
+    onOpenTitle: (com.vantaview.app.data.addon.MetaPreview) -> Unit = {},
+    onPerson: (String) -> Unit = {},
+    vm: DetailsViewModel = hiltViewModel(),
+) {
     val ui by vm.ui.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var noYouTube by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.play.collect { onPlay() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.refreshProgress() }
 
@@ -124,12 +135,45 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                     FocusCard(onClick = vm::toggleWatched, selected = saved.second) {
                         Text(if (saved.second) "✓ Watched" else "Mark watched", color = if (saved.second) Vanta.Cyan else Vanta.Text)
                     }
+                    meta?.trailer?.let { yt ->
+                        // Trailers are on YouTube: open the YouTube app, or the website if there's no app.
+                        FocusCard(onClick = {
+                            val app = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("vnd.youtube:$yt"))
+                            val web = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/watch?v=$yt"))
+                            noYouTube = runCatching { context.startActivity(app) }.recoverCatching { context.startActivity(web) }.isFailure
+                        }) { Text("▶ Trailer", color = Vanta.Text) }
+                    }
                 }
+                if (noYouTube) Text("There's no YouTube app or browser here to play the trailer.", color = Vanta.TextDim, fontSize = 13.sp)
             }
             ui.message?.takeIf { ui.messageFor == null }?.let { m -> item { Text(m, color = Vanta.Error) } }
             meta?.description?.let { d -> item { Text(d, color = Vanta.Text, fontSize = 15.sp, lineHeight = 22.sp) } }
             if (!meta?.director.isNullOrEmpty()) item { Text("Director: " + meta!!.director.joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }
-            if (!meta?.cast.isNullOrEmpty()) item { Text("Cast: " + meta!!.cast.take(8).joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }
+            if (!meta?.cast.isNullOrEmpty()) item {
+                if (vm.browse.hasTmdb) Column {
+                    Text("Cast", color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    // Pick someone to see what else they're in.
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(meta!!.cast.take(15).size) { i ->
+                            val person = meta.cast[i]
+                            FocusCard(onClick = { onPerson(person) }) { Text(person, color = Vanta.Text, fontSize = 14.sp) }
+                        }
+                    }
+                } else Text("Cast: " + meta!!.cast.take(8).joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp)
+            }
+            if (ui.moreLike.isNotEmpty()) item {
+                Column {
+                    Text("More like this", color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(ui.moreLike.size) { i ->
+                            val m = ui.moreLike[i]
+                            PosterCard(m, onClick = { vm.openSimilar(m, onOpenTitle) })
+                        }
+                    }
+                }
+            }
 
             if (ui.loading) item { Text("Loading details…", color = Vanta.TextDim) }
             else if (meta == null) item {

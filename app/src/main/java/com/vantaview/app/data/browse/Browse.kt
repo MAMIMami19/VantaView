@@ -201,6 +201,55 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
         return tmdb("$kind/$n/external_ids")?.optString("imdb_id")?.takeIf { it.startsWith("tt") }
     }
 
+    // ---- People and "More like this" (TMDB only) ----
+
+    data class Person(val id: String, val name: String, val photo: String?, val job: String?)
+
+    suspend fun people(query: String): List<Person> {
+        if (!hasTmdb || query.isBlank()) return emptyList()
+        val arr = tmdb("search/person?query=${enc(query)}&include_adult=false")?.optJSONArray("results") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { o ->
+            val id = o.optString("id").ifBlank { return@mapNotNull null }
+            Person(
+                id, o.optString("name"),
+                o.optString("profile_path").takeIf { it.startsWith("/") }?.let { "https://image.tmdb.org/t/p/w185$it" },
+                o.optString("known_for_department").ifBlank { null },
+            )
+        }.take(20)
+    }
+
+    private fun preview(o: JSONObject, kindHint: String? = null): MetaPreview? {
+        val kind = o.optString("media_type").ifBlank { kindHint ?: return null }
+        if (kind != "movie" && kind != "tv") return null
+        val tv = kind == "tv"
+        val id = o.optString("id").ifBlank { return null }
+        val name = o.optString(if (tv) "name" else "title").ifBlank { return null }
+        val date = o.optString(if (tv) "first_air_date" else "release_date")
+        return MetaPreview(
+            id = "tmdb:$kind:$id", type = if (tv) "series" else "movie", name = name,
+            poster = o.optString("poster_path").takeIf { it.startsWith("/") }?.let { "https://image.tmdb.org/t/p/w342$it" },
+            year = date.take(4).ifBlank { null },
+            rating = o.optDouble("vote_average", 0.0).takeIf { it > 0 }?.let { "%.1f".format(java.util.Locale.UK, it) },
+        )
+    }
+
+    /** Films and series a person was in or made, best known first. */
+    suspend fun personCredits(personId: String): List<MetaPreview> {
+        val o = tmdb("person/$personId/combined_credits") ?: return emptyList()
+        val all = listOfNotNull(o.optJSONArray("cast"), o.optJSONArray("crew")).flatMap { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it) } }
+        return all.sortedByDescending { it.optDouble("popularity", 0.0) }.mapNotNull { preview(it) }.distinctBy { it.id }
+    }
+
+    /** Titles like this one (an IMDb id), from TMDB's recommendations. */
+    suspend fun moreLikeThis(type: String, imdb: String): List<MetaPreview> {
+        if (!hasTmdb || !imdb.startsWith("tt")) return emptyList()
+        val found = tmdb("find/$imdb?external_source=imdb_id") ?: return emptyList()
+        val kind = if (type == "series") "tv" else "movie"
+        val id = found.optJSONArray(if (kind == "tv") "tv_results" else "movie_results")?.optJSONObject(0)?.optString("id")?.ifBlank { null } ?: return emptyList()
+        val arr = tmdb("$kind/$id/recommendations")?.optJSONArray("results") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { preview(it, kind) }.take(20)
+    }
+
     // ---- Cinemeta (no TMDB key) ----
 
     private suspend fun cinemetaPage(type: String, t: BrowseTile, page: Int): List<MetaPreview> = withContext(Dispatchers.IO) {

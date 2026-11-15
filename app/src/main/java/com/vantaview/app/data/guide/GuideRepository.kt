@@ -93,6 +93,8 @@ class GuideRepository @Inject constructor(
     }
 
     private fun guideUrls(p: ProviderEntity): List<String> {
+        // A guide link the user typed comes first.
+        GuideSources.split(p.customEpg).takeIf { it.isNotEmpty() }?.let { return it }
         GuideSources.split(p.epgUrl).takeIf { it.isNotEmpty() }?.let { return it }
         if (p.kind == "XTREAM") {
             val u = URLEncoder.encode(p.username, "UTF-8")

@@ -44,6 +44,10 @@ val TRACK_LANGUAGES = listOf(
 class PlaybackSettings @Inject constructor(@ApplicationContext context: Context) {
     private val sp = context.getSharedPreferences("playback", Context.MODE_PRIVATE)
 
+    /** Small remembered choices (such as the Live TV order). */
+    fun getString(key: String): String? = sp.getString(key, null)
+    fun setString(key: String, value: String) = sp.edit().putString(key, value).apply()
+
     var buffer: BufferSize
         get() = runCatching { BufferSize.valueOf(sp.getString("buffer", null)!!) }.getOrDefault(BufferSize.MEDIUM)
         set(v) { sp.edit().putString("buffer", v.name).apply() }

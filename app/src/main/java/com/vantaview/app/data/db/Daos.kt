@@ -46,7 +46,7 @@ interface ContentDao {
 
     @Query(
         """
-        SELECT c.*, (f.remoteId IS NOT NULL) AS isFav
+        SELECT c.*, (f.remoteId IS NOT NULL) AS isFav, COALESCE(f.position, 0) AS favPos, COALESCE(f.addedAt, 0) AS favAt
         FROM channel c
         LEFT JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
         WHERE c.providerId = :providerId
@@ -62,7 +62,7 @@ interface ContentDao {
     /** Channels from the chosen countries, optionally in one category. */
     @Query(
         """
-        SELECT c.*, (f.remoteId IS NOT NULL) AS isFav
+        SELECT c.*, (f.remoteId IS NOT NULL) AS isFav, COALESCE(f.position, 0) AS favPos, COALESCE(f.addedAt, 0) AS favAt
         FROM channel c
         LEFT JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
         WHERE c.providerId = :providerId
@@ -160,7 +160,7 @@ interface ContentDao {
         SELECT c.* FROM channel c
         JOIN favourite f ON f.providerId = c.providerId AND f.remoteId = c.remoteId
         WHERE c.providerId IN (:providerIds)
-        ORDER BY f.addedAt DESC
+        ORDER BY f.position, f.addedAt DESC
         LIMIT 40
         """
     )
@@ -177,6 +177,12 @@ interface ContentDao {
 
     @Query("DELETE FROM favourite WHERE providerId = :providerId AND remoteId = :remoteId")
     suspend fun removeFavourite(providerId: Long, remoteId: String)
+
+    @Query("SELECT COALESCE(MAX(position), 0) FROM favourite WHERE providerId = :providerId")
+    suspend fun maxFavouritePosition(providerId: Long): Int
+
+    @Query("UPDATE favourite SET position = :position WHERE providerId = :providerId AND remoteId = :remoteId")
+    suspend fun setFavouritePosition(providerId: Long, remoteId: String, position: Int)
 }
 
 @Dao
@@ -294,7 +300,7 @@ interface GuideDao {
         """
         SELECT * FROM programme
         WHERE providerId = :providerId AND channelKey = :key AND stop > :now
-        ORDER BY start LIMIT 2
+        ORDER BY start LIMIT 3
         """
     )
     suspend fun nowNext(providerId: Long, key: String, now: Long): List<ProgrammeEntity>

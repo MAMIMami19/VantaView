@@ -136,6 +136,8 @@ data class MetaDetail(
     val cast: List<String>,
     val director: List<String>,
     val videos: List<Video>,
+    /** A YouTube video id for the trailer, when the add-on gives one. */
+    val trailer: String? = null,
 )
 
 /**
@@ -208,6 +210,12 @@ object AddonJson {
             cast = strings(o.optJSONArray("cast")),
             director = strings(o.optJSONArray("director")),
             videos = videos,
+            trailer = o.optJSONArray("trailerStreams")?.optJSONObject(0)?.optString("ytId")?.ifBlank { null }
+                ?: o.optJSONArray("trailers")?.let { a ->
+                    (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+                        .firstOrNull { it.optString("type").isBlank() || it.optString("type").equals("Trailer", true) }
+                        ?.optString("source")?.ifBlank { null }
+                },
         )
     }
 

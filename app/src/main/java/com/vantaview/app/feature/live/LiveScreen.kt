@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -70,6 +71,7 @@ import com.vantaview.app.data.db.ProgrammeEntity
 import com.vantaview.app.data.repo.SyncState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
+import com.vantaview.app.ui.scrollWhenFocused
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -159,7 +161,20 @@ fun LiveScreen(
                 return@Column
             }
             Spacer(Modifier.height(10.dp))
-            com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search channels or numbers")
+            val sort by vm.sort.collectAsStateWithLifecycle()
+            var sortOpen by remember { mutableStateOf(false) }
+            var editFavs by remember { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search channels or numbers", Modifier.weight(1f, fill = false))
+                if (query.isEmpty()) {
+                    FocusCard(onClick = { sortOpen = true }) { Text("Order: ${sort.label} ▾", color = Vanta.Text, fontSize = 14.sp) }
+                    if (filter == Filter.Favourites && channels.size > 1 && !isKids) {
+                        FocusCard(onClick = { editFavs = true }) { Text("Edit favourites", color = Vanta.Text, fontSize = 14.sp) }
+                    }
+                }
+            }
+            if (sortOpen) SortDialog(sort, onPick = { vm.setSort(it); sortOpen = false }, onClose = { sortOpen = false })
+            if (editFavs) EditFavouritesDialog(channels, onSave = { vm.saveFavouriteOrder(it); editFavs = false }, onRemove = vm::toggleFavourite, onClose = { editFavs = false })
             when (state) {
                 is SyncState.Running -> Text("${state.stage}…", color = Vanta.Cyan, modifier = Modifier.padding(top = 8.dp))
                 is SyncState.Failed -> Text(state.message, color = Vanta.Error, modifier = Modifier.padding(top = 8.dp))
@@ -280,6 +295,57 @@ private fun RefreshButton(onClick: () -> Unit) {
     FocusCard(onClick = onClick, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
         Icon(Icons.Filled.Refresh, contentDescription = "Refresh playlist", tint = Vanta.Text)
     }
+}
+
+@Composable
+private fun SortDialog(current: ChannelSort, onPick: (ChannelSort) -> Unit, onClose: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Order channels by", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChannelSort.entries.forEach { s ->
+                    FocusCard(onClick = { onPick(s) }, selected = s == current, modifier = Modifier.fillMaxWidth()) {
+                        Text(s.label + if (s == ChannelSort.MINE) " (favourites)" else "", color = if (s == current) Vanta.Cyan else Vanta.Text)
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Close") } },
+    )
+}
+
+/** Put favourites in your own order, or take some off. */
+@Composable
+private fun EditFavouritesDialog(
+    rows: List<ChannelRow>, onSave: (List<ChannelRow>) -> Unit, onRemove: (ChannelRow) -> Unit, onClose: () -> Unit,
+) {
+    var list by remember { mutableStateOf(rows.filter { it.isFav }) }
+    fun move(i: Int, by: Int) {
+        val j = i + by
+        if (j !in list.indices) return
+        list = list.toMutableList().also { val t = it[i]; it[i] = it[j]; it[j] = t }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Edit favourites", color = Vanta.Text) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(list.size, key = { list[it].channel.id }) { i ->
+                    val r = list[i]
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("${i + 1}.", color = Vanta.TextDim, modifier = Modifier.width(28.dp))
+                        Text(ChannelNames.display(r.channel.name), color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        FocusCard(onClick = { move(i, -1) }, padding = PaddingValues(8.dp)) { Text("▲", color = Vanta.Text) }
+                        FocusCard(onClick = { move(i, 1) }, padding = PaddingValues(8.dp)) { Text("▼", color = Vanta.Text) }
+                        FocusCard(onClick = { onRemove(r); list = list - r }, padding = PaddingValues(8.dp)) { Text("✕", color = Vanta.Error) }
+                    }
+                }
+            }
+        },
+        confirmButton = { com.vantaview.app.ui.GradientButton("Save order", onClick = { onSave(list) }) },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -411,7 +477,8 @@ private fun ChannelItem(
                     Text(
                         ChannelNames.display(name),
                         color = textColour, fontSize = 16.sp,
-                        maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis,
+                        maxLines = if (wide) 1 else 2, overflow = if (wide) TextOverflow.Clip else TextOverflow.Ellipsis,
+                        modifier = if (wide) Modifier.scrollWhenFocused() else Modifier,
                     )
                     if (event) Text("Event only · plays while an event is on", color = dimColour, fontSize = 12.sp, maxLines = 1)
                     NowNextLine(row.channel, guideTick, nowNext, if (filled) textColour else null, if (filled) dimColour else null)
@@ -475,10 +542,14 @@ internal fun NowNextLine(
     val t = System.currentTimeMillis()
     val now = progs.firstOrNull()?.takeIf { it.start <= t }
     val next = if (now != null) progs.getOrNull(1) else progs.firstOrNull()
+    val after = if (now != null) progs.getOrNull(2) else progs.getOrNull(1)
     if (now == null && next == null) return
     Column(Modifier.padding(top = 3.dp)) {
         if (now != null) {
-            Text("Now: ${now.title}", color = nowColour ?: Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                "Now: ${now.title}", color = nowColour ?: Vanta.Cyan, fontSize = 13.sp, maxLines = 1,
+                overflow = TextOverflow.Clip, modifier = Modifier.scrollWhenFocused(),
+            )
             val f = ((t - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
             Box(Modifier.padding(vertical = 3.dp).width(140.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Vanta.SurfaceHigh)) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(nowColour ?: Vanta.Cyan))
@@ -486,6 +557,9 @@ internal fun NowNextLine(
         }
         if (next != null) {
             Text("Next: ${clock.format(java.util.Date(next.start))} ${next.title}", color = nextColour ?: Vanta.TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (after != null) {
+            Text("After: ${clock.format(java.util.Date(after.start))} ${after.title}", color = nextColour ?: Vanta.TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

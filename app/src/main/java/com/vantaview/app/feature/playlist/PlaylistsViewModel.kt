@@ -29,6 +29,8 @@ data class PlaylistForm(
     val username: String = "",
     val password: String = "",
     val portal: String = "",
+    /** Optional TV guide link typed for an M3U or Xtream playlist. */
+    val guide: String = "",
     val mac: String = "",
     /** Stalker › Advanced: details of the user's own MAG box, for providers that lock to one box. */
     val boxOpen: Boolean = false,
@@ -46,6 +48,8 @@ class PlaylistsViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val session: ProfileSession,
     private val countries: com.vantaview.app.data.country.CountryStore,
+    private val guide: com.vantaview.app.data.guide.GuideRepository,
+    private val db: com.vantaview.app.data.db.VantaDb,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
         repo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -87,8 +91,8 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val id = when (f.tab) {
-                    SourceTab.M3U -> repo.addM3u(f.name, f.m3uUrl)
-                    SourceTab.XTREAM -> repo.addXtream(f.name, f.server, f.username, f.password)
+                    SourceTab.M3U -> repo.addM3u(f.name, f.m3uUrl, f.guide)
+                    SourceTab.XTREAM -> repo.addXtream(f.name, f.server, f.username, f.password, f.guide)
                     SourceTab.STALKER -> repo.addStalker(f.name, f.portal, f.mac, f.model, f.serial, f.deviceId, f.deviceId2, f.signature)
                     SourceTab.SMART -> { detect(); return@launch }
                 }
@@ -101,6 +105,31 @@ class PlaylistsViewModel @Inject constructor(
     }
 
     fun refresh(id: Long) = repo.sync(id)
+
+    /** M3U from a file picked on this device. */
+    fun addFile(uri: android.net.Uri) {
+        val f = _form.value
+        viewModelScope.launch {
+            try {
+                val id = repo.addM3uFile(f.name, uri, f.guide)
+                session.setLastProvider(id)
+                _form.value = PlaylistForm(tab = f.tab, message = "Playlist added from the file. Loading channels…")
+            } catch (e: Exception) {
+                _form.update { it.copy(message = e.message ?: "Couldn't read that file", isError = true) }
+            }
+        }
+    }
+
+    fun fileError(message: String) = _form.update { it.copy(message = message, isError = true) }
+
+    /** A guide link typed for an existing playlist; the guide loads again with it. */
+    fun setGuideLink(p: ProviderEntity, link: String, done: (String?) -> Unit) {
+        viewModelScope.launch {
+            runCatching { repo.setGuideLink(p.id, link) }
+                .onSuccess { db.providers().get(p.id)?.let(guide::refresh); done(null) }
+                .onFailure { done(it.message) }
+        }
+    }
 
     fun hasFreeTv(list: List<ProviderEntity>): Boolean = list.any { repo.isFreeTv(it) }
 

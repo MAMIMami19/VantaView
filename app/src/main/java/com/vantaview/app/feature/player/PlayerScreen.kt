@@ -136,10 +136,16 @@ fun PlayerScreen(onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     val list by vm.list.collectAsStateWithLifecycle()
     val current by vm.current.collectAsStateWithLifecycle()
 
+    // Phones: Home while a channel plays shrinks it into picture-in-picture; the controls step aside there.
+    val pip = PlayerPip.inPip
+    DisposableEffect(Unit) { onDispose { PlayerPip.playing = false } }
+    LaunchedEffect(Unit) { while (true) { PlayerPip.playing = !isTv && vm.player.isPlaying; delay(1000) } }
+    LaunchedEffect(pip) { if (pip) overlay = false }
+
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         // Phones held upright get the video on top and the channel list underneath; otherwise full screen.
         // The screen follows the device's own rotation (and its rotation lock).
-        val upright = !isTv && maxHeight > maxWidth
+        val upright = !isTv && maxHeight > maxWidth && !pip
         val portrait = upright && !full
         DisposableEffect(portrait) {
             val window = activity?.window
@@ -220,6 +226,10 @@ private fun VideoArea(
     // Audio or subtitle picker (a track type), and the buttons that open it.
     var picker by remember { mutableStateOf<Int?>(null) }
     val buttons = remember { FocusRequester() }
+    // Phones: the lock stops stray touches; tap the screen, then Unlock.
+    var locked by remember { mutableStateOf(false) }
+    var showUnlock by remember { mutableStateOf(false) }
+    LaunchedEffect(showUnlock) { if (showUnlock) { kotlinx.coroutines.delay(3000); showUnlock = false } }
     var videoFocused by remember { mutableStateOf(false) }
     var buttonsFocused by remember { mutableStateOf(false) }
     LaunchedEffect(picker, buttonsFocused) { onHold(picker != null || buttonsFocused) }
@@ -335,8 +345,15 @@ private fun VideoArea(
                     )
                 }
         )
+        if (locked) {
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { showUnlock = true } }) {
+                if (showUnlock) FocusCard(onClick = { locked = false; showUnlock = false }, modifier = Modifier.align(Alignment.Center)) {
+                    Text("🔓  Unlock", color = Vanta.Text, fontSize = 18.sp)
+                }
+            }
+        }
 
-        if (overlay) {
+        if (overlay && !locked && !PlayerPip.inPip) {
             val pad = if (compact) 12.dp else 20.dp
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(
@@ -367,6 +384,13 @@ private fun VideoArea(
                         }
                         FocusCard(onClick = vm::cycleSize) {
                             Text("Size: ${size.label}", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                        }
+                        if (!isTv) {
+                            val activity = LocalContext.current as? Activity
+                            FocusCard(onClick = { locked = true; showUnlock = false }) { Text("🔒", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp) }
+                            if (PlayerPip.supported(activity)) FocusCard(onClick = { PlayerPip.enter(activity) }) {
+                                Text("⧉", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                            }
                         }
                     }
                 }
