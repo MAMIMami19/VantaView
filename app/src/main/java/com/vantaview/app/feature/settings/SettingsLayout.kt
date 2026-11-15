@@ -134,10 +134,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
 @Composable
 private fun ListHeader(query: String, onQuery: (String) -> Unit) {
     Text("Settings", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-    OutlinedTextField(
-        value = query, onValueChange = onQuery, singleLine = true,
-        label = { Text("Search settings") }, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-    )
+    com.vantaview.app.ui.SearchToggle(query, onQuery, "Search settings", Modifier.padding(bottom = 4.dp))
 }
 
 @Composable

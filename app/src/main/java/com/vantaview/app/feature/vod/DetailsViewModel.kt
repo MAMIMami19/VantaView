@@ -35,6 +35,8 @@ data class DetailsUi(
     val season: Int? = null,
     val finding: String? = null,
     val message: String? = null,
+    /** The episode the message is about, so it shows on that episode's row (null: the film or the series). */
+    val messageFor: String? = null,
     val choice: StreamChoice? = null,
     /** Not suitable for the Kids profile in use. */
     val blocked: Boolean = false,
@@ -132,15 +134,19 @@ class DetailsViewModel @Inject constructor(
         )
     }
 
+    private var findJob: kotlinx.coroutines.Job? = null
+
     fun play(video: Video?, choose: Boolean) {
-        if (_ui.value.finding != null || _ui.value.blocked) return
+        if (_ui.value.blocked) return
+        // Pressing another episode (or ⋯) while one is still looking starts over with the new one.
+        findJob?.cancel()
         val streamId = video?.id ?: id
         val subtitle = video?.let { v ->
             val code = if (v.season > 0) "S${v.season} E${v.episode}" else "Episode ${v.episode}"
             listOf(code, v.title).filter { it.isNotBlank() }.joinToString(" · ")
         }
-        _ui.update { it.copy(finding = streamId, message = null) }
-        viewModelScope.launch {
+        _ui.update { it.copy(finding = streamId, message = null, messageFor = video?.id) }
+        findJob = viewModelScope.launch {
             val hasSource = repo.hasStreamSource(type, streamId)
             val raw = if (hasSource) runCatching { repo.streams(type, streamId) }.getOrDefault(emptyList()) else emptyList()
             // Torrent results only stay when a debrid account is connected; cached ones are moved up.

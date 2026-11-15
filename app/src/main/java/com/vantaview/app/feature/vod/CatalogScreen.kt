@@ -63,13 +63,7 @@ fun CatalogScreen(
             return@Column
         }
 
-        OutlinedTextField(
-            value = query,
-            onValueChange = { vm.query.value = it },
-            label = { Text("Search ${title.lowercase()}") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search ${title.lowercase()}")
         Spacer(Modifier.height(10.dp))
         // Sort: applies to every row and to search results.
         val sort by vm.sort.collectAsStateWithLifecycle()

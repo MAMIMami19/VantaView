@@ -25,6 +25,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -124,7 +126,7 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                     }
                 }
             }
-            ui.message?.let { m -> item { Text(m, color = Vanta.Error) } }
+            ui.message?.takeIf { ui.messageFor == null }?.let { m -> item { Text(m, color = Vanta.Error) } }
             meta?.description?.let { d -> item { Text(d, color = Vanta.Text, fontSize = 15.sp, lineHeight = 22.sp) } }
             if (!meta?.director.isNullOrEmpty()) item { Text("Director: " + meta!!.director.joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }
             if (!meta?.cast.isNullOrEmpty()) item { Text("Cast: " + meta!!.cast.take(8).joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }
@@ -158,7 +160,7 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
                         p.resumable -> "Resume · ${minutesLeft(p.remainingMs)}"
                         else -> null
                     }
-                    EpisodeRow(v, finding = ui.finding == v.id, note = note, onPlay = { vm.play(v, false) }, onChoose = { vm.play(v, true) })
+                    EpisodeRow(v, finding = ui.finding == v.id, note = ui.message?.takeIf { ui.messageFor == v.id } ?: note, problem = ui.messageFor == v.id && ui.message != null, onPlay = { vm.play(v, false) }, onChoose = { vm.play(v, true) })
                 }
             }
         }
@@ -173,7 +175,7 @@ fun DetailsScreen(onPlay: () -> Unit, onBack: () -> Unit, vm: DetailsViewModel =
 }
 
 @Composable
-private fun EpisodeRow(v: Video, finding: Boolean, note: String?, onPlay: () -> Unit, onChoose: () -> Unit) {
+private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boolean = false, onPlay: () -> Unit, onChoose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FocusCard(onClick = onPlay, modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -192,13 +194,14 @@ private fun EpisodeRow(v: Video, finding: Boolean, note: String?, onPlay: () -> 
                             note != null -> note
                             else -> v.overview ?: v.released?.take(10) ?: ""
                         },
-                        color = if (finding || note != null) Vanta.Cyan else Vanta.TextDim, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        color = if (problem) Vanta.Error else if (finding || note != null) Vanta.Cyan else Vanta.TextDim, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
         FocusCard(onClick = onChoose, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
-            Text("⋯", color = Vanta.Text, fontSize = 18.sp)
+            // Choose which stream to play.
+            Text("⋯", color = Vanta.Text, fontSize = 18.sp, modifier = Modifier.semantics { contentDescription = "Choose a stream" })
         }
     }
 }

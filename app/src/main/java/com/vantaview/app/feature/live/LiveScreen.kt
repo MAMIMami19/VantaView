@@ -159,13 +159,7 @@ fun LiveScreen(
                 return@Column
             }
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = { vm.query.value = it },
-                label = { Text("Search channels or numbers") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search channels or numbers")
             when (state) {
                 is SyncState.Running -> Text("${state.stage}…", color = Vanta.Cyan, modifier = Modifier.padding(top = 8.dp))
                 is SyncState.Failed -> Text(state.message, color = Vanta.Error, modifier = Modifier.padding(top = 8.dp))
