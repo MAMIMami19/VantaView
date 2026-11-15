@@ -84,6 +84,38 @@ fun lookPalette(look: com.vantaview.app.data.Look): VantaPalette? = when (look) 
         text = Color.White, textDim = Color(0xFFB7D3F0), highlight = Color(0xFF8FE3FF),
         error = Color(0xFFFF8A9A), accent = Color.White, light = false, panel = Color(0xFF0C3F78), look = look,
     )
+    com.vantaview.app.data.Look.BLADES -> VantaPalette(
+        bg = Color(0xFFC9CFC4), surface = Color(0xFFF1F3EE), surfaceHigh = Color(0xFFDDE7D2),
+        text = Color(0xFF1E261B), textDim = Color(0xFF4F5A4A), highlight = Color(0xFF3F8A10),
+        error = Color(0xFFB3261E), accent = Color(0xFF5AA612), light = true, panel = Color(0xFFF4F6F1), look = look,
+        fill = Color(0xFF5AA612), onFill = Color.White,
+    )
+    com.vantaview.app.data.Look.STACK -> VantaPalette(
+        bg = Color(0xFF0F1B2A), surface = Color(0xCC1C2A3A), surfaceHigh = Color(0xFF2A3D52),
+        text = Color.White, textDim = Color(0xFFB7C7D6), highlight = Color(0xFF8FD14F),
+        error = Color(0xFFFF8A9A), accent = Color(0xFF8FD14F), light = false, panel = Color(0xFF16263A), look = look,
+    )
+    com.vantaview.app.data.Look.TILES -> VantaPalette(
+        bg = Color(0xFFECECEC), surface = Color.White, surfaceHigh = Color(0xFFDCEEDC),
+        text = Color(0xFF1A1A1A), textDim = Color(0xFF5F5F5F), highlight = Color(0xFF107C10),
+        error = Color(0xFFB3261E), accent = Color(0xFF107C10), light = true, panel = Color(0xFFF7F7F7), look = look,
+        fill = Color(0xFF107C10), onFill = Color.White,
+    )
+    com.vantaview.app.data.Look.FLUENT -> VantaPalette(
+        bg = Color(0xFF121614), surface = Color(0xE6222A26), surfaceHigh = Color(0xFF34403A),
+        text = Color.White, textDim = Color(0xFFC9D3CD), highlight = Color(0xFF9BE27A),
+        error = Color(0xFFFF8A9A), accent = Color.White, light = false, panel = Color(0xFF1A201D), look = look,
+    )
+    com.vantaview.app.data.Look.CROSS -> VantaPalette(
+        bg = Color(0xFF0A2F63), surface = Color(0x26FFFFFF), surfaceHigh = Color(0x4DFFFFFF),
+        text = Color.White, textDim = Color(0xFFD6EAFF), highlight = Color(0xFFBFE3FF),
+        error = Color(0xFFFF8A9A), accent = Color.White, light = false, panel = Color(0xFF0E3D78), look = look,
+    )
+    com.vantaview.app.data.Look.SPOTLIGHT -> VantaPalette(
+        bg = Color(0xFF05070F), surface = Color(0x1FFFFFFF), surfaceHigh = Color(0x3DFFFFFF),
+        text = Color.White, textDim = Color(0xFFA9B3CF), highlight = Color(0xFF8FB4FF),
+        error = Color(0xFFFF8A9A), accent = Color.White, light = false, panel = Color(0xFF10162C), look = look,
+    )
     com.vantaview.app.data.Look.CLASSIC -> VantaPalette(
         bg = Color(0xFF0B1450), surface = Color(0xFF2341C4), surfaceHigh = Color(0xFF3557DA),
         text = Color.White, textDim = Color(0xFFBFCBFF), highlight = Color(0xFFFFC928),

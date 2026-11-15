@@ -1,3 +1,4 @@
+- Six games-console style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight. On a TV each turns Home into a dashboard, and the rest of the app takes on its colours, background and menu.
 - New looks in Settings › Appearance: Glass, Broadcast, Wave and Classic change the colours, background, menu and TV Guide. Each profile can have its own.
 - Catch-up: in the TV Guide, pick a programme that has already aired on a portal channel with catch-up and choose Watch from start.
 - Stalker portals: add one with its portal address and MAC address (or paste your provider's message into Smart Add). Live TV, the portal's TV guide, films and series all appear in the app.
@@ -5,4 +6,3 @@
 - Opens much faster, especially on Fire TV Sticks, and shows the logo straight away instead of a blank screen.
 - TV fixes: works on Android 7 boxes and Fire OS 6; the country chooser fits a TV screen; slimmer sidebar.
 - TV remotes: type a channel number while watching to jump to it; Home's play button shows a focus ring.
-- Live player swipes: left side for brightness, right side for volume (boost up to 200%); swipe sideways to change channel.

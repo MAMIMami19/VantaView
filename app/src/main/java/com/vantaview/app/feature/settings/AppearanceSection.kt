@@ -50,7 +50,7 @@ fun AppearanceSection(s: AppearanceSettings) {
     val a by s.state.collectAsState()
 
     Section("Look") {
-        Text("Changes colours, the background, the menu and the TV Guide. Each profile has its own.", color = Vanta.TextDim, fontSize = 13.sp)
+        Text("Changes colours, the background, the menu and the TV Guide. The console-style looks (Blades to Spotlight) also turn Home into a dashboard on TVs and wide screens. Each profile has its own look.", color = Vanta.TextDim, fontSize = 13.sp)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             com.vantaview.app.data.Look.entries.forEach { l ->
                 LookTile(l, a.look == l) { s.update { it.copy(look = l) } }
@@ -124,7 +124,7 @@ private fun LookTile(look: com.vantaview.app.data.Look, on: Boolean, onClick: ()
     val p = com.vantaview.app.ui.lookPalette(look) ?: com.vantaview.app.ui.paletteFor(
         ThemeMode.DARK, true, Color(AccentPreset.CYAN.highlight), Color(AccentPreset.CYAN.focus),
     )
-    val top = look == com.vantaview.app.data.Look.BROADCAST || look == com.vantaview.app.data.Look.CLASSIC
+    val top = look.topMenu
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FocusCard(onClick = onClick, selected = on, padding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
             Box(

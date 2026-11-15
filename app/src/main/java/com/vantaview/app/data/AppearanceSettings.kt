@@ -25,12 +25,25 @@ enum class AccentPreset(val label: String, val highlight: Long, val focus: Long)
  * A whole look for the app: colours, background, menu and the TV Guide's layout. VANTA is the
  * original look, where the theme and accent colour below apply.
  */
-enum class Look(val label: String, val description: String) {
+enum class Look(
+    val label: String,
+    val description: String,
+    /** Sections in a bar across the top on wide screens (instead of the sidebar). */
+    val topMenu: Boolean = false,
+    /** Home is a console-style dashboard on wide screens. */
+    val dashboard: Boolean = false,
+) {
     VANTA("VantaView", "The original dark look, with your theme and accent colour"),
     GLASS("Glass", "Deep blue glass, with the chosen programme shown big at the top of the guide"),
-    BROADCAST("Broadcast", "Bright blue, a menu across the top and a TV Guide like a set-top box"),
+    BROADCAST("Broadcast", "Bright blue, a menu across the top and a TV Guide like a set-top box", topMenu = true),
     WAVE("Wave", "Flowing waves behind floating lists"),
-    CLASSIC("Classic", "Navy and royal blue with a yellow highlight and a menu across the top"),
+    CLASSIC("Classic", "Navy and royal blue with a yellow highlight and a menu across the top", topMenu = true),
+    BLADES("Blades", "Silver-green tabs you flick through sideways, like a 2005 games console", dashboard = true),
+    STACK("Stack", "A menu down the side and a 3D stack of panels, like a 2008 games console", dashboard = true),
+    TILES("Tiles", "Light grey with green tiles and a lower-case menu across the top, like a 2011 games console", topMenu = true, dashboard = true),
+    FLUENT("Fluent", "Dark, with a big picture of what's on and a row of square tiles, like a 2020 games console", topMenu = true, dashboard = true),
+    CROSS("Cross", "Blue waves, icons across and items down, like a 2006 games console", topMenu = true, dashboard = true),
+    SPOTLIGHT("Spotlight", "Dark blue, rounded tiles and a big title with a Watch button, like a 2020 games console", topMenu = true, dashboard = true),
 }
 
 enum class TextSize(val label: String, val scale: Float) { SMALL("Small", 0.9f), NORMAL("Normal", 1f), LARGE("Large", 1.15f) }

@@ -98,8 +98,9 @@ fun AppShell(
         LookBackground(Vanta.Look)
         val wide = maxWidth >= 720.dp
         // Broadcast and Classic put the sections in a bar across the top on TVs and wide screens.
-        val topMenu = wide && current != null &&
-            (Vanta.Look == com.vantaview.app.data.Look.BROADCAST || Vanta.Look == com.vantaview.app.data.Look.CLASSIC)
+        // Console looks draw their own menu on Home (a dashboard), so the sidebar and bar step aside there.
+        val dashboard = wide && current == Section.HOME && Vanta.Look.dashboard
+        val topMenu = wide && current != null && !dashboard && Vanta.Look.topMenu
         val drawer = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val focusManager = LocalFocusManager.current
@@ -145,7 +146,7 @@ fun AppShell(
             },
         ) {
             Row(Modifier.fillMaxSize()) {
-                if (wide && current != null && !topMenu) {
+                if (wide && current != null && !topMenu && !dashboard) {
                     AnimatedVisibility(visible = railShown, enter = expandHorizontally(), exit = shrinkHorizontally()) {
                         Column(
                             Modifier.width(172.dp).fillMaxHeight().background(Vanta.Surface)
@@ -248,7 +249,13 @@ private fun TopMenu(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(s.icon, contentDescription = null, tint = if (on) Vanta.Cyan else Vanta.TextDim, modifier = Modifier.width(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(s.label, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
+                        // Tiles uses a lower-case menu; Cross shows only the chosen section's name under the icons.
+                        val label = when (Vanta.Look) {
+                            com.vantaview.app.data.Look.TILES -> s.label.lowercase()
+                            com.vantaview.app.data.Look.CROSS -> if (on) s.label else ""
+                            else -> s.label
+                        }
+                        if (label.isNotEmpty()) Text(label, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
                     }
                 }
             }

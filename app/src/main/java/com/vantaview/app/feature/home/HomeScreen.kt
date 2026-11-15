@@ -122,7 +122,18 @@ fun HomeScreen(
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page)) {
         val wide = maxWidth >= 720.dp
-        Column(
+        // Console looks (Settings › Appearance) turn Home into a dashboard on TVs and wide screens.
+        if (wide && Vanta.Look.dashboard) {
+            val profile by vm.profile.collectAsStateWithLifecycle()
+            ConsoleHome(
+                Vanta.Look,
+                Dash(
+                    now, profile, cont, favs, onNow, preview, previewNow, vm, onSection,
+                    onOpen = { c -> onOpenTitle(c.entry.type, c.entry.metaId, c.entry.title, c.entry.poster, c.playVideoId?.let { v -> if (c.entry.type == "movie") "movie" else v }) },
+                    onPlayChannel = onPlayChannel,
+                ),
+            )
+        } else Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -271,7 +282,7 @@ private fun SectionTile(t: Tile, modifier: Modifier, onClick: () -> Unit) {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PreviewBox(p: Preview?, vm: HomeViewModel, modifier: Modifier, onFull: () -> Unit) {
+internal fun PreviewBox(p: Preview?, vm: HomeViewModel, modifier: Modifier, onFull: () -> Unit) {
     Box(modifier.clip(RoundedCornerShape(16.dp)).background(Vanta.Surface)) {
         if (p == null) {
             Text(

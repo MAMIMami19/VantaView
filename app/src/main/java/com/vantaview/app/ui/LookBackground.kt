@@ -38,6 +38,34 @@ fun LookBackground(look: Look, modifier: Modifier = Modifier.fillMaxSize()) {
         Look.CLASSIC -> Canvas(modifier) {
             drawRect(Brush.verticalGradient(listOf(Color(0xFF0B1450), Color(0xFF13207A), Color(0xFF1C2E9A))))
         }
+        Look.BLADES -> Canvas(modifier) {
+            drawRect(Brush.linearGradient(listOf(Color(0xFFDDE1D9), Color(0xFFB4BBB0), Color(0xFF7F887A)), start = Offset.Zero, end = Offset(size.width * 0.6f, size.height)))
+        }
+        Look.STACK -> Canvas(modifier) {
+            drawRect(Color(0xFF0A1220))
+            drawRect(Brush.radialGradient(listOf(Color(0xFF3A5A7A), Color(0xFF16263A), Color(0xFF0A1220)), center = Offset(size.width * 0.7f, size.height * 0.3f), radius = size.maxDimension * 0.75f))
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0x2E78BE3C)), startY = size.height * 0.75f, endY = size.height))
+        }
+        Look.TILES -> Canvas(modifier) { drawRect(Color(0xFFECECEC)) }
+        Look.FLUENT -> Canvas(modifier) {
+            drawRect(Brush.linearGradient(listOf(Color(0xFF1B2A24), Color(0xFF2D4436), Color(0xFF121614)), start = Offset.Zero, end = Offset(size.width, size.height * 0.6f)))
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEB0A0C0B)), startY = size.height * 0.3f, endY = size.height * 0.8f))
+        }
+        Look.SPOTLIGHT -> Canvas(modifier) {
+            drawRect(Brush.linearGradient(listOf(Color(0xFF05070F), Color(0xFF101A3A), Color(0xFF2A3F7A)), start = Offset.Zero, end = Offset(size.width, size.height * 0.4f)))
+            drawRect(Brush.horizontalGradient(listOf(Color(0xEB03050C), Color(0x8C03050C), Color.Transparent)))
+        }
+        Look.CROSS -> {
+            val t by rememberInfiniteTransition(label = "cross").animateFloat(
+                0f, 1f, infiniteRepeatable(tween(60_000, easing = LinearEasing), RepeatMode.Restart), label = "t",
+            )
+            Canvas(modifier) {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF0A2F63), Color(0xFF14569E), Color(0xFF2A7FC8))))
+                wave(t, 0.62f, 0.07f, 1.1f, Color(0x29A0D7FF))
+                wave(t + 0.5f, 0.70f, 0.05f, 0.9f, Color(0x1FA0D7FF))
+                waveLine(t + 0.25f, 0.56f, 0.06f, 1.3f, Color(0x59DCF0FF))
+            }
+        }
         Look.WAVE -> {
             // One slow loop a minute: cheap enough for a Fire TV Stick.
             val t by rememberInfiniteTransition(label = "wave").animateFloat(
@@ -69,4 +97,18 @@ private fun DrawScope.wave(t: Float, at: Float, height: Float, cycles: Float, co
     }
     path.lineTo(w, h); path.lineTo(0f, h); path.close()
     drawPath(path, color)
+}
+
+/** A thin sine line (the bright edge on the Cross look). */
+private fun DrawScope.waveLine(t: Float, at: Float, height: Float, cycles: Float, color: Color) {
+    val w = size.width
+    val h = size.height
+    val path = Path()
+    val steps = 48
+    for (i in 0..steps) {
+        val x = w * i / steps
+        val y = h * at + h * height * sin((i.toFloat() / steps * cycles + t) * 2 * PI).toFloat()
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    drawPath(path, color, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
 }

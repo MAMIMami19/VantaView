@@ -174,6 +174,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
 - [x] Looks (Settings › Appearance): VantaView, Glass, Broadcast, Wave and Classic, with previews; each changes colours, background, menu (Broadcast and Classic have a top menu on wide screens) and the TV Guide; appearance is saved per profile
+- [x] Console-style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight, each with its own Home dashboard on wide screens, plus its colours, background and menu on every page
 - [x] Stalker portals: films and series on the Movies and TV Series pages, the portal's own TV guide, and Smart Add spots a portal address with a MAC address
 - [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch
 
