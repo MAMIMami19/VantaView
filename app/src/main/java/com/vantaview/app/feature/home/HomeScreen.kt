@@ -411,14 +411,13 @@ private fun GreetingRow(
         in 12..17 -> "Good afternoon"
         else -> "Good evening"
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(greeting, color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Black)
-            Text(SimpleDateFormat("EEEE d MMMM · HH:mm", Locale.UK).format(now), color = Vanta.TextDim, fontSize = 14.sp)
-        }
+    val date = SimpleDateFormat("EEEE d MMMM · HH:mm", Locale.UK).format(now)
+    val search: @Composable () -> Unit = {
         FocusCard(onClick = onSearch, shape = CircleShape, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Search, contentDescription = "Search", tint = Vanta.Text)
         }
+    }
+    val weatherCard: @Composable () -> Unit = {
         when {
             weather != null -> FocusCard(onClick = onWeather, padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -437,9 +436,31 @@ private fun GreetingRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     com.vantaview.app.ui.WeatherIcon(2, true, Modifier.size(24.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Show weather", color = Vanta.Text, fontSize = 13.sp)
+                    Text("Show weather", color = Vanta.Text, fontSize = 13.sp, maxLines = 1)
                 }
             }
+        }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 480.dp) {
+            // A phone held upright: greeting and search on one line, the date, then the weather underneath.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(greeting, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                        Text(date, color = Vanta.TextDim, fontSize = 14.sp, maxLines = 1)
+                    }
+                    search()
+                }
+                weatherCard()
+            }
+        } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(greeting, color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                Text(date, color = Vanta.TextDim, fontSize = 14.sp)
+            }
+            search()
+            weatherCard()
         }
     }
 }

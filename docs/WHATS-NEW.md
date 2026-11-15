@@ -1,3 +1,4 @@
+- Home on an upright phone: the greeting and date stay on one line each, with the weather underneath.
 - Press and hold any film or series poster (or press Menu on a remote) to add it to your Watchlist or mark it watched. An episode's "⋯" now marks it, or its whole season, as watched.
 - Film and series pages show "More like this" at the bottom, under the episodes.
 - Trusting an add-on's server now works even when its certificate is issued under a different name, and a failure after trusting shows the real reason.
@@ -5,4 +6,3 @@
 - After an update, VantaView shows what's new the first time it opens. Turn it off in Settings › Updates.
 - Movies and TV Series: the search, sort and filter bar scrolls away with the page, so the tiles get the room (a phone on its side) and the page follows as you move down.
 - An add-on whose server certificate isn't trusted can now be trusted by you (like a browser's "proceed anyway") from Sources › Add-ons.
-- Restore Nuvio backups (Sources › Add-ons › Restore from file): add-ons, plus the Watchlist, watched films and Continue watching.

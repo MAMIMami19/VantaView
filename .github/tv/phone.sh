@@ -40,6 +40,22 @@ PY
   if [ -n "$xy" ]; then adb shell input tap $xy; echo "tapped '$1' at $xy"; else echo "NOT FOUND: '$1'"; fi
   sleep 1.5
 }
+tap_re() {
+  dump; clear_anr
+  xy=$(python3 - "$1" <<'PY'
+import re,sys
+pat=re.compile(sys.argv[1]); x=open('tv-out/ui.xml',encoding='utf-8',errors='ignore').read()
+for m in re.finditer(r'<node [^>]*>', x):
+    n=m.group(0); t=re.search(r' text="([^"]+)"',n); b=re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',n)
+    if t and b and pat.search(t.group(1)):
+        a=list(map(int,b.groups())); print((a[0]+a[2])//2,(a[1]+a[3])//2); break
+PY
+)
+  if [ -z "$xy" ]; then echo "NOT FOUND: /$1/"; return 1; fi
+  if [ "${2:-}" = hold ]; then adb shell input swipe $xy $xy 1200; echo "held /$1/ at $xy"; else adb shell input tap $xy; echo "tapped /$1/ at $xy"; fi
+  sleep 1.5
+}
+rotate() { adb shell settings put system user_rotation $1; adb shell wm user-rotation lock $1 >/dev/null 2>&1; sleep 4; }
 size() { adb shell wm size | tail -1 | grep -o '[0-9]*x[0-9]*'; }
 scroll() { s=$(size); w=${s%x*}; h=${s#*x}; adb shell input swipe $((w/2)) $((h*3/4)) $((w/2)) $((h/4)) 400; sleep 1; }
 menu() { tap_text "Menu"; sleep 1; tap_text "$1"; sleep 4; }
@@ -50,7 +66,7 @@ adb shell settings put global hide_error_dialogs 1
 adb shell settings put global anr_show_background 0
 sleep 20  # let the emulator's own apps settle first
 adb shell settings put system accelerometer_rotation 0
-adb shell settings put system user_rotation 0
+rotate 0
 adb logcat -c
 adb shell am start -W -n com.vantaview.app/.MainActivity
 sleep 12; shot terms
@@ -79,15 +95,18 @@ for m in re.finditer(r'<node [^>]*text="Now: [^"]*"[^>]*>', x):
     b=re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',m.group(0)); a=list(map(int,b.groups())); print((a[0]+a[2])//2,(a[1]+a[3])//2); break
 PY
 )
-[ -n "$xy" ] && adb shell input tap $xy || tap_text "BBC"
+[ -n "$xy" ] && adb shell input tap $xy || tap_re '\(\d+p\)' 
 sleep 12; shot player-portrait
 s=$(size); w=${s%x*}; h=${s#*x}; adb shell input tap $((w/2)) $((h/6)); sleep 1; shot player-portrait-controls
-adb shell settings put system user_rotation 1; sleep 4; shot player-landscape
+rotate 1; shot player-landscape
 adb shell input tap 400 300; sleep 1; shot player-landscape-controls
-adb shell settings put system user_rotation 0; sleep 3; key BACK; key BACK; sleep 2
+rotate 0; key BACK; key BACK; sleep 2
 # Movies: tiles, a tile's page, a film's details.
-menu "Movies"; shot movies; tap_text "Trending"; sleep 8; shot movies-trending
-adb shell input tap 150 700; sleep 8; shot details; scroll; shot details-scrolled; key BACK; key BACK
+menu "Movies"; shot movies
+# Press and hold a poster: the Watchlist / Watched pop-up.
+scroll; scroll; tap_re '★' hold; sleep 2; shot poster-actions; key BACK
+# A film's details, scrolled to the end (More like this goes last).
+tap_re '★'; sleep 8; shot details; scroll; shot details-scrolled; scroll; scroll; shot details-end; key BACK; key BACK
 # Settings: the list, then every section.
 menu "Settings"; shot settings
 for sec in "Playback" "Appearance" "Subtitles and audio" "Sources and storage" "Weather" "Backup and restore" "Parental control" "Updates" "Help and about"; do
@@ -98,7 +117,7 @@ menu "Settings"; tap_text "Appearance"; sleep 1; tap_text "Tiles"; sleep 2; menu
 menu "Settings"; tap_text "Appearance"; sleep 1; tap_text "Spotlight"; sleep 2; menu "Movies"; shot movies-spotlight
 menu "Settings"; tap_text "Appearance"; sleep 1; tap_text "VantaView"; sleep 2
 # On its side: Home, Live TV, Movies, Settings.
-adb shell settings put system user_rotation 1; sleep 4
+rotate 1
 for page in "Home" "Live TV" "TV Guide" "Movies" "Settings"; do menu "$page"; shot "landscape-$page"; done
-adb shell settings put system user_rotation 0
+rotate 0
 crashes; echo "---- crashes ----"; cat $OUT/crashes.txt
