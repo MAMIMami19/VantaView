@@ -117,7 +117,7 @@ fun AiCaption(engine: com.vantaview.app.data.aisubs.AiSubtitleEngine, s: Playbac
     val status by engine.status.collectAsState()
     androidx.compose.foundation.layout.Column(modifier, horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
         status?.let {
-            androidx.compose.material3.Text(
+            com.vantaview.app.ui.Text(
                 it, color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp,
                 modifier = androidx.compose.ui.Modifier.background(androidx.compose.ui.graphics.Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
             )

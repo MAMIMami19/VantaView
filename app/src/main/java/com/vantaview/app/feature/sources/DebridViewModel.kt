@@ -91,11 +91,11 @@ class DebridViewModel @Inject constructor(
             _connect.value = try {
                 val info = manager.refreshInfo(s)
                 ConnectUi.Message(
-                    "${s.label}: " + when {
-                        info == null -> "not connected"
-                        info.premium -> "premium account working"
-                        else -> "connected, but not premium. Debrid playback needs a premium account."
-                    },
+                    "${s.label}: " + com.vantaview.app.ui.tr(when {
+                        info == null -> "Not connected"
+                        info.premium -> "Premium account working"
+                        else -> "Connected, but not premium. Debrid playback needs a premium account."
+                    }),
                     info?.premium != true,
                 )
             } catch (e: Exception) {

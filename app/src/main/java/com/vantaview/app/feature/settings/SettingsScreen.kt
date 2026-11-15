@@ -27,7 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,7 +65,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
     val lastAuto by vm.lastAuto.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var ask by remember { mutableStateOf<Ask?>(null) }
-    val when_ = SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK)
+    val when_ = SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale)
 
     val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         if (uri != null) vm.writeTo(uri, context)

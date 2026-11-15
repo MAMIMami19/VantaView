@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,11 +108,27 @@ fun AppearanceSection(s: AppearanceSettings) {
     }
 
     Section("Language") {
-        val device = Locale.getDefault().getDisplayLanguage(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
-        Text("English", color = Vanta.Text)
+        val dev = com.vantaview.app.ui.I18n.deviceLang
+        val devName = com.vantaview.app.ui.I18n.languages.firstOrNull { it.first == dev }?.second
         Text(
-            if (Locale.getDefault().language == "en") "VantaView follows your device's language."
-            else "Your device is set to $device. VantaView will follow it once it's translated; until then it uses English.",
+            "The language for menus and messages, and for film and series details where TMDB has them. Each profile has its own.",
+            color = Vanta.TextDim, fontSize = 13.sp,
+        )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FocusCard(onClick = { s.update { it.copy(language = "") } }, selected = a.language.isBlank()) {
+                Text(com.vantaview.app.ui.tr("Follow device ({0})", devName ?: "English"), color = Vanta.Text, fontSize = 14.sp)
+            }
+            com.vantaview.app.ui.I18n.languages.forEach { (code, name) ->
+                // Each language is written in its own words, so it's never translated.
+                FocusCard(onClick = { s.update { it.copy(language = code) } }, selected = a.language == code) {
+                    androidx.compose.material3.Text(name, color = Vanta.Text, fontSize = 14.sp)
+                }
+            }
+        }
+        if (devName == null) Text(
+            "Your device's language isn't one VantaView has yet, so following the device means English.",
             color = Vanta.TextDim, fontSize = 13.sp,
         )
     }

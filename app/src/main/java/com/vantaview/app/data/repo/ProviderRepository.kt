@@ -469,10 +469,10 @@ class ProviderRepository @Inject constructor(
         }
 
         throw IllegalStateException(
-            "Signed in (account status: $status), but this provider sent no live channels to VantaView. " +
-                "Live categories found: ${categories.size}. Tried ${xtreamAgents.size} app identities and " +
-                "the playlist download (" + notes.distinct().joinToString("; ") + "). " +
-                "If another app shows channels with the same login, the provider may limit which apps it serves."
+            com.vantaview.app.ui.tr(
+                "Signed in (account status: {0}), but this provider sent no live channels to VantaView. Live categories found: {1}. Tried {2} app identities and the playlist download ({3}). If another app shows channels with the same login, the provider may limit which apps it serves.",
+                status, categories.size, xtreamAgents.size, notes.distinct().joinToString("; "),
+            )
         )
     }
 

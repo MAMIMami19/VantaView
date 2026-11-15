@@ -70,7 +70,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
-            .setContentText("Starts at $at on $channel. Tap to watch.")
+            .setContentText(com.vantaview.app.ui.tr("Starts at {0} on {1}. Tap to watch.", at, channel))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

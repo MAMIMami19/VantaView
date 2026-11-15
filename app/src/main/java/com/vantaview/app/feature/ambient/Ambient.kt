@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -119,7 +119,7 @@ fun AmbientHost(lastInput: StateFlow<Long>, allowed: Boolean, vm: AmbientViewMod
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color(0xCC000000))))
             Column(Modifier.align(Alignment.BottomStart).padding(40.dp)) {
                 Text(SimpleDateFormat("HH:mm", Locale.UK).format(Date(now)), color = Color.White, fontSize = 72.sp, fontWeight = FontWeight.Light)
-                Text(SimpleDateFormat("EEEE d MMMM", Locale.UK).format(Date(now)), color = Color(0xDDFFFFFF), fontSize = 20.sp)
+                Text(SimpleDateFormat("EEEE d MMMM", com.vantaview.app.ui.I18n.locale).format(Date(now)), color = Color(0xDDFFFFFF), fontSize = 20.sp)
                 weather?.let { w ->
                     Text(
                         "${w.temp}° · ${com.vantaview.app.data.weather.WeatherRepository.describe(w.code)}",

@@ -25,7 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -151,7 +151,7 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, onCatchUpPag
                         -1 -> "Yesterday"
                         0 -> "Today"
                         1 -> "Tomorrow"
-                        else -> SimpleDateFormat("EEE d", Locale.UK).format(Date(XmltvTime.dayStart(d)))
+                        else -> SimpleDateFormat("EEE d", com.vantaview.app.ui.I18n.locale).format(Date(XmltvTime.dayStart(d)))
                     }
                     com.vantaview.app.feature.live.FilterChip(label, d == day) { day = d; picked = null }
                 }
@@ -350,7 +350,7 @@ private fun DetailsPanel(
             )
         } else if (prog != null && prog.start > now) {
             Text(
-                "Starts at ${clock.format(Date(prog.start))}." + if (reminded(p.channel, prog)) " You'll be reminded before it starts." else "",
+                com.vantaview.app.ui.tr("Starts at {0}.", clock.format(Date(prog.start))) + if (reminded(p.channel, prog)) " " + com.vantaview.app.ui.tr("You'll be reminded before it starts.") else "",
                 color = Vanta.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
             )
         }

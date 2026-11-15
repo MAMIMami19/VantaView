@@ -37,7 +37,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -432,7 +432,7 @@ private fun VideoArea(
                             val behind = if (sh.behindSec >= 3600) "%d:%02d:%02d".format(sh.behindSec / 3600, sh.behindSec / 60 % 60, sh.behindSec % 60)
                                 else "%d:%02d".format(sh.behindSec / 60, sh.behindSec % 60)
                             Text(
-                                sh.note ?: ((if (sh.paused) "Paused · " else "") + "−$behind" + if (sh.fromArchive) " · catch-up" else ""),
+                                sh.note ?: ((if (sh.paused) com.vantaview.app.ui.tr("Paused") + " · " else "") + "−$behind" + if (sh.fromArchive) " · " + com.vantaview.app.ui.tr("catch-up") else ""),
                                 color = Vanta.Cyan, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1,
                             )
                         }

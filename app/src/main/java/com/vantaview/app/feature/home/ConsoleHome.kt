@@ -27,7 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -96,7 +96,7 @@ internal class Dash(
     }
 
     val clock: String get() = SimpleDateFormat("h.mma", Locale.UK).format(now).lowercase()
-    val date: String get() = SimpleDateFormat("EEE d MMM", Locale.UK).format(now)
+    val date: String get() = SimpleDateFormat("EEE d MMM", com.vantaview.app.ui.I18n.locale).format(now)
 
     private fun contCard(c: ContinueItem) = DashCard(
         "c:" + c.entry.key, c.entry.title, c.line, c.entry.background ?: c.entry.poster, false, c.progress,

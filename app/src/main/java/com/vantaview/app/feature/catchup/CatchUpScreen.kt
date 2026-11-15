@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -157,7 +157,7 @@ class CatchUpViewModel @Inject constructor(
             val name = ChannelNames.display(c.name)
             vodSession.current = com.vantaview.app.data.addon.VodRequest(
                 title = p.title,
-                subtitle = name + " · " + SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK).format(Date(p.start)),
+                subtitle = name + " · " + SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale).format(Date(p.start)),
                 streams = listOf(com.vantaview.app.data.addon.AddonStream(t.url, name, "Catch-up", t.headers, 0, null, 0)),
                 type = "catchup",
             )
@@ -179,7 +179,7 @@ class CatchUpViewModel @Inject constructor(
         fun dayLabel(daysBack: Int): String = when (daysBack) {
             0 -> "Today"
             1 -> "Yesterday"
-            else -> SimpleDateFormat("EEE d", Locale.UK).format(Date(dayRange(daysBack).first))
+            else -> SimpleDateFormat("EEE d", com.vantaview.app.ui.I18n.locale).format(Date(dayRange(daysBack).first))
         }
     }
 }
@@ -211,7 +211,7 @@ fun CatchUpScreen(onPlayRecording: () -> Unit, vm: CatchUpViewModel = hiltViewMo
                     else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                         items(hits, key = { "${it.channel.id}-${it.programme.start}" }) { h ->
                             ProgrammeRow(h.programme, ChannelNames.display(h.channel.name) + " · " +
-                                SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK).format(Date(h.programme.start))) {
+                                SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale).format(Date(h.programme.start))) {
                                 vm.play(h.channel, h.programme, onPlayRecording)
                             }
                         }

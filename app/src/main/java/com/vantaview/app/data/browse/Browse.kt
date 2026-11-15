@@ -140,7 +140,12 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     private suspend fun tmdb(path: String): JSONObject? = withContext(Dispatchers.IO) {
-        val url = "https://api.themoviedb.org/3/$path"
+        // Details, titles and descriptions in the app's language where TMDB has them (English otherwise);
+        // trailers in that language or English.
+        val lang = com.vantaview.app.ui.I18n.tmdbLanguage
+        val url = "https://api.themoviedb.org/3/$path" + (lang?.let { l ->
+            (if ('?' in path) "&" else "?") + "language=$l&include_video_language=${l.take(2)},en,null"
+        } ?: "")
         cache[url]?.let { (at, j) -> if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext j }
         runCatching {
             // Works with either TMDB credential: the long API Read Access Token (sent as a Bearer

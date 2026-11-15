@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -148,7 +148,7 @@ private fun AddonCard(a: InstalledAddon, onToggle: () -> Unit, onRemove: () -> U
             Column(Modifier.weight(1f)) {
                 Text(m.name, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    (if (m.version.isNotBlank()) "v${m.version} · " else "") + offers.joinToString(", ").ifBlank { "nothing usable" },
+                    (if (m.version.isNotBlank()) "v${m.version} · " else "") + offers.joinToString(", ").ifBlank { "Nothing usable" },
                     color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }

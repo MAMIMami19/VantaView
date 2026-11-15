@@ -2,7 +2,7 @@
 package com.vantaview.app.feature.library
 
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +39,7 @@ fun ReminderHost(library: LibraryStore, quiet: () -> Boolean = { false }, onWatc
             title = { Text(r.title, color = Vanta.Text) },
             text = {
                 Text(
-                    (if (mins <= 0) "Starting now" else "Starts in $mins minute${if (mins == 1) "" else "s"}") + " on ${r.channelName}.",
+                    if (mins <= 0) com.vantaview.app.ui.tr("Starting now on {0}.", r.channelName) else if (mins == 1) com.vantaview.app.ui.tr("Starts in 1 minute on {0}.", r.channelName) else com.vantaview.app.ui.tr("Starts in {0} minutes on {1}.", mins, r.channelName),
                     color = Vanta.TextDim,
                 )
             },

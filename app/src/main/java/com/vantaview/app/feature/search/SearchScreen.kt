@@ -30,7 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -194,7 +194,7 @@ fun SearchScreen(
         res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { vm.query.value = it }
     }
     val time = remember { SimpleDateFormat("HH:mm", Locale.UK) }
-    val day = remember { SimpleDateFormat("EEE", Locale.UK) }
+    val day = remember { SimpleDateFormat("EEE", com.vantaview.app.ui.I18n.locale) }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),

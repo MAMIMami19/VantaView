@@ -147,6 +147,8 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Built that wasn't on the original list
 
+- [x] Languages: Spanish, French, German, Italian, Portuguese (Brazil), Dutch, Polish and Turkish. Follows the device, with a picker per profile in Settings › Appearance; film and series details from TMDB in the same language
+
 - [x] TV Guide page in the sidebar and a TV Guide tile on Home, with an On now row
 - [x] Tap a guide programme to play the channel with its Now playing info
 - [x] Now and next under each channel in Live TV

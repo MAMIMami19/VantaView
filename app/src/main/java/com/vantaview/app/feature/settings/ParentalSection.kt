@@ -12,7 +12,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -143,8 +143,8 @@ fun ParentalSection(onEditProfile: (Long) -> Unit, vm: ParentalViewModel = hiltV
         AlertDialog(
             onDismissRequest = { clear = null },
             containerColor = Vanta.Panel,
-            title = { Text("Clear ${c.title.lowercase()} history?", color = Vanta.Text) },
-            text = { Text(c.detail + " This can't be undone.", color = Vanta.TextDim) },
+            title = { Text(com.vantaview.app.ui.tr("Clear {0} history?", com.vantaview.app.ui.tr(c.title).lowercase()), color = Vanta.Text) },
+            text = { Text(com.vantaview.app.ui.tr(c.detail) + " " + com.vantaview.app.ui.tr("This can't be undone."), color = Vanta.TextDim) },
             confirmButton = {
                 GradientButton("Clear", onClick = {
                     if (c != Clear.VOD) vm.clearLive()

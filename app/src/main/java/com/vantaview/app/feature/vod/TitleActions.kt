@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -283,5 +283,5 @@ fun EpisodeActionsDialog(
 /** "2025-03-30T…" as "30 March 2025". */
 private fun releasedLabel(s: String?): String? = runCatching {
     val d = java.time.LocalDate.parse(s!!.take(10))
-    d.format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.UK))
+    d.format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", com.vantaview.app.ui.I18n.locale))
 }.getOrNull()

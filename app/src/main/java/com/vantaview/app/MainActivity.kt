@@ -262,7 +262,7 @@ private fun AppNav(
                 LaunchedEffect(exitArmed) { if (exitArmed) { kotlinx.coroutines.delay(2_000); exitArmed = false } }
                 androidx.activity.compose.BackHandler(enabled = !exitArmed) {
                     exitArmed = true
-                    android.widget.Toast.makeText(context, "Press Back again to exit", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, com.vantaview.app.ui.tr("Press Back again to exit"), android.widget.Toast.LENGTH_SHORT).show()
                 }
                 HomeScreen(
                     // A link with a choice ("library?tab=watchlist") opens that page fresh on that tab.
@@ -303,7 +303,7 @@ private fun AppNav(
             composable("settings") {
                 // Kids profiles can't change settings.
                 if (profile?.isKids == true) Box(Modifier.fillMaxSize().background(Vanta.Bg)) {
-                    androidx.compose.material3.Text("Ask a grown-up to change settings.", color = Vanta.TextDim, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+                    com.vantaview.app.ui.Text("Ask a grown-up to change settings.", color = Vanta.TextDim, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
                 } else com.vantaview.app.feature.settings.SettingsScreen(onEditProfile = { id -> nav.navigate("profile/edit/$id") })
             }
             composable("search") {

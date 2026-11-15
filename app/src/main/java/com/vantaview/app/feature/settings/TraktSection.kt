@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -136,7 +136,7 @@ fun TraktSection(vm: TraktViewModel = hiltViewModel()) {
                     color = Vanta.Text, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (l.lastSync > 0) "Last synced ${SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK).format(Date(l.lastSync))}. Syncs every half hour while VantaView is open."
+                    if (l.lastSync > 0) "Last synced ${SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale).format(Date(l.lastSync))}. Syncs every half hour while VantaView is open."
                     else "Not synced yet.",
                     color = Vanta.TextDim, fontSize = 13.sp,
                 )

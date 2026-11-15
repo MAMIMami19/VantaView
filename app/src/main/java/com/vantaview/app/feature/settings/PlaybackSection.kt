@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +45,8 @@ fun PlaybackSection(s: PlaybackSettings) {
         Text(buffer.detail, color = Vanta.TextDim, fontSize = 13.sp)
         Toggle(
             "Adjust automatically",
-            "If a stream keeps stopping to load, the next one uses a bigger buffer; after a couple of hours of smooth watching it steps back. " +
-                "Small devices (like 1 GB Fire TV Sticks) never go above Medium." +
-                (if (auto && s.effectiveBuffer != buffer) " Using ${s.effectiveBuffer.label} right now." else ""),
+            com.vantaview.app.ui.tr("If a stream keeps stopping to load, the next one uses a bigger buffer; after a couple of hours of smooth watching it steps back. Small devices (like 1 GB Fire TV Sticks) never go above Medium.") +
+                (if (auto && s.effectiveBuffer != buffer) " " + com.vantaview.app.ui.tr("Using {0} right now.", com.vantaview.app.ui.tr(s.effectiveBuffer.label)) else ""),
             auto,
         ) { auto = it; s.autoBuffer = it }
     }

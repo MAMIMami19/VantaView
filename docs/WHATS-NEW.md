@@ -1,3 +1,4 @@
+- VantaView now speaks Spanish, French, German, Italian, Portuguese, Dutch, Polish and Turkish. It follows your device, or pick a language for each profile in Settings › Appearance. Film and series details come in that language too.
 - Fix: on a TV, pressing Update now no longer jumps to the Playback settings; the download progress stays on screen.
 - New setup steps on first start: add your TV (Smart Add or free channels), then films and series (Cinemeta in one press). Both can be skipped.
 - Section names open their full list: Continue watching and Your Watchlist on Home, and every row on Movies and TV Series.
@@ -5,4 +6,3 @@
 - Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
 - Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
 - New Catch-up page (from Live TV or the TV Guide), with search of past programmes.
-- Movies and TV Series: a banner of new titles, a posters-only view, and details of the poster you're on (TVs).

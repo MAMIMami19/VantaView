@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -184,7 +184,7 @@ private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onTogg
                         FocusCard(onClick = onToggleExtra, selected = on, modifier = Modifier.fillMaxWidth()) {
                             Column {
                                 Text((if (on) "☑  " else "☐  ") + "Watchlist, Watched and Continue watching", color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
-                                Text(x.summary() + ". Added to this profile.", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2)
+                                Text(com.vantaview.app.ui.tr(x.summary()) + ". " + com.vantaview.app.ui.tr("Added to this profile."), color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2)
                             }
                         }
                     }
@@ -195,7 +195,7 @@ private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onTogg
                 if (state.items.isNotEmpty()) item(key = "new-title") {
                     Text(
                         if (fresh.isEmpty()) "You already have every add-on in this backup."
-                        else "${fresh.size} add-on" + (if (fresh.size == 1) "" else "s") + " you don't have yet",
+                        else if (fresh.size == 1) com.vantaview.app.ui.tr("1 add-on you don't have yet") else com.vantaview.app.ui.tr("{0} add-ons you don't have yet", fresh.size),
                         color = if (fresh.isEmpty()) Vanta.TextDim else Vanta.Text, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     )
                 }
@@ -211,7 +211,8 @@ private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onTogg
             TextButton(onClick = onImport, enabled = state.selected.isNotEmpty() || extra) {
                 Text(
                     if (state.selected.isEmpty()) "Restore"
-                    else "Add ${state.selected.size} add-on" + (if (state.selected.size == 1) "" else "s") + if (extra) " and restore" else ""
+                    else if (state.selected.size == 1) (if (extra) com.vantaview.app.ui.tr("Add 1 add-on and restore") else com.vantaview.app.ui.tr("Add 1 add-on"))
+                    else if (extra) com.vantaview.app.ui.tr("Add {0} add-ons and restore", state.selected.size) else com.vantaview.app.ui.tr("Add {0} add-ons", state.selected.size)
                 )
             }
         },

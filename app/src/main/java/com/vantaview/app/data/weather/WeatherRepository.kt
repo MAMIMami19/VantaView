@@ -217,7 +217,7 @@ class WeatherRepository @Inject constructor(
     /** Towns matching a name (Open-Meteo's free place search). */
     suspend fun search(name: String): List<Place> = withContext(Dispatchers.IO) {
         if (name.isBlank()) return@withContext emptyList()
-        val url = "https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&name=" +
+        val url = "https://geocoding-api.open-meteo.com/v1/search?count=6&language=${com.vantaview.app.ui.I18n.lang}&format=json&name=" +
             URLEncoder.encode(name.trim(), "UTF-8")
         runCatching {
             http.newCall(Request.Builder().url(url).build()).execute().use { r ->

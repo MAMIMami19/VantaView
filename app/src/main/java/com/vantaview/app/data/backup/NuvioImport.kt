@@ -19,9 +19,9 @@ data class NuvioData(
 ) {
     val empty get() = watchlist.isEmpty() && watchedFilms.isEmpty() && history.isEmpty()
     fun summary(): String = listOfNotNull(
-        watchlist.size.takeIf { it > 0 }?.let { "$it on the Watchlist" },
-        watchedFilms.size.takeIf { it > 0 }?.let { "$it watched films" },
-        history.size.takeIf { it > 0 }?.let { "$it in Continue watching" },
+        watchlist.size.takeIf { it > 0 }?.let { com.vantaview.app.ui.tr("{0} on the Watchlist", it) },
+        watchedFilms.size.takeIf { it > 0 }?.let { com.vantaview.app.ui.tr("{0} watched films", it) },
+        history.size.takeIf { it > 0 }?.let { com.vantaview.app.ui.tr("{0} in Continue watching", it) },
     ).joinToString(", ")
 }
 

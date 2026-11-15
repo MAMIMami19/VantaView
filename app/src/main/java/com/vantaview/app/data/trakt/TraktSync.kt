@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.data.trakt
 
+import com.vantaview.app.ui.tr
 import com.vantaview.app.data.addon.MetaPreview
 import com.vantaview.app.data.history.HistoryEntry
 import com.vantaview.app.data.history.WatchHistory
@@ -187,8 +188,8 @@ class TraktSync @Inject constructor(
         library.replaceEpisodesFromSync(profile, bySeries)
         store.saveSnapshot(profile, "seen", mm.result)
         store.saveSnapshot(profile, "eps", me.result)
-        val films = counts("watched films", newMovies.size, mm.pushAdd.size, 0)
-        val eps = counts("watched episodes", (me.result - localEpIds).size, me.pushAdd.size, 0)
+        val films = counts(tr("watched films"), newMovies.size, mm.pushAdd.size, 0)
+        val eps = counts(tr("watched episodes"), (me.result - localEpIds).size, me.pushAdd.size, 0)
         return listOf(films, eps).filter { it.isNotBlank() }.joinToString(" · ")
     }
 
@@ -218,13 +219,13 @@ class TraktSync @Inject constructor(
             )
             added++
         }
-        return if (added > 0) "$added in Continue watching from Trakt" else ""
+        return if (added > 0) tr("{0} in Continue watching from Trakt", added) else ""
     }
 
     private fun counts(what: String, fromTrakt: Int, toTrakt: Int, removed: Int): String = listOfNotNull(
-        fromTrakt.takeIf { it > 0 }?.let { "$it $what from Trakt" },
-        toTrakt.takeIf { it > 0 }?.let { "$it sent to Trakt" },
-        removed.takeIf { it > 0 }?.let { "$it removed" },
+        fromTrakt.takeIf { it > 0 }?.let { tr("{0} {1} from Trakt", it, what) },
+        toTrakt.takeIf { it > 0 }?.let { tr("{0} sent to Trakt", it) },
+        removed.takeIf { it > 0 }?.let { tr("{0} removed", it) },
     ).joinToString(", ")
 
     private fun saved(t: TraktTitle) = SavedTitle(t.type, t.imdb, t.name, poster(t.imdb), t.year?.toString(), System.currentTimeMillis())

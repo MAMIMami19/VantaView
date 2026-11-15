@@ -20,7 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -191,7 +191,7 @@ private fun CountryChooser(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            CountryDetect.displayName(code) + if (code == device) "  ·  this device" else "",
+                            CountryDetect.displayName(code) + if (code == device) "  ·  " + com.vantaview.app.ui.tr("This device") else "",
                             color = Vanta.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                         )
                         Text("%,d".format(p.scan.counts[code] ?: 0), color = Vanta.TextDim, fontSize = 13.sp)

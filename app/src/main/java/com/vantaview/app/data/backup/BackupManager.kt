@@ -133,7 +133,7 @@ class BackupManager @Inject constructor(
             val f = tree.createFile("application/octet-stream", name) ?: throw IllegalStateException("Couldn't create the backup file")
             context.contentResolver.openOutputStream(f.uri)?.use { it.write(text.toByteArray()) }
                 ?: throw IllegalStateException("Couldn't write the backup file")
-            tree.name ?: "your chosen folder"
+            tree.name ?: com.vantaview.app.ui.tr("your chosen folder")
         } else {
             File(appFolder, name).writeText(text)
             appFolder.absolutePath

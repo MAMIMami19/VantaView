@@ -77,7 +77,7 @@ object CertPins {
             host = host,
             subject = name(c.subjectX500Principal.name),
             issuer = name(c.issuerX500Principal.name),
-            validUntil = SimpleDateFormat("d MMM yyyy", Locale.UK).format(c.notAfter),
+            validUntil = SimpleDateFormat("d MMM yyyy", com.vantaview.app.ui.I18n.locale).format(c.notAfter),
             expired = expired,
             selfSigned = c.subjectX500Principal == c.issuerX500Principal,
             fingerprint = fingerprint(c),

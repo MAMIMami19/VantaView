@@ -37,7 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -182,7 +182,7 @@ fun HomeScreen(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "${sh.from} shared ${sh.title.name} with you" + if (newShares.size > 1) " (and ${newShares.size - 1} more)" else "",
+                            com.vantaview.app.ui.tr("{0} shared {1} with you", sh.from, sh.title.name) + if (newShares.size > 1) " " + com.vantaview.app.ui.tr("(and {0} more)", newShares.size - 1) else "",
                             color = Vanta.Text, fontWeight = FontWeight.Bold,
                         )
                         sh.message?.let { Text("\u201C$it\u201D", color = Vanta.TextDim, fontSize = 14.sp, maxLines = 2) }
@@ -265,8 +265,8 @@ fun HomeScreen(
                         Text("SEASON ${ns.season} IS HERE", color = Yellow, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text(ns.entry.title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 2)
                         Text(
-                            "${ns.episodes} new episode" + (if (ns.episodes == 1) " is" else "s are") +
-                                " ready to watch. Pick up with S${ns.season} E${ns.first.episode}.",
+                            if (ns.episodes == 1) com.vantaview.app.ui.tr("1 new episode is ready to watch. Pick up with S{0} E{1}.", ns.season, ns.first.episode)
+                            else com.vantaview.app.ui.tr("{0} new episodes are ready to watch. Pick up with S{1} E{2}.", ns.episodes, ns.season, ns.first.episode),
                             color = Vanta.TextDim,
                         )
                     }
@@ -454,7 +454,7 @@ private fun GreetingRow(
         in 12..17 -> "Good afternoon"
         else -> "Good evening"
     }
-    val date = SimpleDateFormat("EEEE d MMMM · HH:mm", Locale.UK).format(now)
+    val date = SimpleDateFormat("EEEE d MMMM · HH:mm", com.vantaview.app.ui.I18n.locale).format(now)
     val search: @Composable () -> Unit = {
         FocusCard(onClick = onSearch, shape = CircleShape, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Search, contentDescription = "Search", tint = Vanta.Text)
@@ -623,7 +623,7 @@ private fun LastWatchedBar(
 /** Today and the next four days. */
 @Composable
 private fun ForecastDialog(w: com.vantaview.app.data.weather.Weather, onClose: () -> Unit) {
-    val dayName = SimpleDateFormat("EEE", Locale.UK)
+    val dayName = SimpleDateFormat("EEE", com.vantaview.app.ui.I18n.locale)
     val parse = SimpleDateFormat("yyyy-MM-dd", Locale.UK)
     AlertDialog(
         onDismissRequest = onClose,

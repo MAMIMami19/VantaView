@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -62,7 +62,7 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
     ABOUT("Help and about", "App tour, support, terms, credits and version", "help support tour terms credits licence license about version");
 
     fun matches(query: String): Boolean {
-        val hay = "$title $summary $keywords".lowercase()
+        val hay = "$title $summary $keywords ${com.vantaview.app.ui.tr(title)} ${com.vantaview.app.ui.tr(summary)}".lowercase()
         return query.lowercase().split(' ').filter { it.isNotBlank() }.all { it in hay }
     }
 }

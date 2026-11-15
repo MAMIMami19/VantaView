@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -157,7 +157,7 @@ private fun Reminders(list: List<Reminder>, onPlay: (Long) -> Unit, onCancel: (R
         Text("No reminders. In the TV Guide, pick a programme that hasn't started and choose Remind me.", color = Vanta.TextDim, fontSize = 15.sp)
         return
     }
-    val day = SimpleDateFormat("EEE d MMM", Locale.UK)
+    val day = SimpleDateFormat("EEE d MMM", com.vantaview.app.ui.I18n.locale)
     val time = SimpleDateFormat("HH:mm", Locale.UK)
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.key }) { r ->

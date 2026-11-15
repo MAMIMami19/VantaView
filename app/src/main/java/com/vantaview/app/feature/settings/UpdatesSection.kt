@@ -12,7 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,7 +41,7 @@ import java.util.Locale
 fun UpdatesSection(m: UpdateManager) {
     val state by m.state.collectAsState()
     var test by remember { mutableStateOf(m.testBuilds) }
-    val fmt = SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK)
+    val fmt = SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale)
 
     Section("This version") {
         Text("VantaView ${BuildConfig.VERSION_NAME}", color = Vanta.Text, fontSize = 16.sp)

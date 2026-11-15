@@ -297,7 +297,7 @@ class LiveViewModel @Inject constructor(
             val name = com.vantaview.app.data.ChannelNames.display(channel.name)
             vodSession.current = com.vantaview.app.data.addon.VodRequest(
                 title = prog.title,
-                subtitle = name + " · " + java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.UK).format(java.util.Date(prog.start)),
+                subtitle = name + " · " + java.text.SimpleDateFormat("EEE d MMM, HH:mm", com.vantaview.app.ui.I18n.locale).format(java.util.Date(prog.start)),
                 streams = listOf(com.vantaview.app.data.addon.AddonStream(t.url, name, "Catch-up", t.headers, 0, null, 0)),
                 type = "catchup",
             )

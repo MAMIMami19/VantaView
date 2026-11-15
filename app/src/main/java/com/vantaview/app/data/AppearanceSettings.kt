@@ -57,6 +57,8 @@ data class Appearance(
     val textSize: TextSize = TextSize.NORMAL,
     val sidebarAutoHide: Boolean = true,
     val loadingScreen: Boolean = true,
+    /** A language code from [com.vantaview.app.ui.I18n.languages], or "" to follow the device. */
+    val language: String = "",
 )
 
 /**
@@ -74,7 +76,10 @@ class AppearanceSettings @Inject constructor(
     val state: StateFlow<Appearance> = _state
 
     init {
+        com.vantaview.app.ui.I18n.use(context, _state.value.language)
         scope.launch { session.current.collect { _state.value = read() } }
+        // Each profile can have its own language; switching profile or changing it applies at once.
+        scope.launch { _state.collect { com.vantaview.app.ui.I18n.use(context, it.language) } }
     }
 
     /** This profile's value for [key], or the device-wide one from before appearances were per profile. */
@@ -88,6 +93,7 @@ class AppearanceSettings @Inject constructor(
         textSize = runCatching { TextSize.valueOf(sp.getString(k("text"), null)!!) }.getOrDefault(TextSize.NORMAL),
         sidebarAutoHide = sp.getBoolean(k("sidebar_autohide"), true),
         loadingScreen = sp.getBoolean(k("loading_screen"), true),
+        language = sp.getString(k("language"), "") ?: "",
     )
 
     fun update(change: (Appearance) -> Appearance) {
@@ -101,6 +107,7 @@ class AppearanceSettings @Inject constructor(
             .putString(p + "text", a.textSize.name)
             .putBoolean(p + "sidebar_autohide", a.sidebarAutoHide)
             .putBoolean(p + "loading_screen", a.loadingScreen)
+            .putString(p + "language", a.language)
             .apply()
         _state.value = a
     }

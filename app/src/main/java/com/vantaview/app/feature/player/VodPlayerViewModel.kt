@@ -339,7 +339,7 @@ class VodPlayerViewModel @Inject constructor(
         _ui.update { it.copy(preparing = "Getting the link from your debrid service…") }
         resolveJob = viewModelScope.launch {
             val r = debrid.resolve(s, season, episode, allowDownload = explicit) { svc, pct ->
-                _ui.update { it.copy(preparing = "Not cached yet. Downloading on ${svc.label}" + (pct?.let { p -> ": $p%" } ?: "…") + "\nIt will play when ready.") }
+                _ui.update { it.copy(preparing = com.vantaview.app.ui.tr("Not cached yet. Downloading on {0}", svc.label) + (pct?.let { p -> ": $p%" } ?: "…") + "\n" + com.vantaview.app.ui.tr("It will play when ready.")) }
             }
             when (r) {
                 is com.vantaview.app.data.debrid.Resolve.Ready -> {

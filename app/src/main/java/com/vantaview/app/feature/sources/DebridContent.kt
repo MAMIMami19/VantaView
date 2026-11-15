@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -106,7 +106,7 @@ private fun AccountCard(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(a.service.label, color = Vanta.Text, fontWeight = FontWeight.Bold)
-        val until = a.premiumUntil.takeIf { it > 0 }?.let { "premium until " + SimpleDateFormat("d MMM yyyy", Locale.UK).format(Date(it)) }
+        val until = a.premiumUntil.takeIf { it > 0 }?.let { com.vantaview.app.ui.tr("Premium until {0}", SimpleDateFormat("d MMM yyyy", com.vantaview.app.ui.I18n.locale).format(Date(it))) }
         Text(listOfNotNull(a.label.ifBlank { null }, until).joinToString(" · ").ifBlank { "Connected" }, color = Vanta.TextDim, fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!first) FocusCard(onClick = onUp) { Text("▲", color = Vanta.Text) }

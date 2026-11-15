@@ -22,7 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -246,7 +246,7 @@ private fun GuideLinkDialog(p: ProviderEntity, offset: Int, onOffset: (Int) -> U
                 // Guides whose times are out by an hour or so (often a time-zone or summer-time slip).
                 Text("Guide times", color = Vanta.Text, fontWeight = FontWeight.Bold)
                 Text(
-                    if (shift == 0) "As the guide gives them." else "Moved ${if (shift > 0) "later" else "earlier"} by ${offsetLabel(kotlin.math.abs(shift))}.",
+                    if (shift == 0) "As the guide gives them." else if (shift > 0) com.vantaview.app.ui.tr("Moved later by {0}.", offsetLabel(kotlin.math.abs(shift))) else com.vantaview.app.ui.tr("Moved earlier by {0}.", offsetLabel(kotlin.math.abs(shift))),
                     color = Vanta.TextDim, fontSize = 13.sp,
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

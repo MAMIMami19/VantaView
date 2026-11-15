@@ -3,7 +3,7 @@ package com.vantaview.app.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
@@ -38,7 +38,7 @@ class SpeedTestViewModel @Inject constructor(
     val text: StateFlow<String?> = _text
     private var job: Job? = null
 
-    fun internet() = run("the internet", "https://speed.cloudflare.com/__down?bytes=50000000", emptyMap())
+    fun internet() = run(com.vantaview.app.ui.tr("the internet"), "https://speed.cloudflare.com/__down?bytes=50000000", emptyMap())
 
     fun playlist() {
         job?.cancel()
@@ -49,18 +49,22 @@ class SpeedTestViewModel @Inject constructor(
             if (ch == null) { _text.value = "Add a playlist first."; return@launch }
             val t = runCatching { repo.resolveStream(ch) }.getOrNull()
             if (t == null) { _text.value = "Couldn't open a channel to test."; return@launch }
-            measure("your playlist (${com.vantaview.app.data.ChannelNames.display(ch.name)})", t.url, t.headers)
+            playlistTest = true
+            measure(com.vantaview.app.ui.tr("your playlist ({0})", com.vantaview.app.data.ChannelNames.display(ch.name)), t.url, t.headers)
         }
     }
 
+    private var playlistTest = false
+
     private fun run(what: String, url: String, headers: Map<String, String>) {
+        playlistTest = false
         job?.cancel()
         job = viewModelScope.launch { measure(what, url, headers) }
     }
 
     /** Downloads for up to eight seconds and reports the speed. Live channels only send in real time, so that's a floor. */
     private suspend fun measure(what: String, url: String, headers: Map<String, String>) {
-        _text.value = "Testing $what…"
+        _text.value = com.vantaview.app.ui.tr("Testing {0}…", what)
         val result = withContext(Dispatchers.IO) {
             runCatching {
                 val b = Request.Builder().url(url)
@@ -89,8 +93,11 @@ class SpeedTestViewModel @Inject constructor(
                     mbps >= 4 -> "OK for HD at times; SD is safe. A bigger buffer helps."
                     else -> "Slow: expect stopping to load. Try SD streams and a Large buffer."
                 }
-                "%.1f Mbit/s from %s (first reply in %d ms, %.1f MB). %s".format(java.util.Locale.UK, mbps, what, ms, bytes / 1e6, verdict) +
-                    if (what.startsWith("your playlist")) " Live channels only send as fast as they play, so this shows the channel's own rate at least." else ""
+                com.vantaview.app.ui.tr(
+                    "{0} Mbit/s from {1} (first reply in {2} ms, {3} MB).",
+                    "%.1f".format(mbps), what, ms, "%.1f".format(bytes / 1e6),
+                ) + " " + com.vantaview.app.ui.tr(verdict) +
+                    if (playlistTest) " " + com.vantaview.app.ui.tr("Live channels only send as fast as they play, so this shows the channel's own rate at least.") else ""
             },
             { "The test didn't finish (${it.message})." },
         )

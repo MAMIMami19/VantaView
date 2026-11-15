@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -167,7 +167,7 @@ fun DetailsScreen(
             }
             ui.message?.takeIf { ui.messageFor == null }?.let { m -> item { Text(m, color = Vanta.Error) } }
             meta?.description?.let { d -> item { Text(d, color = Vanta.Text, fontSize = 15.sp, lineHeight = 22.sp) } }
-            if (!meta?.director.isNullOrEmpty()) item { Text("Director: " + meta!!.director.joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp) }
+            if (!meta?.director.isNullOrEmpty()) item { Text(com.vantaview.app.ui.tr("Director: {0}", meta!!.director.joinToString(", ")), color = Vanta.TextDim, fontSize = 14.sp) }
             if (!meta?.cast.isNullOrEmpty()) item {
                 if (vm.browse.hasTmdb) Column {
                     Text("Cast", color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -179,12 +179,12 @@ fun DetailsScreen(
                             FocusCard(onClick = { onPerson(person) }) { Text(person, color = Vanta.Text, fontSize = 14.sp) }
                         }
                     }
-                } else Text("Cast: " + meta!!.cast.take(8).joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp)
+                } else Text(com.vantaview.app.ui.tr("Cast: {0}", meta!!.cast.take(8).joinToString(", ")), color = Vanta.TextDim, fontSize = 14.sp)
             }
             if (ui.loading) item { Text("Loading details…", color = Vanta.TextDim) }
             else if (meta == null) item {
                 Text(
-                    "None of your add-ons has details for this title" + if (isSeries) ", so its episodes can't be listed. Cinemeta usually fills this in." else ".",
+                    if (isSeries) "None of your add-ons has details for this title, so its episodes can't be listed. Cinemeta usually fills this in." else "None of your add-ons has details for this title.",
                     color = Vanta.TextDim,
                 )
             }
@@ -209,8 +209,8 @@ fun DetailsScreen(
                 comingInfo?.let { (n, date) ->
                     item {
                         Text(
-                            "Season $n is coming" + (comingDate(date)?.let { " on $it" } ?: " (no date yet)") +
-                                ". Add the series to your Watchlist and Home will show a New episode badge when it starts.",
+                            (comingDate(date)?.let { com.vantaview.app.ui.tr("Season {0} is coming on {1}.", n, it) } ?: com.vantaview.app.ui.tr("Season {0} is coming (no date yet).", n)) +
+                                " " + com.vantaview.app.ui.tr("Add the series to your Watchlist and Home will show a New episode badge when it starts."),
                             color = Vanta.Cyan, fontSize = 14.sp,
                         )
                     }
@@ -221,7 +221,7 @@ fun DetailsScreen(
                     val p = ui.progress?.takeIf { it.videoId == v.id }
                     val note = when {
                         v.id in watchedEps -> "✓ Watched"
-                        !episodeOut(v) -> "Coming " + (comingDate(v.released) ?: "soon")
+                        !episodeOut(v) -> comingDate(v.released)?.let { "Coming $it" } ?: "Coming soon"
                         p == null -> null
                         p.finished -> "✓ Watched"
                         p.resumable -> "Resume · ${minutesLeft(p.remainingMs)}"
@@ -337,7 +337,7 @@ private fun episodeOut(v: Video): Boolean =
 
 /** "2027-03-12…" as "12 March 2027". */
 private fun comingDate(s: String?): String? = runCatching {
-    java.time.LocalDate.parse(s!!.take(10)).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.UK))
+    java.time.LocalDate.parse(s!!.take(10)).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", com.vantaview.app.ui.I18n.locale))
 }.getOrNull()
 
 fun minutesLeft(ms: Long): String {

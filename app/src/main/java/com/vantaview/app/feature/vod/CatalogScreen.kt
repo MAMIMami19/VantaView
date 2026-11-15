@@ -23,7 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.vantaview.app.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -64,8 +64,8 @@ fun CatalogScreen(
         }
         if (ui.loaded && ui.addonCount == 0) {
             Empty(
-                "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their " +
-                    (if (vm.type == "series") "series" else "films") + " appear here.",
+                if (vm.type == "series") "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their series appear here."
+                else "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their films appear here.",
                 "Add an add-on", onAddAddon,
             )
             return@Column
