@@ -363,7 +363,13 @@ class VodPlayerViewModel @Inject constructor(
         }
     }
 
+    /** The address playing now and its headers (stream info, and opening in another player). */
+    var currentUrl: String? = null; private set
+    var currentHeaders: Map<String, String> = emptyMap(); private set
+
     private fun playUrl(url: String, headers: Map<String, String>, positionMs: Long) {
+        currentUrl = url
+        currentHeaders = headers
         val ua = headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value ?: "VantaView/${BuildConfig.VERSION_NAME}"
         val http = OkHttpDataSource.Factory(okHttp)
             .setUserAgent(ua)

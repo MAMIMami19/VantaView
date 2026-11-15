@@ -54,28 +54,50 @@ data class Place(val name: String, val area: String, val lat: Double, val lon: D
 class WeatherRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
 ) {
     private val sp = context.getSharedPreferences("weather", Context.MODE_PRIVATE)
     private val _weather = MutableStateFlow<Weather?>(null)
     val weather: StateFlow<Weather?> = _weather
 
+    /** Each profile has its own weather settings; until changed, the device's earlier ones. */
+    private fun k(key: String) = "p${session.id}_$key".takeIf { sp.contains(it) || sp.contains("p${session.id}_made") } ?: key
+    private fun pk(key: String) = "p${session.id}_$key"
+
+    /** Copies the current values into this profile's own settings, the first time one is changed. */
+    private fun own(): android.content.SharedPreferences.Editor {
+        val e = sp.edit()
+        if (!sp.contains(pk("made"))) {
+            e.putBoolean(pk("made"), true).putBoolean(pk("enabled"), sp.getBoolean("enabled", true)).putBoolean(pk("fahrenheit"), sp.getBoolean("fahrenheit", false))
+            sp.getString("place_name", null)?.let { n ->
+                e.putString(pk("place_name"), n).putString(pk("place_area"), sp.getString("place_area", "")).
+                    putFloat(pk("place_lat"), sp.getFloat("place_lat", 0f)).putFloat(pk("place_lon"), sp.getFloat("place_lon", 0f))
+            }
+        }
+        return e
+    }
+
+    private var lastProfile = session.id
+    /** A different profile: forget the weather shown, so it's fetched for that profile's place. */
+    private fun checkProfile() { if (session.id != lastProfile) { lastProfile = session.id; _weather.value = null } }
+
     var enabled: Boolean
-        get() = sp.getBoolean("enabled", true)
-        set(v) { sp.edit().putBoolean("enabled", v).apply(); if (!v) _weather.value = null }
+        get() = sp.getBoolean(k("enabled"), true)
+        set(v) { own().putBoolean(pk("enabled"), v).apply(); if (!v) _weather.value = null }
 
     var fahrenheit: Boolean
-        get() = sp.getBoolean("fahrenheit", false)
-        set(v) { sp.edit().putBoolean("fahrenheit", v).apply(); _weather.value = null }
+        get() = sp.getBoolean(k("fahrenheit"), false)
+        set(v) { own().putBoolean(pk("fahrenheit"), v).apply(); _weather.value = null }
 
     /** A chosen town, used instead of the device's location. */
     var place: Place?
-        get() = sp.getString("place_name", null)?.let {
-            Place(it, sp.getString("place_area", "").orEmpty(), sp.getFloat("place_lat", 0f).toDouble(), sp.getFloat("place_lon", 0f).toDouble())
+        get() = sp.getString(k("place_name"), null)?.let {
+            Place(it, sp.getString(k("place_area"), "").orEmpty(), sp.getFloat(k("place_lat"), 0f).toDouble(), sp.getFloat(k("place_lon"), 0f).toDouble())
         }
         set(v) {
-            val e = sp.edit()
-            if (v == null) e.remove("place_name").remove("place_area").remove("place_lat").remove("place_lon")
-            else e.putString("place_name", v.name).putString("place_area", v.area).putFloat("place_lat", v.lat.toFloat()).putFloat("place_lon", v.lon.toFloat())
+            val e = own()
+            if (v == null) e.remove(pk("place_name")).remove(pk("place_area")).remove(pk("place_lat")).remove(pk("place_lon"))
+            else e.putString(pk("place_name"), v.name).putString(pk("place_area"), v.area).putFloat(pk("place_lat"), v.lat.toFloat()).putFloat(pk("place_lon"), v.lon.toFloat())
             e.apply()
             _weather.value = null
         }
@@ -147,6 +169,7 @@ class WeatherRepository @Inject constructor(
 
     /** Refreshes at most every 30 minutes. */
     suspend fun refresh(force: Boolean = false): Weather? = withContext(Dispatchers.IO) {
+        checkProfile()
         if (!enabled) return@withContext null
         val cached = _weather.value
         if (!force && cached != null && System.currentTimeMillis() - cached.fetchedAt < 30 * 60_000L) return@withContext cached

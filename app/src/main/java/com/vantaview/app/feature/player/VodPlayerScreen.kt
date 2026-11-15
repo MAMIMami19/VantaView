@@ -67,6 +67,9 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
     var controls by remember { mutableStateOf(true) }
     var picking by remember { mutableStateOf(false) }
     var speedOpen by remember { mutableStateOf(false) }
+    var moreOpen by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
+    SleepWatcher(vm.player) { vm.pause() }
     var episodesOpen by remember { mutableStateOf(false) }
     // Phones: the lock stops stray touches (pocket, child); tap the screen, then Unlock.
     var locked by remember { mutableStateOf(false) }
@@ -117,6 +120,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         )
 
         // AI subtitles (beta), kept clear of the playback controls.
+        if (showInfo) StreamInfoOverlay(vm.player, vm.currentUrl, Modifier.align(Alignment.CenterStart).padding(start = 16.dp))
         vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (controls) 120.dp else 28.dp)) }
 
         if (!locked && !pip && (controls || ui.failed != null || ui.preparing != null)) {
@@ -125,10 +129,11 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             val buttons: @Composable () -> Unit = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = if (compact) Modifier.horizontalScroll(rememberScrollState()) else Modifier,
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
                 ) {
                     if (ui.isSeries) FocusCard(onClick = { vm.loadEpisodes(); episodesOpen = true }) { Text("Episodes", color = Vanta.Text, maxLines = 1) }
                     FocusCard(onClick = { speedOpen = true }) { Text(if (ui.speed == 1f) "Speed" else "${ui.speed}×", color = Vanta.Text, maxLines = 1) }
+                    FocusCard(onClick = { moreOpen = true }) { Text("⋯ More", color = Vanta.Text, maxLines = 1) }
                     if (ui.streams.size > 1) {
                         val cur = ui.streams.getOrNull(ui.index)
                         FocusCard(onClick = { picking = true }) {
@@ -227,6 +232,11 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         }
     }
 
+    if (moreOpen) PlayerMoreDialog(
+        onDismiss = { moreOpen = false },
+        onInfo = { showInfo = !showInfo },
+        onOpenElsewhere = vm.currentUrl?.let { u -> { vm.pause(); openExternally(context, u, ui.title, vm.currentHeaders); Unit } },
+    )
     if (speedOpen) SpeedDialog(ui.speed, onPick = { vm.setSpeed(it); speedOpen = false }, onClose = { speedOpen = false })
     if (episodesOpen) {
         val eps by vm.episodes.collectAsStateWithLifecycle()

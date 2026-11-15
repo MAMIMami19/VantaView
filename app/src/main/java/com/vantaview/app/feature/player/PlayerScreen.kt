@@ -226,6 +226,10 @@ private fun VideoArea(
     LaunchedEffect(typedMiss) { if (typedMiss != null) { kotlinx.coroutines.delay(2_000); typedMiss = null } }
     // Audio or subtitle picker (a track type), and the buttons that open it.
     var picker by remember { mutableStateOf<Int?>(null) }
+    var moreOpen by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    SleepWatcher(vm.player) { }
     val buttons = remember { FocusRequester() }
     // Phones: the lock stops stray touches; tap the screen, then Unlock.
     var locked by remember { mutableStateOf(false) }
@@ -263,8 +267,9 @@ private fun VideoArea(
                     if (e.type == KeyEventType.KeyDown && typed.length < 5) typed += digit
                     return@onKeyEvent true
                 }
-                // Remote media keys: play/pause, rewind and fast forward.
+                // Remote media keys: play/pause, rewind and fast forward; Last for the previous channel.
                 when (e.key) {
+                    Key.LastChannel -> { if (e.type == KeyEventType.KeyUp) vm.lastChannel(); return@onKeyEvent true }
                     Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> { if (e.type == KeyEventType.KeyUp) vm.togglePause(); return@onKeyEvent true }
                     Key.MediaRewind -> { if (e.type == KeyEventType.KeyUp) vm.jump(-30); return@onKeyEvent true }
                     Key.MediaFastForward -> { if (e.type == KeyEventType.KeyUp) vm.jump(30); return@onKeyEvent true }
@@ -299,6 +304,9 @@ private fun VideoArea(
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
+
+        // Stream info (More › Stream info).
+        if (showInfo) StreamInfoOverlay(vm.player, vm.currentUrl, Modifier.align(Alignment.CenterStart).padding(start = 16.dp))
 
         // Channel number being typed on the remote.
         (if (typed.isNotEmpty()) typed else typedMiss)?.let { t ->
@@ -370,7 +378,7 @@ private fun VideoArea(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.onFocusChanged { buttonsFocused = it.hasFocus }
-                            .then(if (compact) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier),
+                            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
                     ) {
                         FocusCard(onClick = { picker = C.TRACK_TYPE_AUDIO }, modifier = Modifier.focusRequester(buttons)) {
                             Text("Audio", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
@@ -391,6 +399,8 @@ private fun VideoArea(
                             FocusCard(onClick = { vm.jump(30) }) { Text("30s ⏩", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
                             FocusCard(onClick = vm::goLive) { Text("● Go live", color = Vanta.Error, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
                         }
+                        if (vm.hasLastChannel) FocusCard(onClick = vm::lastChannel) { Text("↺ Last", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
+                        FocusCard(onClick = { moreOpen = true }) { Text("⋯ More", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
                         if (!isTv) {
                             val activity = LocalContext.current as? Activity
                             FocusCard(onClick = { locked = true; showUnlock = false }) { Text("🔒", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp) }
@@ -486,6 +496,11 @@ private fun VideoArea(
     }
 
     picker?.let { type -> TrackPicker(vm, type) { picker = null } }
+    if (moreOpen) PlayerMoreDialog(
+        onDismiss = { moreOpen = false },
+        onInfo = { showInfo = !showInfo },
+        onOpenElsewhere = vm.currentUrl?.let { u -> { openExternally(ctx, u, ui.title, vm.currentHeaders); Unit } },
+    )
 }
 
 /** Pick an audio or subtitle track for the channel playing now. */

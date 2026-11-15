@@ -123,6 +123,9 @@ class PlaylistsViewModel @Inject constructor(
     fun fileError(message: String) = _form.update { it.copy(message = message, isError = true) }
 
     /** A guide link typed for an existing playlist; the guide loads again with it. */
+    fun guideOffset(p: ProviderEntity): Int = guide.offsetMinutes(p.id)
+    fun setGuideOffset(p: ProviderEntity, minutes: Int) = guide.setOffsetMinutes(p.id, minutes)
+
     fun setGuideLink(p: ProviderEntity, link: String, done: (String?) -> Unit) {
         viewModelScope.launch {
             runCatching { repo.setGuideLink(p.id, link) }

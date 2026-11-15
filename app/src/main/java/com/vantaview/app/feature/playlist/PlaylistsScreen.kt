@@ -61,7 +61,10 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                     onGuide = if (p.kind == "STALKER") null else ({ guideFor = p }),
                 )
             }
-            guideFor?.let { p -> GuideLinkDialog(p, onSave = { link, done -> vm.setGuideLink(p, link, done) }, onClose = { guideFor = null }) }
+            guideFor?.let { p -> GuideLinkDialog(
+                p, vm.guideOffset(p), onOffset = { vm.setGuideOffset(p, it) },
+                onSave = { link, done -> vm.setGuideLink(p, link, done) }, onClose = { guideFor = null },
+            ) }
             if (providers.isEmpty()) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
             }
@@ -218,8 +221,9 @@ private fun ProviderCard(
 
 /** Type your own TV guide (XMLTV) link for a playlist, or clear it to use the playlist's own. */
 @Composable
-private fun GuideLinkDialog(p: ProviderEntity, onSave: (String, (String?) -> Unit) -> Unit, onClose: () -> Unit) {
+private fun GuideLinkDialog(p: ProviderEntity, offset: Int, onOffset: (Int) -> Unit, onSave: (String, (String?) -> Unit) -> Unit, onClose: () -> Unit) {
     var link by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(p.customEpg.orEmpty()) }
+    var shift by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(offset) }
     var error by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onClose, containerColor = Vanta.Panel,
@@ -232,12 +236,28 @@ private fun GuideLinkDialog(p: ProviderEntity, onSave: (String, (String?) -> Uni
                 )
                 Field("TV guide link", link, keyboard = KeyboardType.Uri) { link = it; error = null }
                 error?.let { Text(it, color = Vanta.Error, fontSize = 13.sp) }
+                // Guides whose times are out by an hour or so (often a time-zone or summer-time slip).
+                Text("Guide times", color = Vanta.Text, fontWeight = FontWeight.Bold)
+                Text(
+                    if (shift == 0) "As the guide gives them." else "Moved ${if (shift > 0) "later" else "earlier"} by ${offsetLabel(kotlin.math.abs(shift))}.",
+                    color = Vanta.TextDim, fontSize = 13.sp,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(-180, -120, -60, -30, 0, 30, 60, 120, 180).forEach { m ->
+                        FocusCard(onClick = { shift = m; onOffset(m) }, selected = shift == m) {
+                            Text(if (m == 0) "None" else (if (m > 0) "+" else "−") + offsetLabel(kotlin.math.abs(m)),
+                                color = if (shift == m) Vanta.Cyan else Vanta.Text, fontSize = 13.sp, maxLines = 1, softWrap = false)
+                        }
+                    }
+                }
             }
         },
         confirmButton = { GradientButton("Save", onClick = { onSave(link) { e -> if (e == null) onClose() else error = e } }) },
         dismissButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Cancel") } },
     )
 }
+
+private fun offsetLabel(m: Int) = if (m < 60) "$m min" else "${m / 60} h" + if (m % 60 != 0) " ${m % 60} min" else ""
 
 /** Optional free channels from Free TV, added only when the user asks. */
 @Composable

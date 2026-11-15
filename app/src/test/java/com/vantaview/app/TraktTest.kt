@@ -49,3 +49,11 @@ class TraktTest {
         assertEquals("tt31433814:1:2", TraktEpisode("tt31433814", 1, 2).videoId)
     }
 }
+
+class LogRedactTest {
+    @Test fun blanksLoginsAndKeys() {
+        val r = com.vantaview.app.data.support.LogExport.redact("GET http://host:8080/live/alan/secret123/1234.ts?username=a&password=b mac=00:1A:79:12:34:56")
+        org.junit.Assert.assertFalse(r.contains("alan")); org.junit.Assert.assertFalse(r.contains("secret123"))
+        org.junit.Assert.assertFalse(r.contains("password=b")); org.junit.Assert.assertFalse(r.contains("00:1A:79"))
+    }
+}

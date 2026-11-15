@@ -295,12 +295,24 @@ class GuideRepository @Inject constructor(
 
     // ---- Questions the pages ask ----
 
-    suspend fun range(providerId: Long, key: String, from: Long, to: Long): List<ProgrammeEntity> =
-        db.guide().range(providerId, key, from, to)
+    // ---- Guide time offset per source (for guides whose times are an hour or so out) ----
+
+    /** Minutes added to every programme time of a source's guide (negative = earlier). */
+    fun offsetMinutes(providerId: Long): Int = sp.getInt("offset_$providerId", 0)
+    fun setOffsetMinutes(providerId: Long, minutes: Int) { sp.edit().putInt("offset_$providerId", minutes).apply(); _version.update { it + 1 } }
+    private fun off(providerId: Long) = offsetMinutes(providerId) * 60_000L
+
+    /** A programme with its source's offset applied. */
+    fun shifted(p: ProgrammeEntity): ProgrammeEntity = off(p.providerId).let { o -> if (o == 0L) p else p.copy(start = p.start + o, stop = p.stop + o) }
+
+    suspend fun range(providerId: Long, key: String, from: Long, to: Long): List<ProgrammeEntity> {
+        val o = off(providerId)
+        return db.guide().range(providerId, key, from - o, to - o).map(::shifted)
+    }
 
     suspend fun nowNext(providerId: Long, key: String, now: Long = System.currentTimeMillis()): List<ProgrammeEntity> =
-        db.guide().nowNext(providerId, key, now)
+        db.guide().nowNext(providerId, key, now - off(providerId)).map(::shifted)
 
     suspend fun onNow(providerId: Long, keys: List<String>, now: Long = System.currentTimeMillis()): List<ProgrammeEntity> =
-        if (keys.isEmpty()) emptyList() else keys.chunked(500).flatMap { db.guide().onNow(providerId, it, now) }
+        if (keys.isEmpty()) emptyList() else keys.chunked(500).flatMap { db.guide().onNow(providerId, it, now - off(providerId)) }.map(::shifted)
 }

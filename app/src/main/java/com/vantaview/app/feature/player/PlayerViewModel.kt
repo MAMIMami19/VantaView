@@ -184,6 +184,21 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private var previousChannel: ChannelEntity? = null
+    val hasLastChannel: Boolean get() = previousChannel != null
+
+    /** Back to the channel watched before this one (the remote's Last button). */
+    fun lastChannel() {
+        val prev = previousChannel ?: return
+        val i = siblings.indexOfFirst { it.id == prev.id }
+        if (i >= 0) index = i
+        start(prev)
+    }
+
+    /** The address playing now and its headers (stream info, and opening in another player). */
+    val currentUrl: String? get() = candidates.getOrNull(working ?: candidate)?.first
+    val currentHeaders: Map<String, String> get() = headers
+
     /** Channel up (+1) or down (-1) within the current category. */
     fun step(delta: Int) {
         if (siblings.size < 2) return
@@ -238,6 +253,7 @@ class PlayerViewModel @Inject constructor(
         _index.value = index
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
         stopShift()
+        currentChannel?.takeIf { it.id != channel.id }?.let { previousChannel = it }
         currentChannel = channel
         player.stop()
         attempts = 0

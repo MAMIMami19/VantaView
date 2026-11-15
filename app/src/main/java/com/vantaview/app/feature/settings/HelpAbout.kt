@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.settings
 
+import kotlinx.coroutines.launch
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -93,6 +94,28 @@ fun HelpAbout() {
             FocusCard(onClick = { open(ISSUES_URL) }) { Text("Report a problem", color = Vanta.Text) }
         }
         noBrowser?.let { Text("No web browser here. Visit $it on your phone or computer.", color = Vanta.Cyan, fontSize = 13.sp) }
+    }
+
+    Section("Log file") {
+        Text(
+            "If something goes wrong, save a log file and attach it to your problem report. Logins, keys and MAC addresses are blanked out.",
+            color = Vanta.TextDim, fontSize = 14.sp,
+        )
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        var logNote by remember { mutableStateOf<String?>(null) }
+        val save = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/plain"),
+        ) { uri ->
+            if (uri != null) scope.launch {
+                logNote = com.vantaview.app.data.support.LogExport.write(context, uri)
+                    .fold({ "Saved the log ($it lines)." }, { "Couldn't save the log (${it.message})." })
+            }
+        }
+        FocusCard(onClick = {
+            runCatching { save.launch("vantaview-log-${java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.UK).format(java.util.Date())}.txt") }
+                .onFailure { logNote = "This device has no file picker to save the log with." }
+        }) { Text("Save a log file", color = Vanta.Text) }
+        logNote?.let { Text(it, color = Vanta.Cyan, fontSize = 13.sp) }
     }
 
     Section("Terms of use") {

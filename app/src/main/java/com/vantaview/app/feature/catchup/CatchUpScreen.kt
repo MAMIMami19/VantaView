@@ -80,6 +80,7 @@ class CatchUpViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val parental: com.vantaview.app.data.profile.ParentalControl,
     private val vodSession: com.vantaview.app.data.addon.VodSession,
+    private val guide: com.vantaview.app.data.guide.GuideRepository,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(CatchUpUi())
     val ui: StateFlow<CatchUpUi> = _ui
@@ -125,7 +126,7 @@ class CatchUpViewModel @Inject constructor(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val list = if (key == null) emptyList() else
-                db.guide().range(c.providerId, key, from, minOf(to, now)).filter { repo.hasCatchUp(c, it, now) }
+                guide.range(c.providerId, key, from, minOf(to, now)).filter { repo.hasCatchUp(c, it, now) }
             _ui.update { it.copy(programmes = list.sortedByDescending { p -> p.start }) }
         }
     }
@@ -138,7 +139,7 @@ class CatchUpViewModel @Inject constructor(
         val maxDays = chans.maxOf { it.archiveDays }
         val byKey = chans.filter { it.epgChannelId != null }.associateBy { it.providerId to it.epgChannelId!! }
         val found = db.guide().searchPast(chans.map { it.providerId }.distinct(), q.trim(), now, now - maxDays * 86_400_000L)
-            .mapNotNull { p -> byKey[p.providerId to p.channelKey]?.let { c -> PastHit(p, c) } }
+            .mapNotNull { p -> byKey[p.providerId to p.channelKey]?.let { c -> PastHit(guide.shifted(p), c) } }
             .filter { repo.hasCatchUp(it.channel, it.programme, now) }
         _ui.update { it.copy(hits = found) }
     }
