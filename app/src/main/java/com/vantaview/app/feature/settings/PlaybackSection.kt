@@ -30,6 +30,7 @@ fun PlaybackSection(s: PlaybackSettings) {
     var controls by remember { mutableStateOf(s.controlsSeconds) }
     var mini by remember { mutableStateOf(s.miniPlayer) }
     var gestures by remember { mutableStateOf(s.gestures) }
+    var pip by remember { mutableStateOf(s.pip) }
     var startLast by remember { mutableStateOf(s.startOnLastChannel) }
     var rememberSize by remember { mutableStateOf(s.rememberSize) }
     var remindMins by remember { mutableStateOf(s.reminderMinutes) }
@@ -96,6 +97,11 @@ fun PlaybackSection(s: PlaybackSettings) {
 
     Section("Phone gestures") {
         Toggle("Swipe and double tap", "Swipe left or right to change channel. Swipe up or down on the left for brightness, on the right for volume (up to 200%). Double tap for full screen.", gestures) { gestures = it; s.gestures = it }
+        Toggle(
+            "Picture-in-picture",
+            "Pressing Home while something plays shrinks it into a small window over your other apps, and the player has a button for it.",
+            pip,
+        ) { pip = it; s.pip = it }
     }
 
     Text("Changes apply the next time a video starts.", color = Vanta.TextDim, fontSize = 13.sp)

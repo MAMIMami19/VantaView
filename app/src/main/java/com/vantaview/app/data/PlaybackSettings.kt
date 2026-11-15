@@ -79,6 +79,11 @@ class PlaybackSettings @Inject constructor(
         get() = sp.getInt("controls_seconds", 5)
         set(v) { sp.edit().putInt("controls_seconds", v).apply() }
 
+    /** Picture-in-picture on phones: the PiP button, and shrinking the player when you press Home. */
+    var pip: Boolean
+        get() = sp.getBoolean("pip", true)
+        set(v) { sp.edit().putBoolean("pip", v).apply(); com.vantaview.app.feature.player.PlayerPip.enabled = v }
+
     var miniPlayer: Boolean
         get() = sp.getBoolean("mini_player", true)
         set(v) { sp.edit().putBoolean("mini_player", v).apply() }

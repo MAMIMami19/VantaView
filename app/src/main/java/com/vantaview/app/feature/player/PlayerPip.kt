@@ -19,9 +19,11 @@ object PlayerPip {
     var playing by mutableStateOf(false)
     /** The app is showing in a small picture-in-picture window. */
     var inPip by mutableStateOf(false)
+    /** Settings › Playback › Picture-in-picture; kept in step with the profile's setting. */
+    var enabled by mutableStateOf(true)
 
     fun supported(activity: Activity?): Boolean =
-        activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        enabled && activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
             !activity.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 

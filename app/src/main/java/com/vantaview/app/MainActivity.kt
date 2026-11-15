@@ -77,6 +77,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStart() { super.onStart(); com.vantaview.app.data.library.AppVisible.now = true }
+    override fun onResume() {
+        super.onResume()
+        // The setting belongs to the profile in use.
+        com.vantaview.app.feature.player.PlayerPip.enabled = playbackSettings.pip
+    }
+
     override fun onStop() { super.onStop(); com.vantaview.app.data.library.AppVisible.now = false }
 
     companion object { const val EXTRA_PLAY_CHANNEL = "play_channel" }
@@ -84,6 +90,7 @@ class MainActivity : ComponentActivity() {
     /** Pressing Home while a film or channel plays shrinks it into picture-in-picture (phones). */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
+        com.vantaview.app.feature.player.PlayerPip.enabled = playbackSettings.pip
         if (com.vantaview.app.feature.player.PlayerPip.playing) com.vantaview.app.feature.player.PlayerPip.enter(this)
     }
 

@@ -147,6 +147,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Built that wasn't on the original list
 
+- [x] Picture-in-picture switch (Settings › Playback): turns off the PiP button and shrinking on Home
 - [x] M3U links encrypted on the device; logins in them hidden in saved channel, film and guide addresses, and kept in the locked part of backups
 - [x] Privacy page (docs/PRIVACY.md): where playlists and logins go, and every service the app connects to
 - [x] Films and series from M3U playlists and Xtream Codes: their own rows on Movies and TV Series, matched on TMDB for details, and offered as "From your playlist" on matching titles
