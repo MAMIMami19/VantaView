@@ -69,7 +69,7 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel(), setup: Boolean = 
                 p, vm.guideOffset(p), onOffset = { vm.setGuideOffset(p, it) },
                 onSave = { link, done -> vm.setGuideLink(p, link, done) }, onClose = { guideFor = null },
             ) }
-            if (providers.isEmpty()) {
+            if (providers.isEmpty() && !setup) {
                 Text("No playlists yet. Add one below to get started.", color = Vanta.TextDim)
             }
 

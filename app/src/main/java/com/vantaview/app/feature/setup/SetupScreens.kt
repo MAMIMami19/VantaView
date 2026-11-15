@@ -42,9 +42,10 @@ private fun SetupPage(
     canContinue: Boolean, onContinue: () -> Unit, onSkip: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Box(Modifier.fillMaxSize().background(Vanta.Bg), contentAlignment = Alignment.TopCenter) {
+    // Continue and Skip stay at the bottom of the screen, so a TV remote never has to scroll to find them.
+    Column(Modifier.fillMaxSize().background(Vanta.Bg), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(
-            Modifier.widthIn(max = 640.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
+            Modifier.weight(1f).widthIn(max = 640.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -55,8 +56,12 @@ private fun SetupPage(
             }
             Spacer(Modifier.height(4.dp))
             content()
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        }
+        Box(Modifier.fillMaxWidth().background(Vanta.Surface), contentAlignment = Alignment.Center) {
+            FlowRow(
+                Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 GradientButton("Continue", onClick = onContinue, enabled = canContinue)
                 FocusCard(onClick = onSkip) { Text("Skip for now", color = Vanta.Text, maxLines = 1, softWrap = false) }
             }
