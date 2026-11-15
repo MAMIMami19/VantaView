@@ -48,14 +48,25 @@ data class TraktList(val id: String, val name: String)
 class TraktApi(private val http: OkHttpClient) {
     val clientId: String = BuildConfig.TRAKT_CLIENT_ID
     private val clientSecret: String = BuildConfig.TRAKT_CLIENT_SECRET
-    val configured: Boolean get() = clientId.isNotBlank() && clientSecret.isNotBlank()
+    /** Only the Client ID is needed: Trakt apps made since 2026 sign in without a client secret (it's optional and deprecated). */
+    val configured: Boolean get() = clientId.isNotBlank()
+
+    /** Adds the client secret only for older Trakt apps that still have one. */
+    private fun JSONObject.withSecret(): JSONObject = apply { if (clientSecret.isNotBlank()) put("client_secret", clientSecret) }
+
+    /** Sign-in calls: Trakt's API host, or its sign-in host if the API host doesn't answer them. */
+    private suspend fun oauth(path: String, body: JSONObject): Reply {
+        val r = call(path, "POST", body = body)
+        if (r.code != 404 && r.code != 405) return r
+        return call(path, "POST", body = body, host = "https://auth.trakt.tv")
+    }
 
     private val json = "application/json".toMediaType()
 
     data class Reply(val code: Int, val body: String)
 
-    suspend fun call(path: String, method: String = "GET", token: String? = null, body: Any? = null): Reply = withContext(Dispatchers.IO) {
-        val b = Request.Builder().url("https://api.trakt.tv$path")
+    suspend fun call(path: String, method: String = "GET", token: String? = null, body: Any? = null, host: String = "https://api.trakt.tv"): Reply = withContext(Dispatchers.IO) {
+        val b = Request.Builder().url("$host$path")
             .header("Content-Type", "application/json")
             .header("trakt-api-version", "2")
             .header("trakt-api-key", clientId)
@@ -86,7 +97,7 @@ class TraktApi(private val http: OkHttpClient) {
     // ---- Sign-in (device code) ----
 
     suspend fun startCode(): TraktCode {
-        val o = JSONObject(call("/oauth/device/code", "POST", body = JSONObject().put("client_id", clientId)).ok().body)
+        val o = JSONObject(oauth("/oauth/device/code", JSONObject().put("client_id", clientId)).ok().body)
         return TraktCode(
             o.getString("device_code"), o.getString("user_code"), o.optString("verification_url", "https://trakt.tv/activate"),
             o.optInt("interval", 5), System.currentTimeMillis() + o.optInt("expires_in", 600) * 1000L,
@@ -95,10 +106,7 @@ class TraktApi(private val http: OkHttpClient) {
 
     /** The tokens once the code has been entered, null while still waiting. */
     suspend fun pollCode(c: TraktCode): TraktTokens? {
-        val r = call(
-            "/oauth/device/token", "POST",
-            body = JSONObject().put("code", c.deviceCode).put("client_id", clientId).put("client_secret", clientSecret),
-        )
+        val r = oauth("/oauth/device/token", JSONObject().put("code", c.deviceCode).put("client_id", clientId).withSecret())
         return when (r.code) {
             200 -> tokens(JSONObject(r.body))
             400, 429 -> null // not entered yet, or polling too fast
@@ -111,13 +119,13 @@ class TraktApi(private val http: OkHttpClient) {
     }
 
     suspend fun refresh(t: TraktTokens): TraktTokens {
-        val body = JSONObject().put("refresh_token", t.refresh).put("client_id", clientId).put("client_secret", clientSecret)
+        val body = JSONObject().put("refresh_token", t.refresh).put("client_id", clientId).withSecret()
             .put("redirect_uri", "urn:ietf:wg:oauth:2.0:oob").put("grant_type", "refresh_token")
-        return tokens(JSONObject(call("/oauth/token", "POST", body = body).ok().body))
+        return tokens(JSONObject(oauth("/oauth/token", body).ok().body))
     }
 
     suspend fun revoke(t: TraktTokens) {
-        runCatching { call("/oauth/revoke", "POST", body = JSONObject().put("token", t.access).put("client_id", clientId).put("client_secret", clientSecret)) }
+        runCatching { oauth("/oauth/revoke", JSONObject().put("token", t.access).put("client_id", clientId).withSecret()) }
     }
 
     private fun tokens(o: JSONObject) = TraktTokens(
