@@ -104,6 +104,27 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                     Field("Portal name (optional)", form.name) { v -> vm.edit { it.copy(name = v) } }
                     Field("Portal address (like http://example.com:8080/c/)", form.portal, keyboard = KeyboardType.Uri) { v -> vm.edit { it.copy(portal = v) } }
                     Field("MAC address (like 00:1A:79:12:34:56)", form.mac, keyboard = KeyboardType.Ascii) { v -> vm.edit { it.copy(mac = v) } }
+                    FocusCard(onClick = { vm.edit { it.copy(boxOpen = !it.boxOpen) } }) {
+                        Text((if (form.boxOpen) "▾ " else "▸ ") + "Advanced: box details (optional)", color = Vanta.Text)
+                    }
+                    if (form.boxOpen) {
+                        Text(
+                            "Only needed if your provider locks your subscription to one MAG box. Copy these from that box " +
+                                "(Settings › About on most MAG boxes). Leave them empty otherwise.",
+                            color = Vanta.TextDim, fontSize = 13.sp,
+                        )
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            com.vantaview.app.data.stalker.StalkerClient.Box.MODELS.forEach { m ->
+                                FocusCard(onClick = { vm.edit { it.copy(model = m) } }, selected = form.model == m) {
+                                    Text(m, color = if (form.model == m) Vanta.Cyan else Vanta.Text, fontWeight = if (form.model == m) FontWeight.Bold else FontWeight.Normal)
+                                }
+                            }
+                        }
+                        Field("Serial number", form.serial) { v -> vm.edit { it.copy(serial = v) } }
+                        Field("Device ID", form.deviceId) { v -> vm.edit { it.copy(deviceId = v) } }
+                        Field("Device ID 2", form.deviceId2) { v -> vm.edit { it.copy(deviceId2 = v) } }
+                        Field("Signature", form.signature) { v -> vm.edit { it.copy(signature = v) } }
+                    }
                     GradientButton("Add portal", onClick = vm::add, enabled = form.portal.isNotBlank() && form.mac.isNotBlank())
                 }
             }

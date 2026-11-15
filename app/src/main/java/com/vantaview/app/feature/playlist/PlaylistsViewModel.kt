@@ -30,6 +30,13 @@ data class PlaylistForm(
     val password: String = "",
     val portal: String = "",
     val mac: String = "",
+    /** Stalker › Advanced: details of the user's own MAG box, for providers that lock to one box. */
+    val boxOpen: Boolean = false,
+    val model: String = "MAG250",
+    val serial: String = "",
+    val deviceId: String = "",
+    val deviceId2: String = "",
+    val signature: String = "",
     val message: String? = null,
     val isError: Boolean = false,
 )
@@ -82,7 +89,7 @@ class PlaylistsViewModel @Inject constructor(
                 val id = when (f.tab) {
                     SourceTab.M3U -> repo.addM3u(f.name, f.m3uUrl)
                     SourceTab.XTREAM -> repo.addXtream(f.name, f.server, f.username, f.password)
-                    SourceTab.STALKER -> repo.addStalker(f.name, f.portal, f.mac)
+                    SourceTab.STALKER -> repo.addStalker(f.name, f.portal, f.mac, f.model, f.serial, f.deviceId, f.deviceId2, f.signature)
                     SourceTab.SMART -> { detect(); return@launch }
                 }
                 session.setLastProvider(id)

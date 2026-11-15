@@ -52,6 +52,8 @@ private val libraries = listOf(
     Credit("Coil", "Apache 2.0"),
     Credit("ZXing (QR codes)", "Apache 2.0"),
     Credit("whisper.cpp and OpenAI Whisper models (AI subtitles)", "MIT"),
+    Credit("Stalker-Portal by Jitendra Unatti (how a MAG box signs in to a portal) · github.com/Jitendraunatti/Stalker-Portal", "GPL 3.0"),
+    Credit("Stream Goat by Syed Ali Hamza (Xtream sign-in check) · github.com/sherazi5110/stream-goat", "GPL 3.0"),
 )
 
 /** Settings › Help and about: tour, about, report a problem, terms and credits. */

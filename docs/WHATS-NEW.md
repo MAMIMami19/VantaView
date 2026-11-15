@@ -1,3 +1,4 @@
+- Stalker portals sign in like a real MAG box, so stricter portals accept them; channel logos now show; optional box details (model, serial, device IDs, signature) for subscriptions locked to one box.
 - Six games-console style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight. On a TV each turns Home into a dashboard, and the rest of the app takes on its colours, background and menu.
 - New looks in Settings › Appearance: Glass, Broadcast, Wave and Classic change the colours, background, menu and TV Guide. Each profile can have its own.
 - Catch-up: in the TV Guide, pick a programme that has already aired on a portal channel with catch-up and choose Watch from start.
@@ -5,4 +6,3 @@
 - Fire TV: smoother loading screen ripple, no black flash before Home, and easier-to-read Home tiles.
 - Opens much faster, especially on Fire TV Sticks, and shows the logo straight away instead of a blank screen.
 - TV fixes: works on Android 7 boxes and Fire OS 6; the country chooser fits a TV screen; slimmer sidebar.
-- TV remotes: type a channel number while watching to jump to it; Home's play button shows a focus ring.

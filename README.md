@@ -51,4 +51,5 @@ logo for modified builds.
 - [Stream Goat](https://github.com/sherazi5110/stream-goat) by Syed Ali Hamza (GPL-3.0): the M3U
   parser and Xtream login check are adapted from its `LiveTv.kt`.
 - [CloudStream](https://github.com/recloudstream/cloudstream) (GPL-3.0), upstream of Stream Goat.
+- [Stalker-Portal](https://github.com/Jitendraunatti/Stalker-Portal) by Jitendra Unatti (GPL-3.0): how a MAG box signs in to a Stalker portal (the full profile details, hardware codes and logo folder), used as a reference for VantaView's own Stalker client.
 - AndroidX, Jetpack Compose, Media3, Room, Hilt, OkHttp, Coil, Kotlin (Apache-2.0).

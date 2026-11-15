@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// The full MAG box sign-in (get_profile details, hardware codes, metrics) and the portal logo folder
+// follow Stalker-Portal (c) Jitendra Unatti, GPL-3.0
+// https://github.com/Jitendraunatti/Stalker-Portal  (jitendraunatti.php: get_profile, login)
 package com.vantaview.app.data.stalker
 
 import android.util.JsonReader
@@ -52,16 +55,54 @@ class StalkerClient @Inject constructor(http: OkHttpClient, private val crypto: 
         else listOf("$root/portal.php", "$root/server/load.php", "$root/stalker_portal/server/load.php")
     }
 
-    /** The MAC address is the login, so it's stored encrypted like a password. */
-    private fun mac(p: ProviderEntity): String = crypto.decrypt(p.passwordEnc)
+    /**
+     * The box this app introduces itself as: the user's MAC address and, for providers that lock a
+     * subscription to one box, the details from that box (Settings › About on a MAG box).
+     * Stored encrypted, like a password: plain text (just the MAC) or JSON with the extras.
+     */
+    data class Box(
+        val mac: String,
+        val model: String = "MAG250",
+        val serial: String = "",
+        val deviceId: String = "",
+        val deviceId2: String = "",
+        val signature: String = "",
+    ) {
+        fun encode(): String =
+            if (model == "MAG250" && serial.isBlank() && deviceId.isBlank() && deviceId2.isBlank() && signature.isBlank()) mac
+            else JSONObject().put("mac", mac).put("model", model).put("sn", serial).put("d1", deviceId).put("d2", deviceId2).put("sig", signature).toString()
+
+        companion object {
+            val MODELS = listOf("MAG250", "MAG254", "MAG270", "MAG322", "MAG424")
+            fun decode(stored: String): Box {
+                if (!stored.trim().startsWith("{")) return Box(stored.trim())
+                val o = JSONObject(stored)
+                return Box(
+                    o.optString("mac"), o.optString("model").ifBlank { "MAG250" }, o.optString("sn"),
+                    o.optString("d1"), o.optString("d2"), o.optString("sig"),
+                )
+            }
+        }
+    }
+
+    fun box(p: ProviderEntity): Box = Box.decode(crypto.decrypt(p.passwordEnc))
+
+    private fun mac(p: ProviderEntity): String = box(p).mac
 
     private fun origin(p: ProviderEntity) = p.baseUrl.substringBefore("://") + "://" + p.baseUrl.substringAfter("://").substringBefore('/')
 
-    /** Makes a picture address from the portal absolute. */
+    /** The portal's own folder (where its logos are), worked out from the address that answered. */
+    private fun portalRoot(p: ProviderEntity): String {
+        val api = sessions[p.id]?.api ?: apiCandidates(p.baseUrl).first()
+        return if (api.endsWith("/server/load.php")) api.removeSuffix("/server/load.php") else api.substringBeforeLast('/')
+    }
+
+    /** Makes a picture address from the portal absolute. A bare file name is in the portal's logo folder. */
     fun absolute(p: ProviderEntity, url: String?): String? = when {
         url.isNullOrBlank() -> null
         url.startsWith("http", true) -> url
         url.startsWith("/") -> origin(p) + url
+        url.contains('.') -> portalRoot(p) + "/misc/logos/320/" + url
         else -> null
     }
 
@@ -72,7 +113,7 @@ class StalkerClient @Inject constructor(http: OkHttpClient, private val crypto: 
         val tz = URLEncoder.encode(TimeZone.getDefault().id, "UTF-8")
         val b = Request.Builder().url(url)
             .header("User-Agent", MAG_UA)
-            .header("X-User-Agent", "Model: MAG250; Link: WiFi")
+            .header("X-User-Agent", "Model: ${box(p).model}; Link: WiFi")
             .header("Referer", p.baseUrl.trimEnd('/') + "/")
             .header("Cookie", "mac=$mac; stb_lang=en; timezone=$tz")
             .header("Accept", "*/*")
@@ -107,10 +148,24 @@ class StalkerClient @Inject constructor(http: OkHttpClient, private val crypto: 
                     ?: throw IllegalStateException("No answer to the handshake")
                 val token = hs.optString("token")
                 if (token.isBlank()) throw IllegalStateException("The portal didn't give a session")
-                val sn = md5(mac(p)).uppercase().take(13)
-                val profileUrl = "$api?type=stb&action=get_profile&hd=1&ver=ImageDescription%3A%200.2.18-r23-250%3B&num_banks=2" +
-                    "&sn=$sn&stb_type=MAG250&image_version=218&video_out=hdmi&auth_second_step=1&hw_version=1.7-BD-00" +
-                    "&not_valid_token=0&JsHttpRequest=1-xml"
+                // Everything a real MAG box sends; stricter portals refuse a box that leaves these out.
+                val b = box(p)
+                val sn = b.serial.ifBlank { md5(b.mac).uppercase().take(13) }
+                val hw2 = md5((sn + b.mac).lowercase())
+                val metrics = JSONObject().put("mac", b.mac).put("sn", sn).put("model", b.model).put("type", "STB")
+                    .put("uid", "").put("random", hs.optString("random")).toString()
+                val q = linkedMapOf(
+                    "type" to "stb", "action" to "get_profile", "hd" to "1",
+                    "ver" to "ImageDescription: 0.2.18-r14-pub-250; ImageDate: Fri Jan 15 15:20:44 EET 2016; PORTAL version: 5.1.0; " +
+                        "API Version: JS API version: 328; STB API version: 134; Player Engine version: 0x566",
+                    "num_banks" to "2", "sn" to sn, "stb_type" to b.model, "image_version" to "218", "video_out" to "hdmi",
+                    "device_id" to b.deviceId, "device_id2" to b.deviceId2, "signature" to b.signature,
+                    "auth_second_step" to "1", "hw_version" to "1.7-BD-" + md5(b.mac).take(2).uppercase(),
+                    "not_valid_token" to "0", "client_type" to "STB", "hw_version_2" to hw2,
+                    "timestamp" to (System.currentTimeMillis() / 1000).toString(), "api_signature" to "263",
+                    "metrics" to metrics, "JsHttpRequest" to "1-xml",
+                )
+                val profileUrl = "$api?" + q.entries.joinToString("&") { (k, v) -> "$k=${enc(v)}" }
                 val profile = js(fetch(p, profileUrl, token)) as? JSONObject
                 if (profile != null && (profile.optString("blocked") == "1" || profile.optInt("status", 0) == 1 && profile.optString("id").isBlank())) {
                     throw IllegalStateException(

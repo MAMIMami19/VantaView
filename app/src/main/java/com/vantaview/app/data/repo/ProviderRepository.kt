@@ -121,7 +121,10 @@ class ProviderRepository @Inject constructor(
     }
 
     /** A Stalker (MAG) portal: the portal address and the MAC address your provider registered. */
-    suspend fun addStalker(name: String, portal: String, mac: String): Long {
+    suspend fun addStalker(
+        name: String, portal: String, mac: String,
+        model: String = "MAG250", serial: String = "", deviceId: String = "", deviceId2: String = "", signature: String = "",
+    ): Long {
         require(portal.isNotBlank()) { "Enter the portal address" }
         val clean = com.vantaview.app.data.stalker.StalkerClient.normalizeMac(mac)
             ?: throw IllegalArgumentException("That MAC address doesn't look right. It's 12 letters and numbers, like 00:1A:79:12:34:56")
@@ -133,7 +136,11 @@ class ProviderRepository @Inject constructor(
                 name = name.ifBlank { "My portal" },
                 kind = "STALKER",
                 baseUrl = url.substringBefore('#').trimEnd('/'),
-                passwordEnc = crypto.encrypt(clean),
+                passwordEnc = crypto.encrypt(
+                    com.vantaview.app.data.stalker.StalkerClient.Box(
+                        clean, model, serial.trim(), deviceId.trim(), deviceId2.trim(), signature.trim(),
+                    ).encode()
+                ),
             )
         )
         sync(id)
