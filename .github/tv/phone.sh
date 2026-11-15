@@ -20,11 +20,15 @@ tap_text() {
   xy=$(python3 - "$1" <<'PY'
 import re,sys
 t=sys.argv[1].lower(); x=open('tv-out/ui.xml',encoding='utf-8',errors='ignore').read()
+# An exact match first, so "Agree" never taps "Disagree"; then text that starts with it; then anywhere.
+nodes=[]
 for m in re.finditer(r'<node [^>]*>', x):
-    n=m.group(0); txt=(re.search(r' text="([^"]*)"',n) or re.search(r'content-desc="([^"]*)"',n))
-    if txt and t in txt.group(1).lower():
-        b=re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',n)
-        if b: a=list(map(int,b.groups())); print((a[0]+a[2])//2,(a[1]+a[3])//2); break
+    n=m.group(0); txt=(re.search(r' text="([^"]+)"',n) or re.search(r'content-desc="([^"]+)"',n))
+    b=re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',n)
+    if txt and b: nodes.append((txt.group(1).lower().strip(), list(map(int,b.groups()))))
+for test in (lambda s: s==t, lambda s: s.startswith(t), lambda s: t in s):
+    hit=next((a for s,a in nodes if test(s)), None)
+    if hit: print((hit[0]+hit[2])//2,(hit[1]+hit[3])//2); break
 PY
 )
   if [ -n "$xy" ]; then adb shell input tap $xy; echo "tapped '$1' at $xy"; else echo "NOT FOUND: '$1'"; fi
