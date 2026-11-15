@@ -117,7 +117,12 @@ fun BrowseGroups(tiles: List<BrowseTile>, wide: Boolean, onTile: (BrowseTile) ->
     }
 }
 
+/** How a person's titles are sorted. */
+enum class CreditSort(val label: String) { POPULAR("Best known"), NEWEST("Newest"), OLDEST("Oldest"), AZ("A to Z") }
+
 data class BrowseUi(
+    /** A person's page: all their titles with dates and roles (null on tile pages). */
+    val credits: List<BrowseRepository.Credit>? = null,
     val title: String = "",
     val items: List<MetaPreview> = emptyList(),
     val loading: Boolean = true,
@@ -148,8 +153,12 @@ class BrowseViewModel @Inject constructor(
         viewModelScope.launch {
             val id = if (k.startsWith("person:")) k.substringAfter(':')
             else runCatching { repo.people(k.substringAfter(':')).firstOrNull()?.id }.getOrNull()
-            val list = id?.let { runCatching { repo.personCredits(it) }.getOrDefault(emptyList()) }.orEmpty()
-            _ui.update { it.copy(items = list, loading = false, end = true, message = if (id == null) "Couldn't find them on TMDB." else null) }
+            val credits = id?.let { runCatching { repo.personCreditsFull(it) }.getOrDefault(emptyList()) }.orEmpty()
+                .let { l -> if (profiles.observeCurrent().first()?.isKids == true) emptyList() else l }
+            _ui.update {
+                it.copy(credits = credits, items = credits.map { c -> c.preview }, loading = false, end = true,
+                    message = if (id == null) "Couldn't find them on TMDB." else null)
+            }
         }
     }
 
@@ -193,6 +202,10 @@ fun BrowseScreen(onOpen: (MetaPreview) -> Unit, vm: BrowseViewModel = hiltViewMo
         )
         ui.message?.let { Text(it, color = Vanta.Cyan, fontSize = 13.sp) }
         Spacer(Modifier.height(8.dp))
+        ui.credits?.let { all ->
+            PersonPage(all, vm::open, onOpen)
+            return@Column
+        }
         if (!ui.loading && ui.items.isEmpty()) {
             Text("Nothing here right now.", color = Vanta.TextDim)
             return@Column
@@ -209,5 +222,75 @@ fun BrowseScreen(onOpen: (MetaPreview) -> Unit, vm: BrowseViewModel = hiltViewMo
                 PosterCard(m, onClick = { vm.open(m, onOpen) }, modifier = Modifier)
             }
         }
+    }
+}
+
+/**
+ * A person's page: Available (out now) and All (including announced and unreleased), sorted and filtered
+ * by films or series and by role.
+ */
+@Composable
+private fun PersonPage(all: List<BrowseRepository.Credit>, open: (MetaPreview, (MetaPreview) -> Unit) -> Unit, onOpen: (MetaPreview) -> Unit) {
+    var availableOnly by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(true) }
+    var sort by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(CreditSort.POPULAR) }
+    var kind by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("all") }
+    var role by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("all") }
+    val acting = all.any { it.role.contains("Acting") }
+    val crew = all.any { it.role.split(", ").any { r -> r != "Acting" } }
+    val shown = androidx.compose.runtime.remember(all, availableOnly, sort, kind, role) {
+        all.filter { !availableOnly || it.released }
+            .filter { kind == "all" || it.preview.type == kind }
+            .filter { role == "all" || (role == "acting") == it.role.contains("Acting") }
+            .let { l ->
+                when (sort) {
+                    CreditSort.POPULAR -> l.sortedByDescending { it.popularity + it.votes / 500.0 }
+                    CreditSort.NEWEST -> l.sortedByDescending { it.date.ifBlank { "9999" } }
+                    CreditSort.OLDEST -> l.sortedBy { it.date.ifBlank { "9999" } }
+                    CreditSort.AZ -> l.sortedBy { it.preview.name.lowercase() }
+                }
+            }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { Chip("Available · ${all.count { it.released }}", availableOnly) { availableOnly = true } }
+            item { Chip("All · ${all.size}", !availableOnly) { availableOnly = false } }
+        }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(CreditSort.entries.toList()) { o -> Chip(o.label, sort == o) { sort = o } }
+            item { Spacer(Modifier.width(8.dp)) }
+            item { Chip("Films and series", kind == "all") { kind = "all" } }
+            item { Chip("Films", kind == "movie") { kind = "movie" } }
+            item { Chip("Series", kind == "series") { kind = "series" } }
+            if (acting && crew) {
+                item { Spacer(Modifier.width(8.dp)) }
+                item { Chip("Any role", role == "all") { role = "all" } }
+                item { Chip("Acting", role == "acting") { role = "acting" } }
+                item { Chip("Behind the camera", role == "crew") { role = "crew" } }
+            }
+        }
+        if (shown.isEmpty()) Text(
+            if (availableOnly && all.isNotEmpty()) "Nothing out yet that matches. Try All." else "Nothing matches these filters.",
+            color = Vanta.TextDim,
+        )
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(118.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            itemsIndexed(shown, key = { _, c -> c.preview.id }) { _, c ->
+                PosterCard(c.preview, onClick = { open(c.preview, onOpen) }, modifier = Modifier,
+                    badge = if (!c.released) (c.date.take(4).ifBlank { null }?.let { "Coming $it" } ?: "Coming soon") else null)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
+    FocusCard(onClick = onClick, selected = on) {
+        Text(label, color = if (on) Vanta.Cyan else Vanta.Text, fontSize = 14.sp, maxLines = 1, softWrap = false,
+            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
     }
 }

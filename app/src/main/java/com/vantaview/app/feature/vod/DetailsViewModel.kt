@@ -44,6 +44,8 @@ data class DetailsUi(
     val progress: com.vantaview.app.data.history.HistoryEntry? = null,
     /** "More like this" (TMDB recommendations). */
     val moreLike: List<com.vantaview.app.data.addon.MetaPreview> = emptyList(),
+    /** Seasons announced but not out yet: number and first air date ("yyyy-mm-dd", or empty when not set). */
+    val comingSeasons: List<Pair<Int, String>> = emptyList(),
 )
 
 @HiltViewModel
@@ -55,6 +57,7 @@ class DetailsViewModel @Inject constructor(
     private val history: com.vantaview.app.data.history.WatchHistory,
     private val library: com.vantaview.app.data.library.LibraryStore,
     val browse: com.vantaview.app.data.browse.BrowseRepository,
+    val playback: com.vantaview.app.data.PlaybackSettings,
     savedState: SavedStateHandle,
 ) : ViewModel() {
     val type: String = savedState.get<String>("type") ?: "movie"
@@ -84,6 +87,29 @@ class DetailsViewModel @Inject constructor(
             val seasons = meta?.videos?.map { it.season }?.distinct()?.sorted().orEmpty()
             val firstSeason = progress?.season?.takeIf { it in seasons } ?: seasons.firstOrNull { it > 0 } ?: seasons.firstOrNull()
             _ui.update { it.copy(loading = false, meta = meta, season = firstSeason, progress = progress) }
+            // TMDB (when the build has a key): fuller text, artwork, cast, trailer and upcoming seasons.
+            launch {
+                val d = runCatching { browse.details(type, id) }.getOrNull() ?: return@launch
+                if (profiles.isKids() && meta == null && d.genres.isNotEmpty() && !com.vantaview.app.data.profile.KidsFilter.hasFamilyGenre(d.genres)) {
+                    _ui.update { it.copy(blocked = true) }
+                    return@launch
+                }
+                val m = _ui.value.meta
+                val merged = com.vantaview.app.data.addon.MetaDetail(
+                    id = m?.id ?: id, type = m?.type ?: type, name = m?.name?.ifBlank { null } ?: d.name,
+                    poster = m?.poster ?: d.poster, background = d.background ?: m?.background, logo = m?.logo,
+                    description = d.overview ?: m?.description, year = m?.year ?: d.year, runtime = m?.runtime ?: d.runtime,
+                    rating = m?.rating ?: d.rating, genres = m?.genres?.takeIf { it.isNotEmpty() } ?: d.genres,
+                    cast = d.cast.takeIf { it.isNotEmpty() } ?: m?.cast.orEmpty(),
+                    director = m?.director?.takeIf { it.isNotEmpty() } ?: d.director,
+                    videos = m?.videos.orEmpty(), trailer = m?.trailer ?: d.trailer,
+                )
+                val today = java.time.LocalDate.now().toString()
+                val have = merged.videos.map { it.season }.toSet()
+                val coming = d.seasons.filter { (n, date, _) -> n > 0 && (date.isBlank() || date > today) && (n !in have || merged.videos.none { v -> v.season == n && released(v) }) }
+                    .map { (n, date, _) -> n to date }
+                _ui.update { it.copy(meta = merged, comingSeasons = coming) }
+            }
             launch {
                 val more = runCatching { browse.moreLikeThis(type, id) }.getOrDefault(emptyList())
                     .let { l -> if (profiles.isKids()) emptyList() else l }
@@ -96,6 +122,9 @@ class DetailsViewModel @Inject constructor(
             }
         }
     }
+
+    private fun released(v: Video): Boolean =
+        v.released == null || runCatching { java.time.Instant.parse(v.released) <= java.time.Instant.now() }.getOrDefault(true)
 
     val title: String get() = _ui.value.meta?.name?.ifBlank { null } ?: fallbackName
 

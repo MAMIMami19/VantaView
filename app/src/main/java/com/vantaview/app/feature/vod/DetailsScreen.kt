@@ -60,6 +60,12 @@ fun DetailsScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var noYouTube by remember { mutableStateOf(false) }
     var episodeActions by remember { mutableStateOf<Video?>(null) }
+    var comingInfo by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var trailerOn by remember { mutableStateOf(false) }
+    var muted by remember { mutableStateOf(!vm.playback.trailerSound) }
+    LaunchedEffect(ui.meta?.trailer) {
+        if (vm.playback.autoTrailers && ui.meta?.trailer != null) { kotlinx.coroutines.delay(20_000); trailerOn = true }
+    }
     val watchedEps by vm.watchedEps.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.play.collect { onPlay() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.refreshProgress() }
@@ -76,6 +82,13 @@ fun DetailsScreen(
                 model = bg, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(if (wide) 380.dp else 240.dp),
             )
+        }
+        // The trailer, playing behind the header after 20 seconds on the page (Settings › Playback).
+        val yt = meta?.trailer
+        if (trailerOn && yt != null) {
+            TrailerView(yt, muted, Modifier.fillMaxWidth().height(if (wide) 380.dp else 240.dp))
+        }
+        if (meta?.background != null || (trailerOn && yt != null)) {
             Box(
                 Modifier.fillMaxWidth().height(if (wide) 380.dp else 240.dp)
                     .background(Brush.verticalGradient(listOf(Color(0x6607080F), Vanta.Bg)))
@@ -146,6 +159,8 @@ fun DetailsScreen(
                             val web = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/watch?v=$yt"))
                             noYouTube = runCatching { context.startActivity(app) }.recoverCatching { context.startActivity(web) }.isFailure
                         }) { Text("▶ Trailer", color = Vanta.Text) }
+                        if (trailerOn) FocusCard(onClick = { muted = !muted }) { Text(if (muted) "🔇 Unmute" else "🔊 Mute", color = Vanta.Text) }
+                        if (trailerOn) FocusCard(onClick = { trailerOn = false }) { Text("■ Stop trailer", color = Vanta.Text) }
                     }
                 }
                 if (noYouTube) Text("There's no YouTube app or browser here to play the trailer.", color = Vanta.TextDim, fontSize = 13.sp)
@@ -176,13 +191,28 @@ fun DetailsScreen(
 
             if (isSeries && meta != null) {
                 val seasons = meta.videos.map { it.season }.distinct().sorted()
-                if (seasons.size > 1) item {
+                if (seasons.size > 1 || ui.comingSeasons.isNotEmpty()) item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(seasons) { s ->
                             FocusCard(onClick = { vm.selectSeason(s) }, selected = ui.season == s) {
                                 Text(if (s == 0) "Specials" else "Season $s", color = if (ui.season == s) Vanta.Cyan else Vanta.Text)
                             }
                         }
+                        // Seasons announced but not out yet.
+                        items(ui.comingSeasons.filter { (n, _) -> n !in seasons }) { (n, date) ->
+                            FocusCard(onClick = { comingInfo = n to date }) {
+                                Text("Season $n · Coming soon", color = Vanta.TextDim, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+                comingInfo?.let { (n, date) ->
+                    item {
+                        Text(
+                            "Season $n is coming" + (comingDate(date)?.let { " on $it" } ?: " (no date yet)") +
+                                ". Add the series to your Watchlist and Home will show a New episode badge when it starts.",
+                            color = Vanta.Cyan, fontSize = 14.sp,
+                        )
                     }
                 }
                 val episodes = meta.videos.filter { ui.season == null || it.season == ui.season }
@@ -191,6 +221,7 @@ fun DetailsScreen(
                     val p = ui.progress?.takeIf { it.videoId == v.id }
                     val note = when {
                         v.id in watchedEps -> "✓ Watched"
+                        !episodeOut(v) -> "Coming " + (comingDate(v.released) ?: "soon")
                         p == null -> null
                         p.finished -> "✓ Watched"
                         p.resumable -> "Resume · ${minutesLeft(p.remainingMs)}"
@@ -267,6 +298,43 @@ private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boole
         }
     }
 }
+
+/** A YouTube trailer in YouTube's own embedded player, without controls, behind the page header. */
+@Composable
+private fun TrailerView(videoId: String, muted: Boolean, modifier: Modifier) {
+    val html = """
+        <html><body style="margin:0;background:#000;overflow:hidden">
+        <iframe width="100%" height="100%" frameborder="0" allow="autoplay; encrypted-media"
+          src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=${if (muted) 1 else 0}&controls=0&loop=1&playlist=$videoId&rel=0&playsinline=1&modestbranding=1"></iframe>
+        </body></html>
+    """.trimIndent()
+    androidx.compose.runtime.key(muted) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                android.webkit.WebView(ctx).apply {
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    setBackgroundColor(android.graphics.Color.BLACK)
+                    settings.javaScriptEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    // YouTube's embedded player needs a web address to play from.
+                    loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "utf-8", null)
+                }
+            },
+            onRelease = { it.destroy() },
+            modifier = modifier,
+        )
+    }
+}
+
+/** An episode that has aired (or has no date). */
+private fun episodeOut(v: Video): Boolean =
+    v.released == null || runCatching { java.time.Instant.parse(v.released) <= java.time.Instant.now() }.getOrDefault(true)
+
+/** "2027-03-12…" as "12 March 2027". */
+private fun comingDate(s: String?): String? = runCatching {
+    java.time.LocalDate.parse(s!!.take(10)).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.UK))
+}.getOrNull()
 
 fun minutesLeft(ms: Long): String {
     val m = (ms / 60_000).coerceAtLeast(1)

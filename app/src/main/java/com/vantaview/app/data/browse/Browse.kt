@@ -240,6 +240,78 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
         return all.sortedByDescending { it.optDouble("popularity", 0.0) }.mapNotNull { preview(it) }.distinctBy { it.id }
     }
 
+    /** One of a person's titles, with what's needed to sort and filter their page. */
+    data class Credit(
+        val preview: MetaPreview,
+        /** "yyyy-mm-dd", or empty when not known. */
+        val date: String,
+        val popularity: Double,
+        val votes: Int,
+        /** Acting, or the crew job ("Director", "Writer"…). */
+        val role: String,
+    ) {
+        /** Out already (a known date in the past). */
+        val released: Boolean get() = date.isNotBlank() && date <= java.time.LocalDate.now().toString()
+    }
+
+    /** Everything a person was in or made, with dates and roles (for the Available and All tabs). */
+    suspend fun personCreditsFull(personId: String): List<Credit> {
+        val o = tmdb("person/$personId/combined_credits") ?: return emptyList()
+        fun list(name: String, acting: Boolean) = o.optJSONArray(name)?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it) } }.orEmpty()
+            .mapNotNull { j ->
+                val p = preview(j) ?: return@mapNotNull null
+                val date = j.optString(if (j.optString("media_type") == "tv") "first_air_date" else "release_date")
+                Credit(p, date, j.optDouble("popularity", 0.0), j.optInt("vote_count"), if (acting) "Acting" else j.optString("job").ifBlank { "Crew" })
+            }
+        return (list("cast", true) + list("crew", false)).groupBy { it.preview.id }.map { (_, same) ->
+            same.first().copy(role = same.map { it.role }.distinct().joinToString(", "))
+        }
+    }
+
+    /** Details for a film or series (an IMDb id) from TMDB: text, artwork, cast, trailer and seasons. */
+    data class Details(
+        val name: String, val overview: String?, val poster: String?, val background: String?, val year: String?,
+        val runtime: String?, val rating: String?, val genres: List<String>, val cast: List<String>, val director: List<String>,
+        val trailer: String?,
+        /** Series: each season's number, first air date ("yyyy-mm-dd" or empty) and episode count. */
+        val seasons: List<Triple<Int, String, Int>>,
+    )
+
+    suspend fun details(type: String, imdb: String): Details? {
+        if (!hasTmdb || !imdb.startsWith("tt")) return null
+        val found = tmdb("find/$imdb?external_source=imdb_id") ?: return null
+        val tv = type == "series"
+        val id = found.optJSONArray(if (tv) "tv_results" else "movie_results")?.optJSONObject(0)?.optString("id")?.ifBlank { null } ?: return null
+        val o = tmdb("${if (tv) "tv" else "movie"}/$id?append_to_response=credits,videos") ?: return null
+        fun arr(j: JSONObject?, n: String) = j?.optJSONArray(n)?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it) } }.orEmpty()
+        val credits = o.optJSONObject("credits")
+        val trailer = arr(o.optJSONObject("videos"), "results")
+            .filter { it.optString("site") == "YouTube" && it.optString("type") in setOf("Trailer", "Teaser") }
+            .sortedWith(compareBy({ it.optString("type") != "Trailer" }, { !it.optBoolean("official") }))
+            .firstOrNull()?.optString("key")?.ifBlank { null }
+        val runtime = if (tv) o.optJSONArray("episode_run_time")?.optInt(0)?.takeIf { it > 0 } else o.optInt("runtime").takeIf { it > 0 }
+        val date = o.optString(if (tv) "first_air_date" else "release_date")
+        val yearText = if (tv) {
+            val last = o.optString("last_air_date").take(4)
+            date.take(4).let { a -> if (last.isNotBlank() && last != a) "$a–${if (o.optBoolean("in_production")) "" else last}" else a }
+        } else date.take(4)
+        return Details(
+            name = o.optString(if (tv) "name" else "title"),
+            overview = o.optString("overview").ifBlank { null },
+            poster = o.optString("poster_path").takeIf { it.startsWith("/") }?.let { "https://image.tmdb.org/t/p/w500$it" },
+            background = o.optString("backdrop_path").takeIf { it.startsWith("/") }?.let { "https://image.tmdb.org/t/p/w1280$it" },
+            year = yearText.ifBlank { null },
+            runtime = runtime?.let { "$it min" },
+            rating = o.optDouble("vote_average", 0.0).takeIf { it > 0 }?.let { "%.1f".format(java.util.Locale.UK, it) },
+            genres = arr(o, "genres").map { it.optString("name") }.filter { it.isNotBlank() },
+            cast = arr(credits, "cast").take(15).map { it.optString("name") }.filter { it.isNotBlank() },
+            director = if (tv) arr(o, "created_by").map { it.optString("name") }
+                else arr(credits, "crew").filter { it.optString("job") == "Director" }.map { it.optString("name") },
+            trailer = trailer,
+            seasons = if (tv) arr(o, "seasons").map { Triple(it.optInt("season_number"), it.optString("air_date"), it.optInt("episode_count")) } else emptyList(),
+        )
+    }
+
     /** Titles like this one (an IMDb id), from TMDB's recommendations. */
     suspend fun moreLikeThis(type: String, imdb: String): List<MetaPreview> {
         if (!hasTmdb || !imdb.startsWith("tt")) return emptyList()
