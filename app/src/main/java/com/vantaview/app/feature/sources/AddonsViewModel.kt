@@ -18,7 +18,11 @@ sealed interface RestoreUi {
     data object Idle : RestoreUi
     data class StremioLogin(val email: String = "", val error: String? = null) : RestoreUi
     data class Loading(val text: String) : RestoreUi
-    data class Pick(val title: String, val items: List<AddonRepository.RemoteAddon>, val selected: Set<String>) : RestoreUi
+    data class Pick(
+        val title: String, val items: List<AddonRepository.RemoteAddon>, val selected: Set<String>,
+        /** A Nuvio backup's Watchlist, Watched and Continue watching, and whether to bring them in too. */
+        val extra: com.vantaview.app.data.backup.NuvioData? = null, val extraOn: Boolean = true,
+    ) : RestoreUi
     data class Done(val text: String, val isError: Boolean) : RestoreUi
 }
 
@@ -30,7 +34,10 @@ data class AddonForm(
 )
 
 @HiltViewModel
-class AddonsViewModel @Inject constructor(private val repo: AddonRepository) : ViewModel() {
+class AddonsViewModel @Inject constructor(
+    private val repo: AddonRepository,
+    private val nuvio: com.vantaview.app.data.backup.NuvioRestore,
+) : ViewModel() {
     val addons: StateFlow<List<InstalledAddon>> =
         repo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -78,7 +85,12 @@ class AddonsViewModel @Inject constructor(private val repo: AddonRepository) : V
     fun loadBackup(text: String) {
         viewModelScope.launch {
             try {
-                _restore.value = pick("Add-ons in the backup", repo.readBackup(text))
+                val extra = if (com.vantaview.app.data.backup.NuvioImport.isNuvio(text))
+                    runCatching { com.vantaview.app.data.backup.NuvioImport.parse(text) }.getOrNull()?.takeIf { !it.empty } else null
+                val addons = runCatching { repo.readBackup(text) }.getOrElse { if (extra != null) emptyList() else throw it }
+                _restore.value = if (extra != null) RestoreUi.Pick(
+                    "Nuvio backup", addons, addons.filter { !it.alreadyInstalled }.map { it.url }.toSet(), extra,
+                ) else pick("Add-ons in the backup", addons)
             } catch (e: Exception) {
                 _restore.value = RestoreUi.Done(e.message ?: "Couldn't read that backup", isError = true)
             }
@@ -94,10 +106,18 @@ class AddonsViewModel @Inject constructor(private val repo: AddonRepository) : V
         _restore.value = p.copy(selected = if (url in p.selected) p.selected - url else p.selected + url)
     }
 
+    fun toggleExtra() {
+        val p = _restore.value as? RestoreUi.Pick ?: return
+        _restore.value = p.copy(extraOn = !p.extraOn)
+    }
+
     fun importSelected() {
         val p = _restore.value as? RestoreUi.Pick ?: return
         val chosen = p.items.filter { it.url in p.selected }
-        if (chosen.isEmpty()) { _restore.value = RestoreUi.Idle; return }
+        val extra = p.extra?.takeIf { p.extraOn }
+        extra?.let { runCatching { nuvio.apply(it) } }
+        val extraText = extra?.let { "Brought in ${it.summary()}." }
+        if (chosen.isEmpty()) { _restore.value = if (extraText != null) RestoreUi.Done(extraText, false) else RestoreUi.Idle; return }
         viewModelScope.launch {
             val failed = ArrayList<String>()
             chosen.forEachIndexed { i, a ->
@@ -106,7 +126,8 @@ class AddonsViewModel @Inject constructor(private val repo: AddonRepository) : V
             }
             val ok = chosen.size - failed.size
             _restore.value = RestoreUi.Done(
-                "Restored $ok of ${chosen.size} add-ons." + if (failed.isNotEmpty()) "\nNot restored: " + failed.joinToString("; ") else "",
+                "Restored $ok of ${chosen.size} add-ons." + (extraText?.let { " $it" } ?: "") +
+                    if (failed.isNotEmpty()) "\nNot restored: " + failed.joinToString("; ") else "",
                 isError = failed.isNotEmpty() && ok == 0,
             )
         }

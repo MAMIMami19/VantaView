@@ -108,6 +108,7 @@ fun RestorePanel(vm: AddonsViewModel) {
         Text("Restore add-ons", color = Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Text(
             "Bring in the add-ons from your Stremio account, or save this profile's add-ons to a file and restore them later. " +
+                "Nuvio backups also bring their Watchlist, watched films and Continue watching. " +
                 "Backups can hold personal keys from add-on links, so keep the file private.",
             color = Vanta.TextDim, fontSize = 13.sp,
         )
@@ -127,7 +128,7 @@ fun RestorePanel(vm: AddonsViewModel) {
 
     when (val r = restore) {
         is RestoreUi.StremioLogin -> StremioLoginDialog(r, onSignIn = vm::signInStremio, onCancel = vm::cancelRestore)
-        is RestoreUi.Pick -> PickDialog(r, onToggle = vm::togglePick, onImport = vm::importSelected, onCancel = vm::cancelRestore)
+        is RestoreUi.Pick -> PickDialog(r, onToggle = vm::togglePick, onToggleExtra = vm::toggleExtra, onImport = vm::importSelected, onCancel = vm::cancelRestore)
         else -> Unit
     }
 }
@@ -167,13 +168,25 @@ private fun StremioLoginDialog(state: RestoreUi.StremioLogin, onSignIn: (String,
 }
 
 @Composable
-private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onImport: () -> Unit, onCancel: () -> Unit) {
+private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onToggleExtra: () -> Unit, onImport: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(
         onDismissRequest = onCancel,
         containerColor = Vanta.Panel,
         title = { Text(state.title, color = Vanta.Text) },
         text = {
             LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                state.extra?.let { x ->
+                    item(key = "extra") {
+                        val on = state.extraOn
+                        FocusCard(onClick = onToggleExtra, selected = on, modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                Text((if (on) "☑  " else "☐  ") + "Watchlist, Watched and Continue watching", color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
+                                Text(x.summary() + ". Added to this profile.", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2)
+                            }
+                        }
+                    }
+                    if (state.items.isNotEmpty()) item(key = "addons-title") { Text("Add-ons", color = Vanta.TextDim, fontSize = 13.sp) }
+                }
                 items(state.items, key = { it.url }) { a ->
                     val on = a.url in state.selected
                     FocusCard(onClick = { onToggle(a.url) }, selected = on, modifier = Modifier.fillMaxWidth()) {
@@ -190,7 +203,10 @@ private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onImpo
             }
         },
         confirmButton = {
-            TextButton(onClick = onImport, enabled = state.selected.isNotEmpty()) { Text("Install ${state.selected.size}") }
+            val extra = state.extra != null && state.extraOn
+            TextButton(onClick = onImport, enabled = state.selected.isNotEmpty() || extra) {
+                Text(if (state.selected.isEmpty()) "Restore" else "Install ${state.selected.size}" + if (extra) " and restore" else "")
+            }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )

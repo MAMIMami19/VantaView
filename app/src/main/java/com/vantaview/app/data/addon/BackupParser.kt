@@ -10,6 +10,7 @@ import org.json.JSONObject
  * - Stremio collections, as saved by Stremio Account Bootstrapper or the Stremio API:
  *   {"result":{"addons":[{"transportUrl","manifest":{"name"}}]}} or a bare array of those
  * - Nuvio add-on rows, as saved by Stremio Account Bootstrapper: [{"url","name","enabled","sort_order"}]
+ * - NuvioSync backups: {"app":"NuvioSync","original":{"addons":[those rows]}}
  * - Plain text with one install link per line
  * Items are returned in their saved order (Nuvio's sort_order when present). Disabled Nuvio rows are kept.
  */
@@ -35,6 +36,7 @@ fun parseBackup(text: String): List<Pair<String, String>> {
         t.startsWith("{") -> {
             val o = runCatching { JSONObject(t) }.getOrNull() ?: throw IllegalArgumentException("That file couldn't be read")
             val arr = o.optJSONArray("addons") ?: o.optJSONObject("result")?.optJSONArray("addons")
+                ?: o.optJSONObject("original")?.optJSONArray("addons") // NuvioSync backups
                 ?: throw IllegalArgumentException("That file has no add-ons in it")
             fromArray(arr)
         }
