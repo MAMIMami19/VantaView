@@ -123,7 +123,16 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         if (showInfo) StreamInfoOverlay(vm.player, vm.currentUrl, Modifier.align(Alignment.CenterStart).padding(start = 16.dp))
         vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (controls) 120.dp else 28.dp)) }
 
-        if (!locked && !pip && (controls || ui.failed != null || ui.preparing != null)) {
+        // Loading messages (like a torrent's progress) show for 5 seconds, then get out of the way; a tap
+        // that brings up the controls shows them again.
+        var prepVisible by remember { mutableStateOf(true) }
+        val preparingNow = ui.preparing != null
+        LaunchedEffect(preparingNow, controls) {
+            if (preparingNow) { prepVisible = true; kotlinx.coroutines.delay(5000); prepVisible = false }
+        }
+        val showPrep = preparingNow && prepVisible
+
+        if (!locked && !pip && (controls || ui.failed != null || showPrep)) {
             // On an upright phone the buttons go on their own line under the title.
             val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 600
             val buttons: @Composable () -> Unit = {
@@ -210,7 +219,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ui.preparing?.let { p ->
+            ui.preparing?.takeIf { showPrep }?.let { p ->
                 Text(
                     p, color = Vanta.Cyan, fontSize = 17.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,

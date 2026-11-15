@@ -1,3 +1,4 @@
+- While a torrent or debrid stream gets ready, its progress shows for 5 seconds and then hides. Tap the screen to see it again.
 - Torrent results now play without a debrid account. Debrid is still used first when you have one. While a torrent plays it shares with others, and it stops and deletes the file when you close it. You can turn this off in Settings › Playback.
 - VantaView now speaks Spanish, French, German, Italian, Portuguese, Dutch, Polish and Turkish. It follows your device, or pick a language for each profile in Settings › Appearance. Film and series details come in that language too.
 - Fix: on a TV, pressing Update now no longer jumps to the Playback settings; the download progress stays on screen.
@@ -5,4 +6,3 @@
 - Section names open their full list: Continue watching and Your Watchlist on Home, and every row on Movies and TV Series.
 - Press and hold a poster or a Continue watching card to remove it from your Watchlist or Continue watching.
 - Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
-- Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
