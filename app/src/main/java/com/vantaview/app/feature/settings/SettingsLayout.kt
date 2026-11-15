@@ -96,7 +96,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
                         Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Text(shown.title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        com.vantaview.app.ui.PageTitle(shown.title)
                         content(shown)
                         Spacer(Modifier.height(24.dp))
                     }
@@ -122,7 +122,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
                     if (found.isEmpty()) NoMatch()
                 } else key(open) {
                     FocusCard(onClick = { current = null }) { Text("‹ Settings", color = Vanta.Text) }
-                    Text(open.title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    com.vantaview.app.ui.PageTitle(open.title)
                     content(open)
                     Spacer(Modifier.height(24.dp))
                 }
@@ -133,7 +133,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
 
 @Composable
 private fun ListHeader(query: String, onQuery: (String) -> Unit) {
-    Text("Settings", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+    com.vantaview.app.ui.PageTitle("Settings")
     com.vantaview.app.ui.SearchToggle(query, onQuery, "Search settings", Modifier.padding(bottom = 4.dp))
 }
 

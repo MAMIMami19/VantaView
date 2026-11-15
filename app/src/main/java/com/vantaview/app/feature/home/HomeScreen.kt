@@ -177,7 +177,7 @@ fun HomeScreen(
             }
 
             if (cont.isNotEmpty()) {
-                Text("Continue watching", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.SectionTitle("Continue watching")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(cont, key = { it.entry.key }) { c ->
                         ContinueCard(c, Modifier.width(if (wide) 256.dp else 200.dp)) {
@@ -188,14 +188,14 @@ fun HomeScreen(
             }
 
             if (onNow.isNotEmpty()) {
-                Text("On now", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.SectionTitle("On now")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(onNow, key = { it.first.id }) { (ch, p) -> OnNowCard(ch, p, now.time) { onPlayChannel(ch.id) } }
                 }
             }
 
             if (favs.isNotEmpty()) {
-                Text("Favourite channels", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.SectionTitle("Favourite channels")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(favs, key = { it.id }) { ch -> ChannelCard(ch) { onPlayChannel(ch.id) } }
                 }

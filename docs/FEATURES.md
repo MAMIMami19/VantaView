@@ -25,10 +25,10 @@ This file is ticked off in the same commit that finishes a feature.
 ## Sources (Add Playlist)
 
 - [x] Xtream Codes
-- [ ] M3U link or file *(link only)*
+- [x] M3U link or file
 - [x] Stalker / MAC portal
 - [x] Smart Add (paste a provider message)
-- [ ] Optional EPG link per source *(the playlist's own guide link is used; no box to type one)*
+- [x] Optional EPG link per source
 - [x] Free channels (Free TV list, country picker, daily refresh, YouTube/Twitch/Dailymotion removed)
 - [x] Addon links **(later)**
 - [ ] Local files **(later)**
@@ -49,17 +49,17 @@ This file is ticked off in the same commit that finishes a feature.
 ## Live TV and guide
 
 - [x] Categories, channel list and live preview
-- [ ] Now, Next and After *(Now and Next only)*
+- [x] Now, Next and After
 - [x] Timeline guide view
-- [ ] Full programme descriptions and scrolling long titles *(descriptions shown, titles don't scroll)*
-- [ ] Search, sort and edit favourites *(search only)*
+- [x] Full programme descriptions and scrolling long titles
+- [x] Search, sort and edit favourites
 - [x] Reminders for programmes not yet started (1/5/10/15 min, default 5)
 - [ ] Category order and visibility per source
 
 ## Catch-up
 
 - [ ] Catch-up page: groups, channels, days, past programmes
-- [ ] Watch from start in the guide *(Stalker portal channels with catch-up only; not yet for Xtream or M3U)*
+- [x] Watch from start in the guide
 - [ ] Search past programmes
 
 ## Player
@@ -70,35 +70,35 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Audio, subtitles and picture size
 - [ ] Smart anti-buffering with Medium buffer by default *(Small, Medium and Large buffer sizes, Medium by default; no automatic adjusting yet)*
 - [x] Auto-reconnect with "Reconnecting" message
-- [ ] VOD: ±10s, speed, Episodes, resume *(±10s and resume only)*
+- [x] VOD: ±10s, speed, Episodes, resume
 - [ ] Skip intro and Next episode countdown
 - [x] Controls hide after 5 seconds (adjustable)
-- [ ] Phone: swipe gestures, lock button, picture-in-picture *(swipes done: sideways for channel, left side brightness, right side volume up to 200%, double tap for full screen; no lock button or picture-in-picture yet)*
+- [x] Phone: swipe gestures, lock button, picture-in-picture
 - [ ] Record from the player **(later)**
 
 ## Movies and TV Series
 
 - [ ] Recently added banner (Nuvio style)
 - [x] Genre tiles
-- [ ] Sort, Genre, Year and Source filters *(sort done: recently added, A to Z, Z to A, newest, oldest, top rated; filters not yet)*
+- [x] Sort, Genre, Year and Source filters
 - [ ] Posters-only grid (Stremio style)
 - [ ] Info on focus on TV
 - [ ] TMDB artwork and details (Bearer token) *(TMDB fills the Movies and TV Series tiles when the build has a key; details pages still use add-ons)*
 
 ## Details pages
 
-- [ ] Movie details: Play/Resume, Trailer, Watchlist, Watched *(no trailer yet)*
+- [x] Movie details: Play/Resume, Trailer, Watchlist, Watched
 - [ ] Trailer auto-play after 20s with sound and mute
-- [ ] Auto-pick best source, Choose source in the menu *(Choose stream only)*
-- [ ] Cast row and More like this *(cast list only)*
-- [ ] Actor page with Available and All tabs, sort and filters
+- [x] Auto-pick best source, Choose source in the menu
+- [x] Cast row and More like this
+- [ ] Actor page with Available and All tabs, sort and filters *(a person's page lists what they're in, from search or a details page's cast; no tabs, sort or filters yet)*
 - [x] Series details: season tabs, episode cards, Resume S2 E4
 - [ ] Coming soon seasons
 - [ ] Download episode or whole season **(later)**
 
 ## Search
 
-- [ ] Channels, films, series, programmes and people *(all but people, which needs TMDB)*
+- [x] Channels, films, series, programmes and people
 - [x] On-screen keyboard on TV, recent searches
 - [x] Voice search where available
 
@@ -175,7 +175,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
 - [x] Looks (Settings › Appearance): VantaView, Glass, Broadcast, Wave and Classic, with previews; each changes colours, background, menu (Broadcast and Classic have a top menu on wide screens) and the TV Guide; appearance is saved per profile
 - [x] Movies and TV Series tiles: Watch now (Trending, Latest, Top rated), Genres, Decades, Themed and International, each opening a full page of titles; the app's own tile pictures
-- [x] Console-style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight, each with its own Home dashboard on wide screens, plus its colours, background and menu on every page
+- [x] Console-style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight, each with its own Home dashboard on wide screens, plus its colours, background, menu, card corners and headings on every page
 - [x] Stalker portals: films and series on the Movies and TV Series pages, the portal's own TV guide, and Smart Add spots a portal address with a MAC address; full MAG sign-in, portal logos, optional box details (credit: Stalker-Portal by Jitendra Unatti)
 - [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch
 
@@ -185,4 +185,4 @@ This file is ticked off in the same commit that finishes a feature.
 - [ ] Tested on a 1 GB Fire TV Stick with a 50,000+ channel playlist
 - [ ] Signing key backed up
 - [ ] Privacy page published
-- [ ] Credits complete (Free TV, TMDB, TheSportsDB, Open-Meteo, libraries) *(Settings › Help and about credits Free TV, epgshare01, Open-Meteo and the libraries; add TMDB and TheSportsDB when they are used)*
+- [ ] Credits complete (Free TV, TMDB, TheSportsDB, Open-Meteo, libraries) *(all credited except TheSportsDB, which comes with Sports)*

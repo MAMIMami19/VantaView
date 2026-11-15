@@ -238,7 +238,7 @@ private fun Header(
 ) {
     if (wide) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            com.vantaview.app.ui.PageTitle("Live TV")
             PlaylistChip(playlistName, providers, onPickProvider)
             if (countryLabel != null) CountriesChip(countryLabel, onCountries)
             Spacer(Modifier.weight(1f))
@@ -248,7 +248,7 @@ private fun Header(
         // Phones: title and refresh on one line, playlist and countries on the next.
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Live TV", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.PageTitle("Live TV")
                 Spacer(Modifier.weight(1f))
                 if (showRefresh) RefreshButton(onRefresh)
             }

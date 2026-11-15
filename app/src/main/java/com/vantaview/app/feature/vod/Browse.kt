@@ -89,7 +89,7 @@ fun BrowseGroups(tiles: List<BrowseTile>, wide: Boolean, onTile: (BrowseTile) ->
             val list = tiles.filter { it.group == g }
             if (list.isEmpty()) return@forEach
             Column {
-                Text(g.title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.SectionTitle(g.title)
                 Spacer(Modifier.height(8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(list, key = { it.key }) { t -> BrowseTileCard(t, width) { onTile(t) } }

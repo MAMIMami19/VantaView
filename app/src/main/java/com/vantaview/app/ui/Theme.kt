@@ -144,6 +144,15 @@ object Vanta {
     /** A page's own background: see-through when the look draws one behind every page. */
     val Page get() = if (palette.look == com.vantaview.app.data.Look.VANTA) palette.bg else Color.Transparent
     val Look get() = palette.look
+    /** Card corners for the look: square for Tiles, round for Spotlight. */
+    val Radius: androidx.compose.ui.unit.Dp get() = when (palette.look) {
+        com.vantaview.app.data.Look.TILES -> 0.dp
+        com.vantaview.app.data.Look.FLUENT, com.vantaview.app.data.Look.CROSS -> 6.dp
+        com.vantaview.app.data.Look.BLADES -> 10.dp
+        com.vantaview.app.data.Look.SPOTLIGHT -> 18.dp
+        else -> 12.dp
+    }
+    val Shape: Shape get() = RoundedCornerShape(Radius)
     val Gradient = listOf(
         Color(0xFF7C4DFF), Color(0xFF2979FF), Color(0xFF00E5FF),
         Color(0xFF00E676), Color(0xFFFFEA00), Color(0xFFFF9100),
@@ -216,7 +225,7 @@ fun FocusCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
-    shape: Shape = RoundedCornerShape(12.dp),
+    shape: Shape = Vanta.Shape,
     padding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
     contentAlignment: Alignment = Alignment.CenterStart,
     content: @Composable () -> Unit,
@@ -262,7 +271,7 @@ fun FillCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
-    shape: Shape = RoundedCornerShape(12.dp),
+    shape: Shape = Vanta.Shape,
     padding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
     content: @Composable (text: Color, dim: Color) -> Unit,
 ) {
@@ -283,4 +292,42 @@ fun FillCard(
             if (filled) content(Vanta.palette.onFill, Vanta.palette.onFill.copy(alpha = 0.75f)) else content(Vanta.Text, Vanta.TextDim)
         }
     }
+}
+
+/** A page's title, in the look's own style (lower case on Tiles, light on Spotlight, green on Blades...). */
+@Composable
+fun PageTitle(text: String, modifier: Modifier = Modifier) {
+    val look = Vanta.Look
+    val shown = if (look == com.vantaview.app.data.Look.TILES) text.lowercase() else text
+    val (size, weight, colour) = when (look) {
+        com.vantaview.app.data.Look.TILES -> Triple(34, FontWeight.Light, Vanta.Text)
+        com.vantaview.app.data.Look.SPOTLIGHT -> Triple(32, FontWeight.Light, Vanta.Text)
+        com.vantaview.app.data.Look.BLADES -> Triple(30, FontWeight.Light, Vanta.Cyan)
+        com.vantaview.app.data.Look.STACK -> Triple(30, FontWeight.SemiBold, Vanta.Text)
+        com.vantaview.app.data.Look.FLUENT -> Triple(26, FontWeight.SemiBold, Vanta.Text)
+        com.vantaview.app.data.Look.CROSS -> Triple(24, FontWeight.Normal, Vanta.Text)
+        else -> Triple(24, FontWeight.Bold, Vanta.Text)
+    }
+    Text(
+        shown, color = colour, fontWeight = weight, fontSize = androidx.compose.ui.unit.TextUnit(size.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp),
+        style = if (look == com.vantaview.app.data.Look.CROSS) androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.White.copy(alpha = 0.6f), blurRadius = 14f)) else androidx.compose.ui.text.TextStyle.Default,
+        modifier = modifier,
+    )
+}
+
+/** A heading inside a page (a catalogue row, a group of tiles), in the look's own style. */
+@Composable
+fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    val look = Vanta.Look
+    Text(
+        if (look == com.vantaview.app.data.Look.TILES) text.lowercase() else text,
+        color = if (look == com.vantaview.app.data.Look.BLADES) Vanta.Cyan else Vanta.Text,
+        fontWeight = when (look) {
+            com.vantaview.app.data.Look.TILES, com.vantaview.app.data.Look.SPOTLIGHT -> FontWeight.Light
+            com.vantaview.app.data.Look.FLUENT, com.vantaview.app.data.Look.CROSS -> FontWeight.SemiBold
+            else -> FontWeight.Bold
+        },
+        fontSize = androidx.compose.ui.unit.TextUnit(if (look == com.vantaview.app.data.Look.TILES) 21f else 17f, androidx.compose.ui.unit.TextUnitType.Sp),
+        modifier = modifier,
+    )
 }

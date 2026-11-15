@@ -115,7 +115,7 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveView
         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
             // Title, status and refresh.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("TV Guide", color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                com.vantaview.app.ui.PageTitle("TV Guide")
                 Spacer(Modifier.width(12.dp))
                 val status = when (val s = guideState) {
                     is GuideState.Loading -> s.stage + "…"

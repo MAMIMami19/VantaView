@@ -30,7 +30,7 @@ import com.vantaview.app.ui.Vanta
 fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp)) {
     Column(modifier) {
         FocusCard(onClick = onClick, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().height(177.dp)) {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(Vanta.SurfaceHigh), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().clip(Vanta.Shape).background(Vanta.SurfaceHigh), contentAlignment = Alignment.Center) {
                 Text(
                     item.name, color = Vanta.TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(8.dp), maxLines = 4, overflow = TextOverflow.Ellipsis,

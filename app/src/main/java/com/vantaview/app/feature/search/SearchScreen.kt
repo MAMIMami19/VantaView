@@ -200,7 +200,7 @@ fun SearchScreen(
         Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Search", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold) }
+        item { com.vantaview.app.ui.PageTitle("Search") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -309,7 +309,7 @@ fun SearchScreen(
 }
 
 @Composable
-private fun Heading(text: String) = Text(text, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+private fun Heading(text: String) = com.vantaview.app.ui.SectionTitle(text, Modifier.padding(top = 6.dp))
 
 private fun canListen(context: Context): Boolean = runCatching {
     context.packageManager.queryIntentActivities(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).isNotEmpty()

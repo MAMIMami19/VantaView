@@ -82,7 +82,7 @@ fun LibraryScreen(
     val continuing by vm.continuing.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Library", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        com.vantaview.app.ui.PageTitle("Library")
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(Tab.entries) { t ->
                 val n = when (t) {

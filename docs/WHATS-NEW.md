@@ -1,8 +1,8 @@
+- Live TV: Now, Next and After; long titles scroll; order channels your way and edit favourites.
+- Catch-up for Xtream and M3U playlists too: Watch from start in the TV Guide.
+- Films and episodes: speed, an Episodes list in the player; phones get a lock button and picture-in-picture.
+- Movies and TV Series: Genre, Year and Source filters; details pages add Trailer, cast you can pick and More like this.
+- Search finds people; Sources can add an M3U file and your own TV guide link.
+- The console looks now style every page's titles, headings and cards.
 - Movies and TV Series start with tiles: Trending, Latest and Top rated, then genres, decades, themes and countries. Pick one for a full page of titles.
 - Search boxes on Live TV, Movies, TV Series and Settings start as a magnifier button; press it to search.
-- TV Series: the ⋯ button next to an episode now shows its streams, and if none are found the reason shows on that episode.
-- Stalker portals sign in like a real MAG box, so stricter portals accept them; channel logos now show; optional box details (model, serial, device IDs, signature) for subscriptions locked to one box.
-- Six games-console style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight. On a TV each turns Home into a dashboard, and the rest of the app takes on its colours, background and menu.
-- New looks in Settings › Appearance: Glass, Broadcast, Wave and Classic change the colours, background, menu and TV Guide. Each profile can have its own.
-- Catch-up: in the TV Guide, pick a programme that has already aired on a portal channel with catch-up and choose Watch from start.
-- Stalker portals: add one with its portal address and MAC address (or paste your provider's message into Smart Add). Live TV, the portal's TV guide, films and series all appear in the app.

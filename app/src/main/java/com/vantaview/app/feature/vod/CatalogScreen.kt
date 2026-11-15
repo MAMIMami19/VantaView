@@ -53,7 +53,7 @@ fun CatalogScreen(
     val query by vm.query.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().background(Vanta.Page).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        com.vantaview.app.ui.PageTitle(title)
         Spacer(Modifier.height(10.dp))
 
         if (ui.loaded && ui.addonCount == 0 && ui.kids) {
@@ -146,7 +146,7 @@ fun CatalogScreen(
                 if (ui.tiles.isNotEmpty() && !filter.any) item(key = "browse") { BrowseGroups(ui.tiles, wide, onTile) }
                 items(ui.rows.filter(filter::keepRow), key = { it.key }) { row ->
                     Column {
-                        Text(row.title, color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        com.vantaview.app.ui.SectionTitle(row.title)
                         Spacer(Modifier.height(8.dp))
                         when (val st = ui.rowStates[row.key]) {
                             is RowState.Ready ->

@@ -54,7 +54,7 @@ fun SourcesScreen(startTab: SourcesTab) {
             Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Sources", color = Vanta.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            com.vantaview.app.ui.PageTitle("Sources")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SourcesTab.entries.forEach { t ->
                     FocusCard(onClick = { tab = t }, selected = tab == t) {
