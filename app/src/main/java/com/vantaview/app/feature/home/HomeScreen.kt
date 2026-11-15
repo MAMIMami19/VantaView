@@ -441,6 +441,11 @@ private val tileLook = mapOf(
 )
 
 /** A big coloured tile with an icon, the section name and a short line. */
+/** A soft shadow so white tile text stays readable on the bright (yellow, cyan) gradients. */
+private val tileShadow = androidx.compose.ui.text.TextStyle(
+    shadow = androidx.compose.ui.graphics.Shadow(Color(0x99000000), androidx.compose.ui.geometry.Offset(0f, 2f), 6f),
+)
+
 @Composable
 private fun BigTile(route: String, subtitle: String?, modifier: Modifier, onClick: () -> Unit) {
     val (title, icon, colours) = tileLook[route] ?: return
@@ -460,11 +465,12 @@ private fun BigTile(route: String, subtitle: String?, modifier: Modifier, onClic
             contentAlignment = Alignment.Center,
         ) { Icon(icon, contentDescription = null, tint = Color.White) }
         Column(Modifier.align(Alignment.BottomStart)) {
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black, style = tileShadow)
             subtitle?.let {
                 Text(
                     if (route == "guide") "What's on now" else it,
-                    color = Color.White.copy(alpha = 0.88f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    style = tileShadow,
                 )
             }
         }

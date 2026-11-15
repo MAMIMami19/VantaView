@@ -1,3 +1,4 @@
+- Fire TV: smoother loading screen ripple, no black flash before Home, and easier-to-read Home tiles.
 - Opens much faster, especially on Fire TV Sticks, and shows the logo straight away instead of a blank screen.
 - TV fixes: works on Android 7 boxes and Fire OS 6; the country chooser fits a TV screen; slimmer sidebar.
 - TV remotes: type a channel number while watching to jump to it; Home's play button shows a focus ring.
@@ -5,4 +6,3 @@
 - The favourite star now sits on the left of each channel.
 - Sort Movies and TV Series: recently added, A to Z, Z to A, newest, oldest or top rated.
 - Library: your Watchlist, Continue watching, Watched and Reminders in one place. Add films and series with + Watchlist.
-- Programme reminders: Remind me in the TV Guide, with a pop-up (or a notification when VantaView is closed).

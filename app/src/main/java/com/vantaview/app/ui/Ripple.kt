@@ -106,7 +106,9 @@ private class RippleRenderer : GLSurfaceView.Renderer {
     override fun onDrawFrame(gl: GL10?) {
         val now = SystemClock.elapsedRealtime()
         // Same pace as the mockup: time grows by 0.05 a frame at 60 frames a second.
-        t += (now - last).coerceAtMost(100) / 1000f * 3f * speed
+        // The pattern repeats every 20 time units, so keep t small: TV chips (Fire TV) draw in lower
+        // precision and a growing number turns the rings into broken dots.
+        t = (t + (now - last).coerceAtMost(100) / 1000f * 3f * speed) % 20f
         last = now
         val m = minOf(w, h)
         val x = if (cx.isNaN()) 0f else (cx * 2f - w) / m

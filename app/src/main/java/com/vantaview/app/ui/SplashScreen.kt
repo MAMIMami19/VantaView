@@ -37,9 +37,11 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SplashScreen(leaving: Boolean = false) {
     val fade by animateFloatAsState(if (leaving) 0f else 1f, tween(400), label = "fade")
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        RippleBackground(Modifier.fillMaxSize(), brightness = 1.05f * fade)
-        BoxWithConstraints(Modifier.fillMaxSize().graphicsLayer { alpha = fade }, contentAlignment = Alignment.Center) {
+    // Leaving: the OpenGL ripple can't fade as a layer, so it's removed and the rest fades over Home,
+    // instead of going through black.
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade }.background(Color.Black)) {
+        if (!leaving) RippleBackground(Modifier.fillMaxSize(), brightness = 1.05f)
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val big = maxWidth > maxHeight
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 VantaLogo(size = if (big) 110.dp else 96.dp)
