@@ -47,6 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import kotlin.math.roundToInt
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.verticalScroll
@@ -485,9 +487,9 @@ private fun VideoArea(
                         )
                     } else if (ui.hasSiblings && ui.status != PlayStatus.FAILED) {
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            FocusCard(onClick = { onZap(-1) }) { Text("▼ Previous", color = Vanta.Text) }
+                            FocusCard(onClick = { onZap(-1) }) { ChannelStep(up = false, "Previous") }
                             if (!compact) Text("or swipe left and right", color = Vanta.TextDim, fontSize = 13.sp)
-                            FocusCard(onClick = { onZap(1) }) { Text("▲ Next", color = Vanta.Text) }
+                            FocusCard(onClick = { onZap(1) }) { ChannelStep(up = true, "Next") }
                         }
                     }
                 }
@@ -662,5 +664,18 @@ private fun LevelBadge(l: Level, modifier: Modifier) {
         }
         Text("$pct%", color = if (boosted) Color(0xFFFF9100) else Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         if (boosted) Text("Boost", color = Color(0xFFFF9100), fontSize = 11.sp)
+    }
+}
+
+/** A channel up or down button, with the chevron used on TV remotes' CH buttons. */
+@Composable
+private fun ChannelStep(up: Boolean, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        androidx.compose.material3.Icon(
+            if (up) androidx.compose.material.icons.Icons.Filled.KeyboardArrowUp else androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown,
+            contentDescription = null, tint = Vanta.Text,
+        )
+        Text("CH", color = Vanta.TextDim, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        Text(label, color = Vanta.Text)
     }
 }
