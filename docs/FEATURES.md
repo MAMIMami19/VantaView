@@ -8,7 +8,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 - [x] Splash screen with logo and loading bar
 - [x] Terms: Agree or Disagree only (Disagree closes the app)
-- [ ] First launch order: Terms, Create profile, Add Playlist, Home *(Add Playlist is a prompt on Home, not its own step)*
+- [x] First launch order: Terms, Create profile, Add Playlist (Smart Add or Free TV), Films and series add-ons, Home (the last two can be skipped)
 - [x] Skip Choose profile when there's only one profile
 - [x] Update notice on launch
 

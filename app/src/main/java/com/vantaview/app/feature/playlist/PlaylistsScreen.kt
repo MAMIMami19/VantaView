@@ -43,9 +43,13 @@ import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
 import com.vantaview.app.ui.VantaLogo
 
-/** Playlist list and add-playlist form, shown on the Sources page. */
+/**
+ * Playlist list and add-playlist form, shown on the Sources page. In first-launch [setup] the form starts
+ * with Smart Add only; the M3U, Xtream and Stalker forms are behind "Enter details yourself".
+ */
 @Composable
-fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
+fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel(), setup: Boolean = false) {
+    var manual by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(!setup) }
     val providers by vm.providers.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
     val form by vm.form.collectAsStateWithLifecycle()
@@ -72,9 +76,11 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
             if (!vm.hasFreeTv(providers)) FreeTvCard(onAdd = vm::addFreeTv)
 
             Spacer(Modifier.height(6.dp))
-            Text("Add a playlist", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(if (setup) "Or add your own playlist" else "Add a playlist", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!manual) {
+                if (form.tab != SourceTab.SMART) vm.edit { it.copy(tab = SourceTab.SMART) }
+            } else Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SourceTab.entries.forEach { tab ->
                     FocusCard(onClick = { vm.edit { it.copy(tab = tab) } }, selected = form.tab == tab) {
                         Text(
@@ -96,6 +102,7 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel()) {
                         vm.edit { it.copy(smartText = v) }
                     }
                     GradientButton("Find details", onClick = vm::detect, enabled = form.smartText.isNotBlank())
+                    if (!manual) FocusCard(onClick = { manual = true }) { Text("Enter details yourself (M3U, Xtream Codes, Stalker portal)", color = Vanta.Text) }
                 }
                 SourceTab.M3U -> {
                     Field("Playlist name (optional)", form.name) { v -> vm.edit { it.copy(name = v) } }

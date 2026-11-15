@@ -225,10 +225,19 @@ private fun AppNav(
                     first = true,
                     onDone = { id ->
                         profiles.select(id)
-                        nav.goTo("sources?tab=playlists", restore = false)
+                        nav.navigate("setup/playlist")
                     },
                     onBack = null,
                 )
+            }
+            // First launch, steps 3 and 4: live TV, then films and series (both can be skipped).
+            composable("setup/playlist") {
+                com.vantaview.app.feature.setup.SetupPlaylistScreen(onNext = { nav.navigate("setup/addons") })
+            }
+            composable("setup/addons") {
+                com.vantaview.app.feature.setup.SetupAddonsScreen(onDone = {
+                    nav.navigate("home") { popUpTo(nav.graph.id) { inclusive = true } }
+                })
             }
             composable("profiles") {
                 ChooseProfileScreen(
