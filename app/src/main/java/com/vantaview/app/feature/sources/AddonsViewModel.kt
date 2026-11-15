@@ -23,10 +23,18 @@ sealed interface RestoreUi {
         /** A Nuvio backup's Watchlist, Watched and Continue watching, and whether to bring them in too. */
         val extra: com.vantaview.app.data.backup.NuvioData? = null, val extraOn: Boolean = true,
     ) : RestoreUi
-    data class Done(val text: String, val isError: Boolean) : RestoreUi
+    data class Done(
+        val text: String, val isError: Boolean,
+        /** Add-ons whose servers' certificates this device refused; each can be trusted and retried. */
+        val untrusted: List<Untrusted> = emptyList(),
+    ) : RestoreUi
 }
 
+/** An add-on that couldn't install because its server's certificate isn't trusted. */
+data class Untrusted(val name: String, val url: String, val cert: com.vantaview.app.data.security.UntrustedCert)
+
 data class AddonForm(
+    val untrusted: Untrusted? = null,
     val url: String = "",
     val busy: Boolean = false,
     val message: String? = null,
@@ -53,6 +61,8 @@ class AddonsViewModel @Inject constructor(
             try {
                 val a = repo.install(url)
                 _form.value = AddonForm(message = "Installed ${a.manifest.name}.")
+            } catch (e: com.vantaview.app.data.addon.UntrustedServerException) {
+                _form.update { it.copy(busy = false, message = e.message, isError = true, untrusted = Untrusted(e.cert.host, e.url, e.cert)) }
             } catch (e: Exception) {
                 _form.update { it.copy(busy = false, message = e.message ?: "Couldn't install that add-on", isError = true) }
             }
@@ -120,16 +130,34 @@ class AddonsViewModel @Inject constructor(
         if (chosen.isEmpty()) { _restore.value = if (extraText != null) RestoreUi.Done(extraText, false) else RestoreUi.Idle; return }
         viewModelScope.launch {
             val failed = ArrayList<String>()
+            val untrusted = ArrayList<Untrusted>()
             chosen.forEachIndexed { i, a ->
                 _restore.value = RestoreUi.Loading("Installing ${i + 1} of ${chosen.size}: ${a.name}")
-                runCatching { repo.install(a.url) }.onFailure { failed += "${a.name} (${it.message})" }
+                runCatching { repo.install(a.url) }.onFailure {
+                    failed += "${a.name} (${it.message})"
+                    if (it is com.vantaview.app.data.addon.UntrustedServerException) untrusted += Untrusted(a.name, a.url, it.cert)
+                }
             }
             val ok = chosen.size - failed.size
             _restore.value = RestoreUi.Done(
                 "Restored $ok of ${chosen.size} add-ons." + (extraText?.let { " $it" } ?: "") +
                     if (failed.isNotEmpty()) "\nNot restored: " + failed.joinToString("; ") else "",
                 isError = failed.isNotEmpty() && ok == 0,
+                untrusted = untrusted,
             )
+        }
+    }
+
+    /** The user chose to trust this server's exact certificate: remember it and install again. */
+    fun trustAndInstall(u: Untrusted) {
+        com.vantaview.app.data.security.CertPins.pin(u.cert.fingerprint)
+        viewModelScope.launch {
+            val r = runCatching { repo.install(u.url) }
+            val text = if (r.isSuccess) "Installed ${u.name}." else "Still couldn't install ${u.name} (${r.exceptionOrNull()?.message})."
+            _form.update { it.copy(untrusted = null, message = text, isError = r.isFailure, busy = false) }
+            (_restore.value as? RestoreUi.Done)?.let { d ->
+                _restore.value = d.copy(text = d.text + "\n" + text, untrusted = d.untrusted.filter { it.url != u.url })
+            }
         }
     }
 

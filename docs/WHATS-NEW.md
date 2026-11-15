@@ -1,3 +1,4 @@
+- An add-on whose server certificate isn't trusted can now be trusted by you (like a browser's "proceed anyway") from Sources › Add-ons.
 - Restore Nuvio backups (Sources › Add-ons › Restore from file): add-ons, plus the Watchlist, watched films and Continue watching.
 - Live TV has a Radio tab: radio stations move there, out of the TV channel list.
 - Fixes: choosing Settings in the menu while in Settings no longer jumps to Home; Settings opens on its list; channel numbers no longer all show 1; buttons no longer split words ("Every ing", "Can cel").
@@ -5,4 +6,3 @@
 - Live TV: Now, Next and After; long titles scroll; order channels your way and edit favourites.
 - Catch-up for Xtream and M3U playlists too: Watch from start in the TV Guide.
 - Films and episodes: speed, an Episodes list in the player; phones get a lock button and picture-in-picture.
-- Movies and TV Series: Genre, Year and Source filters; details pages add Trailer, cast you can pick and More like this.

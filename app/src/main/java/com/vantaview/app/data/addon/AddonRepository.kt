@@ -29,6 +29,10 @@ data class InstalledAddon(val entity: AddonEntity, val manifest: Manifest) {
     val base: String get() = entity.manifestUrl.removeSuffix("/manifest.json")
 }
 
+/** An add-on's server offered a certificate this device doesn't trust; the user can choose to trust it. */
+class UntrustedServerException(val url: String, val cert: com.vantaview.app.data.security.UntrustedCert) :
+    IllegalArgumentException("Couldn't reach that add-on: its server's security certificate isn't trusted by this device")
+
 /** A catalog row: which add-on, which catalog, and an optional genre filter. */
 data class CatalogRef(val addon: InstalledAddon, val catalog: CatalogDef, val genre: String? = null) {
     val key: String get() = "${addon.entity.id}/${catalog.type}/${catalog.id}/${genre.orEmpty()}"
@@ -72,9 +76,14 @@ class AddonRepository @Inject constructor(
         val body = try {
             getText(url)
         } catch (e: Exception) {
+            val host = runCatching { java.net.URI(url).host }.getOrNull()
+            val bad = if (e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException) host?.let { com.vantaview.app.data.security.CertPins.rejectedFor(it) } else null
+            if (bad != null) throw UntrustedServerException(url, bad)
             throw IllegalArgumentException(
                 if (e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException)
                     "Couldn't reach that add-on: its server's security certificate isn't one this device trusts (self-signed or out of date). Ask whoever runs it, or try its http:// link."
+                else if (Regex("error 5\\d\\d").containsMatchIn(e.message.orEmpty()))
+                    "Couldn't reach that add-on: its server isn't answering right now (${e.message}). Try again later."
                 else "Couldn't reach that add-on (${e.message ?: "network error"})"
             )
         }

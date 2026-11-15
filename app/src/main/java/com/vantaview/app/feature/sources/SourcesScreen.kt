@@ -98,6 +98,7 @@ private fun AddonsContent(vm: AddonsViewModel = hiltViewModel()) {
         )
         GradientButton("Install add-on", onClick = { vm.install() }, enabled = form.url.isNotBlank() && !form.busy)
         form.message?.let { Text(it, color = if (form.isError) Vanta.Error else Vanta.Cyan) }
+        form.untrusted?.let { u -> TrustButton(u, onTrust = vm::trustAndInstall) }
 
         if (addons.none { it.entity.manifestUrl == AddonsViewModel.CINEMETA }) {
             Column(

@@ -13,6 +13,9 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+import javax.net.ssl.X509ExtendedTrustManager
+import javax.net.ssl.SSLEngine
+import java.net.Socket
 
 /**
  * The device's normal certificate checks, plus one thing web browsers do and Android doesn't: when a
@@ -20,23 +23,36 @@ import javax.net.ssl.X509TrustManager
  * the server's own certificate and check again. Nothing is trusted that the device wouldn't trust with
  * a complete chain, so self-signed and expired certificates are still refused.
  */
-class AiaTrustManager private constructor(private val system: X509TrustManager) : X509TrustManager {
+class AiaTrustManager private constructor(private val system: X509TrustManager) : X509ExtendedTrustManager() {
     private val fetched = ConcurrentHashMap<String, List<X509Certificate>>()
     private val factory = CertificateFactory.getInstance("X.509")
 
     override fun getAcceptedIssuers(): Array<X509Certificate> = system.acceptedIssuers
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = system.checkClientTrusted(chain, authType)
 
-    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = check(chain, authType, null)
+    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
+        check(chain, authType, (socket as? javax.net.ssl.SSLSocket)?.handshakeSession?.peerHost)
+    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine?) =
+        check(chain, authType, engine?.handshakeSession?.peerHost ?: engine?.peerHost)
+    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) = system.checkClientTrusted(chain, authType)
+    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine?) = system.checkClientTrusted(chain, authType)
+
+    private fun check(chain: Array<X509Certificate>, authType: String, host: String?) {
+        // A certificate the user chose to trust (exact match only; the name is still checked by the HTTP client).
+        if (chain.isNotEmpty() && CertPins.isPinned(chain[0])) return
         try {
             system.checkServerTrusted(chain, authType)
         } catch (first: CertificateException) {
-            val completed = complete(chain) ?: throw first
-            try {
-                system.checkServerTrusted(completed, authType)
-            } catch (_: CertificateException) {
-                throw first
+            val completed = complete(chain)
+            if (completed != null) {
+                try {
+                    system.checkServerTrusted(completed, authType)
+                    return
+                } catch (_: CertificateException) { }
             }
+            if (chain.isNotEmpty()) CertPins.recordRejected(host, chain[0])
+            throw first
         }
     }
 

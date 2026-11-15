@@ -121,7 +121,10 @@ fun RestorePanel(vm: AddonsViewModel) {
         }
         when (val r = restore) {
             is RestoreUi.Loading -> Text(r.text, color = Vanta.Cyan)
-            is RestoreUi.Done -> Text(r.text, color = if (r.isError) Vanta.Error else Vanta.Cyan)
+            is RestoreUi.Done -> {
+                Text(r.text, color = if (r.isError) Vanta.Error else Vanta.Cyan)
+                r.untrusted.forEach { u -> TrustButton(u, onTrust = vm::trustAndInstall) }
+            }
             else -> Unit
         }
     }
@@ -223,5 +226,40 @@ private fun AddonRow(a: com.vantaview.app.data.addon.AddonRepository.RemoteAddon
             Text((if (on) "☑  " else "☐  ") + a.name, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
             a.description.takeIf { it.isNotBlank() }?.let { Text(it, color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2) }
         }
+    }
+}
+
+/** "Trust this server" for an add-on whose certificate was refused, with what the certificate says. */
+@Composable
+fun TrustButton(u: Untrusted, onTrust: (Untrusted) -> Unit) {
+    var asking by remember { mutableStateOf(false) }
+    FocusCard(onClick = { asking = true }) { Text("Trust ${u.name}'s server…", color = Vanta.Text) }
+    if (asking) {
+        val c = u.cert
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            containerColor = Vanta.Panel,
+            title = { Text("Trust ${c.host}?", color = Vanta.Text) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        when {
+                            c.expired -> "Its certificate ran out on ${c.validUntil}."
+                            c.selfSigned -> "Its certificate is self-signed (it vouches for itself)."
+                            else -> "Its certificate was issued by \"${c.issuer}\", which this device doesn't recognise."
+                        },
+                        color = Vanta.Text, fontSize = 14.sp,
+                    )
+                    Text("Issued to ${c.subject} by ${c.issuer}, valid until ${c.validUntil}.", color = Vanta.TextDim, fontSize = 13.sp)
+                    Text(
+                        "Only trust it if you know who runs this add-on. VantaView will trust this exact certificate for this server; " +
+                            "if it ever changes, you'll be asked again. Fingerprint: ${c.fingerprint.take(23)}…",
+                        color = Vanta.TextDim, fontSize = 12.sp,
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { asking = false; onTrust(u) }) { Text("Trust and install") } },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
+        )
     }
 }
