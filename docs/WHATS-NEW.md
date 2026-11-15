@@ -1,3 +1,4 @@
+- Library › Watchlist has a Remove button under each poster.
 - Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
 - Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
 - New Catch-up page (from Live TV or the TV Guide), with search of past programmes.
@@ -5,4 +6,3 @@
 - In the player: ⋯ More has a sleep timer, stream info and "open in another player".
 - Share a film or series with another profile (press and hold its poster); it shows on their Home and in Library.
 - Each profile has its own Playback, Subtitles and Weather settings. New: screensaver, speed test, guide time offset and log file.
-- Trakt: link each profile in Settings › Trakt to sync your Watchlist, history and Continue watching.

@@ -72,6 +72,9 @@ class LibraryViewModel @Inject constructor(
 
     fun cancel(r: Reminder) { library.removeReminder(r); alarms.cancel(r) }
     fun unwatch(t: SavedTitle) = library.setWatched(t, false)
+    fun unlist(type: String, id: String) {
+        library.watchlistNow().firstOrNull { it.type == type && it.id == id }?.let { library.setWatchlist(it, false) }
+    }
 }
 
 private enum class Tab(val label: String) { WATCHLIST("Watchlist"), CONTINUE("Continue watching"), WATCHED("Watched"), SHARED("Shared with you"), REMINDERS("Reminders") }
@@ -109,6 +112,7 @@ fun LibraryScreen(
                 watchlist.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
                 "Nothing here yet. Use + Watchlist on a film or series to save it for later.",
                 badges = withNew.associateWith { "New episode" },
+                onRemove = { m -> vm.unlist(m.type, m.id) },
             ) { m -> onOpenTitle(m.type, m.id, m.name, m.poster, null) }
             Tab.WATCHED -> Posters(
                 watched.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
@@ -130,13 +134,26 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun Posters(items: List<MetaPreview>, empty: String, badges: Map<String, String> = emptyMap(), onOpen: (MetaPreview) -> Unit) {
+private fun Posters(
+    items: List<MetaPreview>, empty: String, badges: Map<String, String> = emptyMap(),
+    onRemove: ((MetaPreview) -> Unit)? = null, onOpen: (MetaPreview) -> Unit,
+) {
     if (items.isEmpty()) { Text(empty, color = Vanta.TextDim, fontSize = 15.sp); return }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(124.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize(),
     ) {
-        items(items, key = { it.type + it.id }) { m -> PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth(), badge = badges[m.id]) }
+        items(items, key = { it.type + it.id }) { m ->
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth(), badge = badges[m.id])
+                onRemove?.let { remove ->
+                    FocusCard(onClick = { remove(m) }, modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center,
+                        padding = androidx.compose.foundation.layout.PaddingValues(vertical = 6.dp)) {
+                        Text("✕ Remove", color = Vanta.TextDim, fontSize = 13.sp, maxLines = 1)
+                    }
+                }
+            }
+        }
     }
 }
 
