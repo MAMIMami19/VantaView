@@ -36,6 +36,10 @@ Open the folder in Android Studio and run, or with Gradle 8.11+ and JDK 17:
 
     gradle assembleDebug
 
+## Privacy
+
+VantaView has no server of its own: your playlists and logins stay on your device and go straight to your provider. See [docs/PRIVACY.md](docs/PRIVACY.md) for exactly what connects where.
+
 ## Licence
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
