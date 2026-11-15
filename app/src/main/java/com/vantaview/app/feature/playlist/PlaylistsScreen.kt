@@ -225,6 +225,8 @@ private fun ProviderCard(
             }
         }
         Text(line, color = colour, fontSize = 14.sp)
+        // A sync that only partly worked says which part did not load, so an empty Movies page is not a mystery.
+        if (state is SyncState.Done && state.note != null) Text(state.note, color = Vanta.Error, fontSize = 13.sp)
     }
 }
 

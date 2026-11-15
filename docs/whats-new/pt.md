@@ -1,3 +1,4 @@
+- As grandes playlists Xtream agora carregam de forma confiável: quando a lista completa de filmes ou séries é lenta demais, ela carrega categoria por categoria — e o cartão da playlist avisa se algo não pôde ser carregado.
 - As legendas por IA agora têm um modo árabe: em Configurações › Legendas e áudio, as legendas árabes legendam diretamente os canais árabes e traduzem os canais estrangeiros para o árabe no dispositivo. O modelo árabe (cerca de 30 MB) é baixado uma vez.
 - O VantaView agora fala árabe, com um layout da direita para a esquerda. Ele segue o idioma do aparelho, ou escolha-o para cada perfil em Configurações › Aparência. Os detalhes de filmes e séries também vêm em árabe.
 - As páginas de Configurações estão mais organizadas: cada seção agora é um menu suspenso, e abrir uma fecha as outras. A tela de abertura mostra a versão e o número do build, e o VantaView procura atualizações sempre que é iniciado.

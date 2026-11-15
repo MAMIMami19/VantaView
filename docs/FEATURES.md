@@ -152,6 +152,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] M3U links encrypted on the device; logins in them hidden in saved channel, film and guide addresses, and kept in the locked part of backups
 - [x] Privacy page (docs/PRIVACY.md): where playlists and logins go, and every service the app connects to
 - [x] Films and series from M3U playlists and Xtream Codes: their own rows on Movies and TV Series, matched on TMDB for details, and offered as "From your playlist" on matching titles
+- [x] Robust Xtream sync for big, slow providers: sync downloads get a longer timeout, films and series fall back to one category at a time when the whole list fails, failed categories are retried once, and the playlist card says which part did not load instead of leaving Movies and TV Series silently empty
 - [x] Play torrents without a debrid account (built-in engine, debrid tried first; shares only while playing and deletes the file on close; switch in Settings › Playback)
 - [x] Languages: Spanish, French, German, Italian, Portuguese (Brazil), Dutch, Polish, Turkish and Arabic. Follows the device, with a picker per profile in Settings › Appearance; film and series details from TMDB in the same language
 

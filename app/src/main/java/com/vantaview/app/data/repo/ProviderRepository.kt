@@ -30,13 +30,35 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed interface SyncState {
     data class Running(val stage: String) : SyncState
-    data class Done(val channels: Int, val skippedVod: Int) : SyncState
+    /** A finished sync. [note] warns when only part of it worked (see [syncNote]); null when all of it did. */
+    data class Done(val channels: Int, val skippedVod: Int, val note: String? = null) : SyncState
     data class Failed(val message: String) : SyncState
+}
+
+/** What the films-and-series sync managed: how many titles are saved, and which kinds failed. */
+private data class VodSync(val count: Int, val failedKinds: List<String>)
+
+/**
+ * The warning shown on a playlist card when a sync only partly worked: which parts did not load,
+ * and that Refresh tries again. Null when everything loaded. The parts are joined with " · " so
+ * the translator can translate each piece on its own.
+ */
+internal fun syncNote(failedVodKinds: List<String>, liveFailed: Boolean): String? {
+    val parts = ArrayList<String>()
+    if ("movie" in failedVodKinds && "series" in failedVodKinds) parts += "Films and series did not load"
+    else {
+        if ("movie" in failedVodKinds) parts += "Films did not load"
+        if ("series" in failedVodKinds) parts += "Series did not load"
+    }
+    if (liveFailed) parts += "Some channels did not load"
+    if (parts.isEmpty()) return null
+    return (parts + "Try Refresh to try again").joinToString(" · ")
 }
 
 /** What the player needs to open a channel. */
@@ -63,6 +85,10 @@ class ProviderRepository @Inject constructor(
     @AppScope private val scope: CoroutineScope,
 ) {
     private val userAgent = "VantaView/${BuildConfig.VERSION_NAME}"
+
+    // Sync downloads can be very large and slow (some providers send 100,000+ films), so they get
+    // a longer read timeout than the rest of the app — the same pattern as the guide and Stalker.
+    private val syncHttp = http.newBuilder().readTimeout(120, TimeUnit.SECONDS).build()
 
     private val _syncStates = MutableStateFlow<Map<Long, SyncState>>(emptyMap())
     val syncStates: StateFlow<Map<Long, SyncState>> = _syncStates
@@ -266,7 +292,7 @@ class ProviderRepository @Inject constructor(
                 }
                 db.providers().get(id)?.let {
                     db.providers().update(
-                        it.copy(lastSyncAt = System.currentTimeMillis(), channelCount = done.channels, lastError = null)
+                        it.copy(lastSyncAt = System.currentTimeMillis(), channelCount = done.channels, lastError = done.note)
                     )
                 }
                 setState(id, done)
@@ -368,23 +394,24 @@ class ProviderRepository @Inject constructor(
 
     /**
      * An Xtream account's films and series (the whole list, read as it downloads so big lists fit in memory).
-     * A failed download keeps what was there. Returns how many there are.
+     * When the whole list fails, one category at a time is tried instead, and whatever answers is kept.
+     * A kind that fails completely keeps what was there. Returns how many titles are saved, and which kinds failed.
      */
-    private suspend fun syncXtreamVod(p: ProviderEntity, ua: String?): Int {
+    private suspend fun syncXtreamVod(p: ProviderEntity, ua: String?): VodSync {
         setState(p.id, SyncState.Running("Loading films and series"))
         fun groups(action: String): List<Pair<String, String>> = runCatching {
             jsonItems(text(xtreamApi(p, action), ua)).map { it.optString("category_id") to it.optString("category_name") }
         }.getOrDefault(emptyList())
-        fun stream(action: String, each: (Map<String, String>) -> Unit): Boolean = runCatching {
-            val b = Request.Builder().url(xtreamApi(p, action))
+        fun streamInto(url: String, each: (Map<String, String>) -> Unit): Boolean = runCatching {
+            val b = Request.Builder().url(url)
             if (ua != null) b.header("User-Agent", ua)
-            http.newCall(b.build()).execute().use { r ->
+            syncHttp.newCall(b.build()).execute().use { r ->
                 if (!r.isSuccessful) return@runCatching false
                 r.body?.charStream()?.let { com.vantaview.app.data.vod.VodImport.readItems(it, each) }
                 true
             }
         }.getOrDefault(false)
-        val items = ArrayList<VodEntity>()
+        val failed = ArrayList<String>()
         for ((kind, cats, list) in listOf(
             Triple("movie", "get_vod_categories", "get_vod_streams"),
             Triple("series", "get_series_categories", "get_series"),
@@ -393,17 +420,41 @@ class ProviderRepository @Inject constructor(
             val names = g.toMap()
             val order = g.withIndex().associate { (i, c) -> c.first to i }
             var i = 0
-            val ok = stream(list) { o ->
+            fun collect(into: MutableList<VodEntity>): (Map<String, String>) -> Unit = { o ->
                 // Rows follow the provider's category order; titles keep their order within each.
                 val pos = (order[o["category_id"]] ?: g.size) * 1_000_000 + i++
                 val v = if (kind == "movie") com.vantaview.app.data.vod.VodImport.xtreamFilm(p.id, o, names, pos)
                     else com.vantaview.app.data.vod.VodImport.xtreamSeries(p.id, o, names, pos)
-                if (v != null) items += v
+                if (v != null) into += v
             }
-            if (!ok) return db.vod().count(p.id, "movie") + db.vod().count(p.id, "series")
+            val whole = ArrayList<VodEntity>()
+            if (streamInto(xtreamApi(p, list), collect(whole))) {
+                db.vod().replaceKind(p.id, kind, whole.distinctBy { it.remoteId })
+                continue
+            }
+            // The whole list failed (too big, or too slow): one category at a time instead.
+            val perCategory = ArrayList<VodEntity>()
+            var failedCats = 0
+            g.forEachIndexed { ci, (id, _) ->
+                setState(
+                    p.id,
+                    SyncState.Running(
+                        if (kind == "movie") "Loading films, category ${ci + 1} of ${g.size}"
+                        else "Loading series, category ${ci + 1} of ${g.size}"
+                    ),
+                )
+                val url = xtreamApi(p, list) + "&category_id=" + URLEncoder.encode(id, "UTF-8")
+                if (!streamInto(url, collect(perCategory))) failedCats++
+            }
+            if (failedCats == 0 && g.isNotEmpty()) {
+                db.vod().replaceKind(p.id, kind, perCategory.distinctBy { it.remoteId })
+            } else {
+                // Partly loaded, or nothing at all: keep what was there, and say so.
+                failed += kind
+            }
         }
-        db.vod().replace(p.id, items, emptyList())
-        return items.size
+        val count = db.vod().count(p.id, "movie") + db.vod().count(p.id, "series")
+        return VodSync(count, failed)
     }
 
     private fun hideLogin(url: String, u: String, pw: String): String {
@@ -450,7 +501,7 @@ class ProviderRepository @Inject constructor(
     private fun text(url: String, ua: String? = userAgent): String {
         val builder = Request.Builder().url(url)
         if (ua != null) builder.header("User-Agent", ua)
-        return http.newCall(builder.build()).execute().use { response ->
+        return syncHttp.newCall(builder.build()).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("The server answered with error ${response.code}")
             response.body?.string().orEmpty()
         }
@@ -501,7 +552,8 @@ class ProviderRepository @Inject constructor(
         val notes = ArrayList<String>()
 
         // Tries the whole list first, then one category at a time (some servers only answer that way).
-        fun load(ua: String?): Pair<List<CategoryEntity>, List<JSONObject>> {
+        // Returns the categories, the channels, and how many categories still failed after a retry.
+        fun load(ua: String?): Triple<List<CategoryEntity>, List<JSONObject>, Int> {
             val cats = runCatching { jsonItems(text(xtreamApi(p, "get_live_categories"), ua)) }.getOrDefault(emptyList())
             val categories = cats.mapIndexedNotNull { i, o ->
                 val id = o.optString("category_id")
@@ -516,30 +568,41 @@ class ProviderRepository @Inject constructor(
             val all = runCatching { jsonItems(text(xtreamApi(p, "get_live_streams"), ua)) }
                 .getOrDefault(emptyList())
                 .filter { streamId(it).isNotBlank() }
-            if (all.isNotEmpty() || categories.isEmpty()) return categories to all
+            if (all.isNotEmpty() || categories.isEmpty()) return Triple(categories, all, 0)
 
             val perCategory = ArrayList<JSONObject>()
+            fun fetch(c: CategoryEntity): Boolean {
+                val url = xtreamApi(p, "get_live_streams") + "&category_id=" + URLEncoder.encode(c.remoteId, "UTF-8")
+                val got = runCatching { jsonItems(text(url, ua)) }.getOrNull() ?: return false
+                got.filter { streamId(it).isNotBlank() }.forEach { o ->
+                    if (o.optString("category_id").isBlank()) o.put("category_id", c.remoteId)
+                    perCategory += o
+                }
+                return true
+            }
+            val failedIdx = ArrayList<Int>()
             categories.forEachIndexed { i, c ->
                 setState(p.id, SyncState.Running("Loading channels, category ${i + 1} of ${categories.size}"))
-                val url = xtreamApi(p, "get_live_streams") + "&category_id=" + URLEncoder.encode(c.remoteId, "UTF-8")
-                runCatching { jsonItems(text(url, ua)) }.getOrDefault(emptyList())
-                    .filter { streamId(it).isNotBlank() }
-                    .forEach { o ->
-                        if (o.optString("category_id").isBlank()) o.put("category_id", c.remoteId)
-                        perCategory += o
-                    }
+                if (!fetch(c)) failedIdx += i
             }
-            return categories to perCategory
+            // One retry for the categories that failed (slow servers often answer the second time).
+            var stillFailed = 0
+            failedIdx.forEach { i ->
+                setState(p.id, SyncState.Running("Loading channels, category ${i + 1} of ${categories.size}"))
+                if (!fetch(categories[i])) stillFailed++
+            }
+            return Triple(categories, perCategory, stillFailed)
         }
 
         var categories: List<CategoryEntity> = emptyList()
         var streams: List<JSONObject> = emptyList()
+        var liveFailedCategories = 0
         var goodUa: String? = userAgent
         for ((i, ua) in xtreamAgents.withIndex()) {
             setState(p.id, SyncState.Running("Loading channels (attempt ${i + 1} of ${xtreamAgents.size + 1})"))
-            val (c, s) = load(ua)
+            val (c, s, f) = load(ua)
             if (c.size > categories.size) categories = c
-            if (s.isNotEmpty()) { categories = c; streams = s; goodUa = ua; break }
+            if (s.isNotEmpty()) { categories = c; streams = s; liveFailedCategories = f; goodUa = ua; break }
         }
         if (streams.isEmpty()) notes += "the channel list came back empty"
 
@@ -568,9 +631,12 @@ class ProviderRepository @Inject constructor(
             }
             setState(p.id, SyncState.Running("Saving ${channels.size} channels"))
             db.content().replaceLive(p.id, categories, channels)
-            // Films and series too; a problem there never stops the channels working.
-            val vod = runCatching { syncXtreamVod(p, goodUa) }.getOrDefault(0)
-            return SyncState.Done(channels.size, vod)
+            // Films and series too; a problem there never stops the channels working — but it is
+            // said out loud now, so an empty Movies page is not a mystery.
+            val vod = runCatching { syncXtreamVod(p, goodUa) }.getOrElse {
+                VodSync(db.vod().count(p.id, "movie") + db.vod().count(p.id, "series"), listOf("movie", "series"))
+            }
+            return SyncState.Done(channels.size, vod.count, syncNote(vod.failedKinds, liveFailedCategories > 0))
         }
 
         // Last resort: the same account's M3U download (get.php), which some servers still serve.
@@ -582,7 +648,7 @@ class ProviderRepository @Inject constructor(
             val result = runCatching {
                 val b = Request.Builder().url(m3uUrl)
                 if (ua != null) b.header("User-Agent", ua)
-                http.newCall(b.build()).execute().use { r ->
+                syncHttp.newCall(b.build()).execute().use { r ->
                     if (!r.isSuccessful) throw IllegalStateException("error ${r.code}")
                     r.body!!.charStream().buffered().useLines { M3uParser.parse(it) }
                 }

@@ -1,3 +1,4 @@
+- Grote Xtream-afspeellijsten laden nu betrouwbaar: als de volledige film- of serielijst te traag is, wordt deze per categorie geladen — en de afspeellijstkaart vertelt je als er iets niet kon worden geladen.
 - AI-ondertitels hebben nu een Arabische modus: in Instellingen › Ondertiteling en audio ondertitelen Arabische ondertitels Arabische zenders direct en vertalen ze buitenlandse zenders op het apparaat naar het Arabisch. Het Arabische model (ongeveer 30 MB) wordt één keer gedownload.
 - VantaView spreekt nu Arabisch, met een lay-out van rechts naar links. Het volgt je apparaat, of kies per profiel Arabisch bij Instellingen › Weergave. Film- en seriedetails komen ook in het Arabisch.
 - Instellingenpagina's zijn overzichtelijker: elk onderdeel is nu een uitklapmenu, en als je er een opent, gaan de andere dicht. Het opstartscherm toont de versie en het buildnummer, en VantaView zoekt bij elke start naar updates.

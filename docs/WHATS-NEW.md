@@ -1,3 +1,4 @@
+- Big Xtream playlists now load reliably: when the whole film or series list is too slow, it loads one category at a time — and the playlist card tells you if anything did not load.
 - AI subtitles now have an Arabic mode: in Settings › Subtitles and audio, Arabic subtitles caption Arabic channels directly and translate foreign channels into Arabic on the device. The Arabic model (about 30 MB) downloads once.
 - VantaView now speaks Arabic, with a right-to-left layout. It follows your device, or pick it for each profile in Settings › Appearance. Film and series details come in Arabic too.
 - Settings pages are tidier: each section is now a drop-down, and opening one closes the others. The start-up screen shows the version and build number, and VantaView checks for updates every time it starts.

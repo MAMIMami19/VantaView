@@ -394,6 +394,20 @@ interface VodDao {
         episodes.chunked(500).forEach { insertEpisodes(it) }
     }
 
+    @Query("DELETE FROM vod WHERE providerId = :providerId AND kind = :kind")
+    suspend fun deleteKind(providerId: Long, kind: String)
+
+    /**
+     * Swaps one kind (films or series) for a fresh list, keeping the other kind and IMDb ids already matched.
+     * Xtream stores no episodes (they're fetched when a series is opened), so none are touched.
+     */
+    @Transaction
+    suspend fun replaceKind(providerId: Long, kind: String, items: List<VodEntity>) {
+        val known = imdbIds(providerId).associate { it.remoteId to it.imdb }
+        deleteKind(providerId, kind)
+        items.chunked(500).forEach { c -> insert(c.map { v -> if (v.imdb == null) v.copy(imdb = known[v.remoteId]) else v }) }
+    }
+
     data class KnownImdb(val remoteId: String, val imdb: String?)
 
     @Query("SELECT remoteId, imdb FROM vod WHERE providerId = :providerId AND imdb IS NOT NULL")
