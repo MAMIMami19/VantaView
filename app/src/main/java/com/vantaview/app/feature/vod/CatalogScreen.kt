@@ -58,11 +58,12 @@ fun CatalogScreen(
         com.vantaview.app.ui.PageTitle(title)
         Spacer(Modifier.height(10.dp))
 
-        if (ui.loaded && ui.addonCount == 0 && ui.kids) {
+        if (ui.loaded && ui.addonCount == 0 && ui.rows.isEmpty() && ui.kids) {
             Message("Ask a grown-up to add add-ons to this profile.")
             return@Column
         }
-        if (ui.loaded && ui.addonCount == 0) {
+        // Only when there's truly nothing: no add-ons, and no portal or playlist with films or series.
+        if (ui.loaded && ui.addonCount == 0 && ui.rows.isEmpty()) {
             Empty(
                 if (vm.type == "series") "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their series appear here."
                 else "No add-ons or portals yet. Install Stremio or Nuvio add-ons, or add a Stalker portal, on the Sources page and their films appear here.",
