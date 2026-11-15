@@ -35,6 +35,8 @@ object AppModule {
     @Provides
     @Singleton
     fun okHttp(): OkHttpClient = OkHttpClient.Builder()
+        // Servers that forget their middle certificate still connect, as they do in a web browser.
+        .apply { runCatching { com.vantaview.app.data.security.AiaTrustManager.create() }.getOrNull()?.let { (f, tm) -> sslSocketFactory(f, tm) } }
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)

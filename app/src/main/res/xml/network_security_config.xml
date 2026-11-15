@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trusts the device's certificates, plus Let's Encrypt's roots, which older Android and Fire OS
+     versions don't have (many add-ons and providers use Let's Encrypt). Plain http stays allowed for
+     IPTV providers. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x1" />
+            <certificates src="@raw/isrg_root_x2" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,3 +1,4 @@
+- Add-ons and providers whose servers send an incomplete security certificate now connect, and older Fire TVs trust Let's Encrypt sites.
 - Live TV: Now, Next and After; long titles scroll; order channels your way and edit favourites.
 - Catch-up for Xtream and M3U playlists too: Watch from start in the TV Guide.
 - Films and episodes: speed, an Episodes list in the player; phones get a lock button and picture-in-picture.
@@ -5,4 +6,3 @@
 - Search finds people; Sources can add an M3U file and your own TV guide link.
 - The console looks now style every page's titles, headings and cards.
 - Movies and TV Series start with tiles: Trending, Latest and Top rated, then genres, decades, themes and countries. Pick one for a full page of titles.
-- Search boxes on Live TV, Movies, TV Series and Settings start as a magnifier button; press it to search.

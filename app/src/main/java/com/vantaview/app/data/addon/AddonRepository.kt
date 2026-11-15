@@ -72,7 +72,11 @@ class AddonRepository @Inject constructor(
         val body = try {
             getText(url)
         } catch (e: Exception) {
-            throw IllegalArgumentException("Couldn't reach that add-on (${e.message ?: "network error"})")
+            throw IllegalArgumentException(
+                if (e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException)
+                    "Couldn't reach that add-on: its server's security certificate isn't one this device trusts (self-signed or out of date). Ask whoever runs it, or try its http:// link."
+                else "Couldn't reach that add-on (${e.message ?: "network error"})"
+            )
         }
         val json = runCatching { JSONObject(body) }.getOrNull()
             ?: throw IllegalArgumentException("That link isn't an add-on install link (no manifest.json found)")
