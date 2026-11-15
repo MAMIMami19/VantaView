@@ -185,29 +185,43 @@ private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onTogg
                             }
                         }
                     }
-                    if (state.items.isNotEmpty()) item(key = "addons-title") { Text("Add-ons", color = Vanta.TextDim, fontSize = 13.sp) }
                 }
-                items(state.items, key = { it.url }) { a ->
-                    val on = a.url in state.selected
-                    FocusCard(onClick = { onToggle(a.url) }, selected = on, modifier = Modifier.fillMaxWidth()) {
-                        Column {
-                            Text((if (on) "☑  " else "☐  ") + a.name, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
-                            val note = listOfNotNull(
-                                if (a.alreadyInstalled) "Already installed" else null,
-                                a.description.takeIf { it.isNotBlank() },
-                            ).joinToString(" · ")
-                            if (note.isNotEmpty()) Text(note, color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2)
-                        }
-                    }
+                // Add-ons you don't have yet come first, ticked; ones you already have are listed after.
+                val fresh = state.items.filter { !it.alreadyInstalled }
+                val have = state.items.filter { it.alreadyInstalled }
+                if (state.items.isNotEmpty()) item(key = "new-title") {
+                    Text(
+                        if (fresh.isEmpty()) "You already have every add-on in this backup."
+                        else "${fresh.size} add-on" + (if (fresh.size == 1) "" else "s") + " you don't have yet",
+                        color = if (fresh.isEmpty()) Vanta.TextDim else Vanta.Text, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                    )
+                }
+                items(fresh, key = { it.url }) { a -> AddonRow(a, a.url in state.selected) { onToggle(a.url) } }
+                if (have.isNotEmpty()) {
+                    item(key = "have-title") { Text("Already installed (tick to reinstall)", color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
+                    items(have, key = { it.url }) { a -> AddonRow(a, a.url in state.selected) { onToggle(a.url) } }
                 }
             }
         },
         confirmButton = {
             val extra = state.extra != null && state.extraOn
             TextButton(onClick = onImport, enabled = state.selected.isNotEmpty() || extra) {
-                Text(if (state.selected.isEmpty()) "Restore" else "Install ${state.selected.size}" + if (extra) " and restore" else "")
+                Text(
+                    if (state.selected.isEmpty()) "Restore"
+                    else "Add ${state.selected.size} add-on" + (if (state.selected.size == 1) "" else "s") + if (extra) " and restore" else ""
+                )
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+}
+
+@Composable
+private fun AddonRow(a: com.vantaview.app.data.addon.AddonRepository.RemoteAddon, on: Boolean, onToggle: () -> Unit) {
+    FocusCard(onClick = onToggle, selected = on, modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Text((if (on) "☑  " else "☐  ") + a.name, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = FontWeight.Bold)
+            a.description.takeIf { it.isNotBlank() }?.let { Text(it, color = Vanta.TextDim, fontSize = 12.sp, maxLines = 2) }
+        }
+    }
 }
