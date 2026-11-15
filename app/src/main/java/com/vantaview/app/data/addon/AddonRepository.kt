@@ -78,7 +78,8 @@ class AddonRepository @Inject constructor(
         } catch (e: Exception) {
             val host = runCatching { java.net.URI(url).host }.getOrNull()
             val bad = if (e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException) host?.let { com.vantaview.app.data.security.CertPins.rejectedFor(it) } else null
-            if (bad != null) throw UntrustedServerException(url, bad)
+            if (bad != null && !com.vantaview.app.data.security.CertPins.isPinned(bad.fingerprint)) throw UntrustedServerException(url, bad)
+            if (bad != null) throw IllegalArgumentException("Couldn't reach that add-on even with its certificate trusted (${e.message ?: e.javaClass.simpleName})")
             throw IllegalArgumentException(
                 if (e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException)
                     "Couldn't reach that add-on: its server's security certificate isn't one this device trusts (self-signed or out of date). Ask whoever runs it, or try its http:// link."

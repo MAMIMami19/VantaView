@@ -37,6 +37,8 @@ object AppModule {
     fun okHttp(): OkHttpClient = OkHttpClient.Builder()
         // Servers that forget their middle certificate still connect, as they do in a web browser.
         .apply { runCatching { com.vantaview.app.data.security.AiaTrustManager.create() }.getOrNull()?.let { (f, tm) -> sslSocketFactory(f, tm) } }
+        // Certificates the user chose to trust are accepted even when their name doesn't match.
+        .hostnameVerifier(com.vantaview.app.data.security.CertPins.hostnameVerifier(okhttp3.internal.tls.OkHostnameVerifier))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)

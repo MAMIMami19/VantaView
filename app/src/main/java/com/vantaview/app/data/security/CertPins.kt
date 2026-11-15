@@ -43,6 +43,8 @@ object CertPins {
 
     fun pin(fingerprint: String) {
         pins += fingerprint
+        // Forget the refusal, so a later failure is reported as what it really is.
+        rejected.entries.removeIf { fingerprint(it.value) == fingerprint }
         sp?.edit()?.putStringSet("pins", pins.toSet())?.apply()
     }
 
@@ -50,7 +52,21 @@ object CertPins {
 
     val count: Int get() = pins.size
 
+    fun isPinned(fingerprint: String) = fingerprint in pins
+
     internal fun recordRejected(host: String?, c: X509Certificate) { if (host != null) rejected[host.lowercase()] = c }
+
+    /**
+     * The usual check that a certificate belongs to the server's name, except that a certificate the
+     * user chose to trust is accepted for the server it was trusted on even when its name differs (as a
+     * browser's "Proceed" does). A mismatch on any other certificate is remembered so it can be trusted.
+     */
+    fun hostnameVerifier(default: javax.net.ssl.HostnameVerifier): javax.net.ssl.HostnameVerifier =
+        javax.net.ssl.HostnameVerifier { host, session ->
+            if (default.verify(host, session)) return@HostnameVerifier true
+            val leaf = runCatching { session.peerCertificates.firstOrNull() as? X509Certificate }.getOrNull() ?: return@HostnameVerifier false
+            if (isPinned(leaf)) true else { recordRejected(host, leaf); false }
+        }
 
     /** The certificate a server last offered that the device refused, if any. */
     fun rejectedFor(host: String): UntrustedCert? {
