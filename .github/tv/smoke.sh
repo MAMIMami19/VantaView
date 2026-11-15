@@ -48,7 +48,10 @@ tap_text "Add free channels"; sleep 25; shot countries
 # Country chooser: it should open with a country focused; pick United Kingdom, then Save.
 tap_text "United Kingdom"; sleep 1; shot countries-picked
 tap_text "Save"; sleep 8; shot after-countries
-home() { for i in 1 2 3 4; do key BACK; sleep 1; dump; grep -q "Good morning\|Good afternoon\|Good evening" $OUT/ui.xml && break; done; }
+# Setup steps 3 and 4 (live TV, then films and series): Continue, then Skip for now, to Home.
+tap_text "Continue"; sleep 3; shot setup-films
+tap_text "Skip for now"; sleep 4
+home() { for i in 1 2 3 4; do dump; grep -q "Good morning\|Good afternoon\|Good evening" $OUT/ui.xml && break; key BACK; sleep 1; done; }
 home; shot home
 # Every section from the sidebar.
 for section in "Search" "Live TV" "TV Guide" "Movies" "Library" "Sources" "Settings"; do
