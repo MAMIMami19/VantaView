@@ -54,6 +54,8 @@ for m in re.finditer(r'<node [^>]*>', x):
 PY
 )
   if [ -z "$xy" ]; then echo "NOT FOUND: /$1/"; return 1; fi
+  # Optional third argument: move up by that many pixels (e.g. from the year under a poster onto the poster).
+  if [ -n "${3:-}" ]; then set -- "$1" "${2:-}" "$3"; x=${xy% *}; y=${xy#* }; xy="$x $((y - $3))"; fi
   if [ "${2:-}" = hold ]; then adb shell input swipe $xy $xy 1200; echo "held /$1/ at $xy"; else adb shell input tap $xy; echo "tapped /$1/ at $xy"; fi
   sleep 1.5
 }
@@ -109,9 +111,9 @@ rotate 0; key BACK; key BACK; sleep 2
 # Movies: tiles, a tile's page, a film's details.
 menu "Movies"; shot movies
 # Press and hold a poster: the Watchlist / Watched pop-up.
-scroll; scroll; tap_re '★' hold; sleep 2; shot poster-actions; key BACK
+scroll; scroll; tap_re '★' hold 250; sleep 2; shot poster-actions; key BACK; sleep 1
 # A film's details, scrolled to the end (More like this goes last).
-tap_re '★'; sleep 8; shot details; scroll; shot details-scrolled; scroll; scroll; shot details-end; key BACK; key BACK
+tap_re '★' tap 250; sleep 8; shot details; scroll; shot details-scrolled; scroll; scroll; shot details-end; key BACK; key BACK
 # Settings: the list, then every section.
 menu "Settings"; shot settings
 for sec in "Playback" "Appearance" "Subtitles and audio" "Sources and storage" "Weather" "Backup and restore" "Parental control" "Updates" "Help and about"; do
