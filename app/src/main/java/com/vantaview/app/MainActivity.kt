@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var appearance: com.vantaview.app.data.AppearanceSettings
     @Inject lateinit var updates: com.vantaview.app.data.update.UpdateManager
     @Inject lateinit var sourceSettings: com.vantaview.app.data.SourceSettings
+    @Inject lateinit var playbackSettings: com.vantaview.app.data.PlaybackSettings
     @Inject lateinit var library: com.vantaview.app.data.library.LibraryStore
     @Inject lateinit var reminderAlarms: com.vantaview.app.data.library.ReminderScheduler
 
@@ -376,7 +377,11 @@ private fun AppNav(
     LaunchedEffect(splash) { if (!splash) { kotlinx.coroutines.delay(420); splashShown = false } }
     if (splashShown) com.vantaview.app.ui.SplashScreen(leaving = !splash)
     // Programme reminders: pop-ups while the app is open, and opening a channel from a notification.
-    if (!splashShown && profile != null) com.vantaview.app.feature.library.ReminderHost(library) { id -> nav.navigate("player/$id") }
+    if (!splashShown && profile != null) com.vantaview.app.feature.library.ReminderHost(
+        library,
+        // Settings › Playback can keep reminders off the screen while something plays.
+        quiet = { !playbackSettings.remindersWhilePlaying && nav.currentDestination?.route?.let { it.startsWith("player") || it.startsWith("vod") } == true },
+    ) { id -> nav.navigate("player/$id") }
     val play by playRequest.collectAsState()
     LaunchedEffect(play, splashShown, profile) {
         val id = play ?: return@LaunchedEffect

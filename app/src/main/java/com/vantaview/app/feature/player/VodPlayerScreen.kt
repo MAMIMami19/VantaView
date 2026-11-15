@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.player
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import android.app.Activity
@@ -157,6 +159,35 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
                     if (!compact) buttons()
                 }
                 if (compact) buttons()
+            }
+        }
+        // Skip intro, and the next episode during the end credits. They show even with the controls hidden.
+        if (!locked && !pip && (ui.skipIntro || ui.nextUp != null)) {
+            val skipFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+            Column(
+                Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = if (controls) 120.dp else 36.dp),
+                horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (ui.skipIntro) {
+                    FocusCard(onClick = vm::skipIntro, modifier = Modifier.focusRequester(skipFocus)) {
+                        Text("Skip intro  ⏭", color = Vanta.Text, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                    LaunchedEffect(Unit) { if (!controls) runCatching { skipFocus.requestFocus() } }
+                }
+                ui.nextUp?.let { n ->
+                    Column(
+                        Modifier.widthIn(max = 340.dp).background(Color(0xE6101018), androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(if (ui.nextIn > 0) "Next episode in ${ui.nextIn}s" else "Next episode", color = Vanta.Cyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("S${n.season} E${n.episode} · ${n.title.ifBlank { "Episode ${n.episode}" }}", color = Color.White, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FocusCard(onClick = vm::playNext, modifier = Modifier.focusRequester(skipFocus)) { Text("▶ Play now", color = Vanta.Text, maxLines = 1) }
+                            FocusCard(onClick = vm::cancelNext) { Text("Cancel", color = Vanta.Text, maxLines = 1) }
+                        }
+                    }
+                    LaunchedEffect(n.id) { if (!controls) runCatching { skipFocus.requestFocus() } }
+                }
             }
         }
         if (locked) {

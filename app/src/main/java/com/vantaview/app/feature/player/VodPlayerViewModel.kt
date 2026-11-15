@@ -40,6 +40,11 @@ data class VodUi(
     val speed: Float = 1f,
     /** True for an episode of a series: the player offers Episodes. */
     val isSeries: Boolean = false,
+    /** Showing "Skip intro" (the intro is playing and its end is known). */
+    val skipIntro: Boolean = false,
+    /** The next episode, with seconds left before it starts, during the end credits. */
+    val nextUp: com.vantaview.app.data.addon.Video? = null,
+    val nextIn: Int = 0,
 )
 
 /** Plays a film or episode from add-on streams, moving to the next stream if one fails. */
@@ -56,6 +61,7 @@ class VodPlayerViewModel @Inject constructor(
     private val addons: com.vantaview.app.data.addon.AddonRepository,
     private val session: VodSession,
     private val trakt: com.vantaview.app.data.trakt.TraktSync,
+    private val skips: com.vantaview.app.data.player.SkipSegments,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(VodUi())
     val ui: StateFlow<VodUi> = _ui
@@ -71,14 +77,32 @@ class VodPlayerViewModel @Inject constructor(
         .build()
 
     private var startedOk = false
+    private var stalls = 0
+    private var lastSeekAt = 0L
+    private var segments: com.vantaview.app.data.player.Segments? = null
+    private var segmentsFor: String? = null
+    /** The episode the viewer turned the countdown off for. */
+    private var nextDismissedFor: String? = null
     private var season: Int? = null
     private var episode: Int? = null
     private var resolveJob: kotlinx.coroutines.Job? = null
     private var request: com.vantaview.app.data.addon.VodRequest? = null
 
     private val listener = object : Player.Listener {
+        override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) lastSeekAt = System.currentTimeMillis()
+        }
+
         override fun onPlaybackStateChanged(state: Int) {
-            if (state == Player.STATE_ENDED) { saveProgress(); scrobble("stop", 100f) }
+            // A stall: buffering again while playing, not just after a seek.
+            if (state == Player.STATE_BUFFERING && startedOk && player.playWhenReady && System.currentTimeMillis() - lastSeekAt > 3_000) {
+                stalls++
+                settings.reportStall(stalls)
+            }
+            if (state == Player.STATE_ENDED) {
+                saveProgress(); scrobble("stop", 100f)
+                if (_ui.value.nextUp != null) playNext()
+            }
             if (state == Player.STATE_READY) {
                 startedOk = true
                 _ui.update { it.copy(failed = null) }
@@ -133,7 +157,16 @@ class VodPlayerViewModel @Inject constructor(
             viewModelScope.launch {
                 while (true) {
                     kotlinx.coroutines.delay(10_000)
-                    if (player.isPlaying) saveProgress()
+                    if (player.isPlaying) { saveProgress(); if (stalls == 0) settings.reportSmooth(10_000) }
+                }
+            }
+            // Skip intro and the next-episode countdown (after the constructor has finished, hence inside the loop).
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(300)
+                if (req.type == "series") loadEpisodes()
+                while (true) {
+                    kotlinx.coroutines.delay(500)
+                    tickSkips()
                 }
             }
         }
@@ -202,6 +235,61 @@ class VodPlayerViewModel @Inject constructor(
     }
 
     fun pause() { player.playWhenReady = false; saveProgress() }
+
+    // ---- Skip intro and Next episode ----
+
+    private fun nextEpisodeOf(id: String): com.vantaview.app.data.addon.Video? {
+        val list = _episodes.value
+        val i = list.indexOfFirst { it.id == id }
+        return if (i >= 0) list.getOrNull(i + 1)?.takeIf { v ->
+            v.released == null || runCatching { java.time.Instant.parse(v.released) <= java.time.Instant.now() }.getOrDefault(true)
+        } else null
+    }
+
+    private var countdownFrom = 0L
+
+    private fun tickSkips() {
+        val r = request ?: return
+        val dur = player.duration
+        val pos = player.currentPosition
+        if (dur == C.TIME_UNSET || dur <= 0 || !startedOk) return
+        // Look the episode up once its length is known (SkipDB matches by length).
+        if (segmentsFor != r.videoId && r.metaId.startsWith("tt")) {
+            segmentsFor = r.videoId
+            segments = null
+            viewModelScope.launch { segments = skips.lookup(r.metaId, r.season, r.episode, dur) }
+        }
+        val seg = segments
+        val showSkip = settings.skipIntro && seg?.hasIntro == true && pos >= (seg.introStart ?: 0L) && pos < seg.introEnd!! - 1_000
+        // The countdown: from the end credits (when known), otherwise the last 30 seconds.
+        val next = if (r.type == "series" && settings.nextEpisode && nextDismissedFor != r.videoId) nextEpisodeOf(r.videoId) else null
+        val creditsAt = seg?.outroStart?.takeIf { it in (dur / 2)..dur } ?: (dur - 30_000)
+        var nextIn = 0
+        if (next != null && pos >= creditsAt && _ui.value.preparing == null) {
+            if (countdownFrom == 0L) countdownFrom = System.currentTimeMillis()
+            nextIn = (10 - ((System.currentTimeMillis() - countdownFrom) / 1000)).toInt().coerceAtLeast(0)
+            if (nextIn == 0 && player.isPlaying) { playNext(); return }
+        } else countdownFrom = 0L
+        val shown = if (next != null && pos >= creditsAt) next else null
+        if (_ui.value.skipIntro != showSkip || _ui.value.nextUp != shown || _ui.value.nextIn != nextIn) {
+            _ui.update { it.copy(skipIntro = showSkip, nextUp = shown, nextIn = nextIn) }
+        }
+    }
+
+    fun skipIntro() { segments?.introEnd?.let { player.seekTo(it) } }
+
+    fun playNext() {
+        val n = _ui.value.nextUp ?: request?.let { nextEpisodeOf(it.videoId) } ?: return
+        countdownFrom = 0L
+        _ui.update { it.copy(nextUp = null, nextIn = 0) }
+        playEpisode(n)
+    }
+
+    fun cancelNext() {
+        nextDismissedFor = request?.videoId
+        countdownFrom = 0L
+        _ui.update { it.copy(nextUp = null, nextIn = 0) }
+    }
 
     /** Tells Trakt (when linked) what's playing and how far through it is. */
     private fun scrobble(action: String, percent: Float? = null) {

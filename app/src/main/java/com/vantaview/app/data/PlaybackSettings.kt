@@ -39,10 +39,32 @@ val TRACK_LANGUAGES = listOf(
     "ja" to "Japanese", "ko" to "Korean", "zh" to "Chinese",
 )
 
-/** Settings › Playback. Shared by every profile on this device. */
+/**
+ * Settings › Playback and Subtitles and audio, kept separately for each profile. A profile without its own
+ * copy yet starts from the settings the device had before they became per profile.
+ */
 @Singleton
-class PlaybackSettings @Inject constructor(@ApplicationContext context: Context) {
-    private val sp = context.getSharedPreferences("playback", Context.MODE_PRIVATE)
+class PlaybackSettings @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
+) {
+    private val shared = context.getSharedPreferences("playback", Context.MODE_PRIVATE)
+    private val sp: android.content.SharedPreferences
+        get() {
+            val id = session.id
+            val p = context.getSharedPreferences("playback_p$id", Context.MODE_PRIVATE)
+            if (!p.getBoolean("_made", false)) {
+                val e = p.edit()
+                shared.all.forEach { (k, v) ->
+                    when (v) {
+                        is String -> e.putString(k, v); is Int -> e.putInt(k, v); is Boolean -> e.putBoolean(k, v)
+                        is Long -> e.putLong(k, v); is Float -> e.putFloat(k, v)
+                    }
+                }
+                e.putBoolean("_made", true).apply()
+            }
+            return p
+        }
 
     /** Small remembered choices (such as the Live TV order). */
     fun getString(key: String): String? = sp.getString(key, null)
@@ -112,9 +134,78 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
         get() = sp.getInt("reminder_minutes", 5)
         set(v) { sp.edit().putInt("reminder_minutes", v).apply() }
 
-    fun loadControl(): LoadControl = buffer.let {
-        DefaultLoadControl.Builder().setBufferDurationsMs(it.minMs, it.maxMs, it.startMs, it.rebufferMs).build()
+    // ---- Automatic buffering ----
+
+    /** Let VantaView change the buffer itself: up after stalls, back down after smooth watching. */
+    var autoBuffer: Boolean
+        get() = sp.getBoolean("auto_buffer", true)
+        set(v) { sp.edit().putBoolean("auto_buffer", v).apply() }
+
+    /** Small-memory devices (1 GB Fire TV Sticks and the like) never go above Medium. */
+    private val lowMemory: Boolean by lazy {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        am.isLowRamDevice || am.memoryClass < 192
     }
+
+    /** The buffer actually used: the chosen one, or the one automatic buffering has settled on. */
+    val effectiveBuffer: BufferSize
+        get() {
+            val b = if (autoBuffer) runCatching { BufferSize.valueOf(sp.getString("auto_level", null)!!) }.getOrDefault(buffer) else buffer
+            return if (lowMemory && b == BufferSize.LARGE) BufferSize.MEDIUM else b
+        }
+
+    /** The player stalled while playing. Two stalls in one session move the next stream up a size. */
+    fun reportStall(stallsThisSession: Int) {
+        if (!autoBuffer || stallsThisSession < 2) return
+        val now = effectiveBuffer
+        val up = BufferSize.entries.getOrNull(now.ordinal + 1) ?: return
+        if (lowMemory && up == BufferSize.LARGE) return
+        sp.edit().putString("auto_level", up.name).putLong("auto_smooth_ms", 0).apply()
+    }
+
+    /** Smooth playing time; after two hours without a stall the buffer steps back towards the chosen size. */
+    fun reportSmooth(ms: Long) {
+        if (!autoBuffer || ms <= 0) return
+        val total = sp.getLong("auto_smooth_ms", 0) + ms
+        val now = effectiveBuffer
+        if (total >= 2 * 3_600_000L && now.ordinal > buffer.ordinal) {
+            sp.edit().putString("auto_level", BufferSize.entries[now.ordinal - 1].name).putLong("auto_smooth_ms", 0).apply()
+        } else sp.edit().putLong("auto_smooth_ms", total).apply()
+    }
+
+    fun loadControl(): LoadControl = effectiveBuffer.let {
+        DefaultLoadControl.Builder().setBufferDurationsMs(it.minMs, it.maxMs, it.startMs, it.rebufferMs)
+            // Keep a little behind the play position so short rewinds don't reload (less on small devices).
+            .setBackBuffer(if (lowMemory) 10_000 else 30_000, true)
+            .build()
+    }
+
+    // ---- Films and series ----
+
+    /** Show "Skip intro" when the intro databases know where an episode's intro is. */
+    var skipIntro: Boolean
+        get() = sp.getBoolean("skip_intro", true)
+        set(v) { sp.edit().putBoolean("skip_intro", v).apply() }
+
+    /** Count down to the next episode at the end credits. */
+    var nextEpisode: Boolean
+        get() = sp.getBoolean("next_episode", true)
+        set(v) { sp.edit().putBoolean("next_episode", v).apply() }
+
+    /** Play a title's trailer on its details page after 20 seconds. */
+    var autoTrailers: Boolean
+        get() = sp.getBoolean("auto_trailers", true)
+        set(v) { sp.edit().putBoolean("auto_trailers", v).apply() }
+
+    /** Trailers start with sound (otherwise muted until you unmute). */
+    var trailerSound: Boolean
+        get() = sp.getBoolean("trailer_sound", true)
+        set(v) { sp.edit().putBoolean("trailer_sound", v).apply() }
+
+    /** Programme reminders also show while something is playing. */
+    var remindersWhilePlaying: Boolean
+        get() = sp.getBoolean("remind_playing", true)
+        set(v) { sp.edit().putBoolean("remind_playing", v).apply() }
 
     /** True only the first time it's asked after the app starts (for "Start on last channel"). */
     private var startHandled = false

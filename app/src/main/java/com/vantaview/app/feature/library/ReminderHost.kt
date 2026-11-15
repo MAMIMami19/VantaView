@@ -18,12 +18,12 @@ import kotlinx.coroutines.delay
 
 /** While VantaView is open: pops up "starts in 5 minutes" for each reminder that's due. */
 @Composable
-fun ReminderHost(library: LibraryStore, onWatch: (Long) -> Unit) {
+fun ReminderHost(library: LibraryStore, quiet: () -> Boolean = { false }, onWatch: (Long) -> Unit) {
     var showing by remember { mutableStateOf<Reminder?>(null) }
     val shown = remember { mutableSetOf<String>() }
     LaunchedEffect(Unit) {
         while (true) {
-            if (showing == null) {
+            if (showing == null && !quiet()) {
                 val now = System.currentTimeMillis()
                 showing = library.remindersNow().firstOrNull { it.key !in shown && now >= it.alertAt && now < it.start + 2 * 60_000L }
                 showing?.let { shown += it.key }

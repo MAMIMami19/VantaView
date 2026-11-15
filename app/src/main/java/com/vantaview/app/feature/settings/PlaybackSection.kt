@@ -23,6 +23,7 @@ import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
 
 /** Settings › Playback. Changes apply the next time a video starts. */
+/** Settings › Playback, for the profile in use. */
 @Composable
 fun PlaybackSection(s: PlaybackSettings) {
     var buffer by remember { mutableStateOf(s.buffer) }
@@ -32,10 +33,36 @@ fun PlaybackSection(s: PlaybackSettings) {
     var startLast by remember { mutableStateOf(s.startOnLastChannel) }
     var rememberSize by remember { mutableStateOf(s.rememberSize) }
     var remindMins by remember { mutableStateOf(s.reminderMinutes) }
+    var auto by remember { mutableStateOf(s.autoBuffer) }
+    var skipIntro by remember { mutableStateOf(s.skipIntro) }
+    var nextEp by remember { mutableStateOf(s.nextEpisode) }
+    var autoTrailers by remember { mutableStateOf(s.autoTrailers) }
+    var trailerSound by remember { mutableStateOf(s.trailerSound) }
+    var remindPlaying by remember { mutableStateOf(s.remindersWhilePlaying) }
 
     Section("Buffer size") {
         Choices(BufferSize.entries, buffer, { it.label }) { buffer = it; s.buffer = it }
         Text(buffer.detail, color = Vanta.TextDim, fontSize = 13.sp)
+        Toggle(
+            "Adjust automatically",
+            "If a stream keeps stopping to load, the next one uses a bigger buffer; after a couple of hours of smooth watching it steps back. " +
+                "Small devices (like 1 GB Fire TV Sticks) never go above Medium." +
+                (if (auto && s.effectiveBuffer != buffer) " Using ${s.effectiveBuffer.label} right now." else ""),
+            auto,
+        ) { auto = it; s.autoBuffer = it }
+    }
+
+    Section("Films and series") {
+        Toggle(
+            "Skip intro",
+            "A Skip intro button when the intro's times are known (from the community databases IntroDB and SkipDB).",
+            skipIntro,
+        ) { skipIntro = it; s.skipIntro = it }
+        Toggle("Next episode countdown", "During the end credits, count down and play the next episode.", nextEp) { nextEp = it; s.nextEpisode = it }
+        Toggle("Play trailers on details pages", "After 20 seconds on a film or series page, its trailer plays in the background.", autoTrailers) {
+            autoTrailers = it; s.autoTrailers = it
+        }
+        if (autoTrailers) Toggle("Trailers with sound", "Off starts them muted; you can unmute on the page.", trailerSound) { trailerSound = it; s.trailerSound = it }
     }
 
     Section("Player controls") {
@@ -57,6 +84,9 @@ fun PlaybackSection(s: PlaybackSettings) {
     Section("Programme reminders") {
         Text("Remind me this long before a programme starts", color = Vanta.Text)
         Choices(listOf(1, 5, 10, 15), remindMins, { "$it min" }) { remindMins = it; s.reminderMinutes = it }
+        Toggle("Remind me while watching", "Show reminders over a film or channel too (otherwise only on menus).", remindPlaying) {
+            remindPlaying = it; s.remindersWhilePlaying = it
+        }
     }
 
     Section("Phone gestures") {

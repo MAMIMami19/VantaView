@@ -46,7 +46,12 @@ data class PlayerUi(
     /** What's on now and next, from the TV guide (null when the channel has no guide). */
     val now: com.vantaview.app.data.db.ProgrammeEntity? = null,
     val next: com.vantaview.app.data.db.ProgrammeEntity? = null,
+    /** Pause and rewind: null while simply watching live. */
+    val shift: ShiftUi? = null,
 )
+
+/** Paused or behind live: how far behind, and where the rewound picture comes from. */
+data class ShiftUi(val paused: Boolean, val behindSec: Int, val fromArchive: Boolean, val note: String? = null)
 
 @OptIn(UnstableApi::class)
 @HiltViewModel
@@ -113,6 +118,10 @@ class PlayerViewModel @Inject constructor(
                     _ui.update { it.copy(status = PlayStatus.PLAYING, message = null, attempt = 0) }
                 }
                 Player.STATE_BUFFERING -> {
+                    if (working != null && player.playWhenReady && recorder == null && archiveStart == null) {
+                        liveStalls++
+                        settings.reportStall(liveStalls)
+                    }
                     // A live stream stuck buffering for 12 seconds is treated as dropped.
                     watchdog = viewModelScope.launch {
                         delay(12_000)
@@ -215,6 +224,7 @@ class PlayerViewModel @Inject constructor(
 
     fun resume() {
         if (candidates.isEmpty()) return
+        stopShift()
         // Live TV: jump back to the live edge instead of resuming old buffered video.
         prepareCurrent()
     }
@@ -227,6 +237,8 @@ class PlayerViewModel @Inject constructor(
         session.setLastChannel(channel.id)
         _index.value = index
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel()
+        stopShift()
+        currentChannel = channel
         player.stop()
         attempts = 0
         working = null
@@ -273,6 +285,156 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    // ---- Pause, rewind and Go live ----
+
+    private var currentChannel: ChannelEntity? = null
+    private var recorder: com.vantaview.app.data.player.LiveRecorder? = null
+    /** Wall-clock time at the start of the catch-up stream being played, while rewound past the recording. */
+    private var archiveStart: Long? = null
+    private var shiftTicker: Job? = null
+    private var liveStalls = 0
+
+    private fun hlsNow() = candidates.getOrNull(working ?: candidate)?.second == true
+
+    /** How much to keep on the device: 30 minutes, or 10 on small devices or when space is short. */
+    private fun windowSec(): Int {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val free = context.cacheDir.usableSpace
+        return if (am.isLowRamDevice || free < 3L * 1024 * 1024 * 1024) 600 else 1800
+    }
+
+    /** OK on a remote, the Pause button, or Play/Pause. */
+    fun togglePause() {
+        when {
+            recorder != null || archiveStart != null || hlsNow() -> {
+                player.playWhenReady = !player.playWhenReady
+                startShiftTicker()
+            }
+            _ui.value.status == PlayStatus.PLAYING -> startRecording(pauseAtStart = true)
+        }
+    }
+
+    /** Back or forward by [seconds] (negative = rewind). */
+    fun jump(seconds: Int) {
+        val ch = currentChannel ?: return
+        val pos = player.currentPosition
+        val dur = player.duration.takeIf { it > 0 && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
+        val target = pos + seconds * 1000L
+        when {
+            archiveStart != null ->
+                if (seconds > 0 && dur > 0 && target >= dur - 5_000) goLive() else player.seekTo(target.coerceAtLeast(0))
+            recorder != null || hlsNow() -> when {
+                target < 0 && repo.canTimeshift(ch) -> playArchiveFrom(wallAt(pos) + seconds * 1000L)
+                seconds > 0 && dur > 0 && target >= dur - 8_000 -> goLive()
+                else -> player.seekTo(target.coerceAtLeast(0))
+            }
+            seconds < 0 && repo.canTimeshift(ch) -> playArchiveFrom(System.currentTimeMillis() + seconds * 1000L)
+            seconds < 0 -> {
+                // Nothing recorded yet: start now, so you can rewind from here on.
+                startRecording(pauseAtStart = false)
+                _ui.update { it.copy(shift = ShiftUi(false, 0, false, "Recording from now, so you can rewind from here")) }
+            }
+        }
+    }
+
+    /** Back to the live picture, dropping anything recorded. */
+    fun goLive() {
+        stopShift()
+        _ui.update { it.copy(shift = null) }
+        prepareCurrent()
+    }
+
+    /** Wall-clock time shown at player position [pos] of a live (recorded or HLS) stream. */
+    private fun wallAt(pos: Long): Long {
+        val dur = player.duration.takeIf { it > 0 && it != androidx.media3.common.C.TIME_UNSET } ?: return System.currentTimeMillis()
+        return System.currentTimeMillis() - (dur - pos)
+    }
+
+    private fun startRecording(pauseAtStart: Boolean) {
+        val (url, hls) = candidates.getOrNull(working ?: candidate) ?: return
+        if (hls) { if (pauseAtStart) player.playWhenReady = false; return } // HLS keeps its own window
+        watchdog?.cancel(); retry?.cancel()
+        player.stop() // one connection: the recording takes over from the player
+        val rec = com.vantaview.app.data.player.LiveRecorder(okHttp, url, headers, java.io.File(context.cacheDir, "timeshift"), windowSec())
+        recorder = rec
+        rec.start(viewModelScope)
+        _ui.update { it.copy(shift = ShiftUi(pauseAtStart, 0, false, "Starting the recording…")) }
+        viewModelScope.launch {
+            val until = System.currentTimeMillis() + 15_000
+            while (rec.pieces < 1 && rec.failed == null && System.currentTimeMillis() < until) delay(250)
+            if (recorder !== rec) return@launch
+            if (rec.pieces < 1) {
+                stopShift()
+                _ui.update { it.copy(shift = null, message = rec.failed ?: "This channel can't be paused") }
+                prepareCurrent()
+                return@launch
+            }
+            val item = MediaItem.Builder().setUri(android.net.Uri.fromFile(rec.playlist)).setMimeType(MimeTypes.APPLICATION_M3U8).build()
+            player.setMediaSource(DefaultMediaSourceFactory(DefaultDataSource.Factory(context)).createMediaSource(item))
+            player.prepare()
+            if (pauseAtStart) { player.seekTo(0); player.playWhenReady = false } else player.playWhenReady = true
+            startShiftTicker()
+        }
+    }
+
+    private fun playArchiveFrom(from: Long) {
+        val ch = currentChannel ?: return
+        val earliest = System.currentTimeMillis() - ch.archiveDays * 86_400_000L
+        val start = from.coerceAtLeast(earliest)
+        recorder?.stop(); recorder = null
+        _ui.update { it.copy(shift = ShiftUi(false, ((System.currentTimeMillis() - start) / 1000).toInt(), true, "Loading from catch-up…")) }
+        viewModelScope.launch {
+            val t = runCatching { repo.timeshift(ch, start, System.currentTimeMillis()) }.getOrNull()
+            if (t == null) { goLive(); _ui.update { it.copy(message = "Couldn't rewind this channel") }; return@launch }
+            archiveStart = start
+            val http = OkHttpDataSource.Factory(okHttp).setDefaultRequestProperties(t.headers)
+            val item = MediaItem.Builder().setUri(t.url).apply { if (looksHls(t.url)) setMimeType(MimeTypes.APPLICATION_M3U8) }.build()
+            player.setMediaSource(DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http)).createMediaSource(item))
+            player.prepare()
+            player.playWhenReady = true
+            startShiftTicker()
+        }
+    }
+
+    private fun shiftProblem(reason: String) {
+        val rec = recorder
+        when {
+            archiveStart != null -> goLive() // the catch-up stream reached now (or failed): carry on live
+            rec != null && rec.failed != null -> { goLive(); _ui.update { it.copy(message = rec.failed) } }
+            rec != null -> { player.seekToDefaultPosition(); player.prepare() } // fell out of the kept window
+            else -> goLive()
+        }
+    }
+
+    private fun startShiftTicker() {
+        if (shiftTicker?.isActive == true) return
+        shiftTicker = viewModelScope.launch {
+            while (true) {
+                val dur = player.duration.takeIf { it > 0 && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
+                val pos = player.currentPosition
+                val a = archiveStart
+                val behind = when {
+                    a != null -> ((System.currentTimeMillis() - (a + pos)) / 1000).toInt()
+                    dur > 0 -> ((dur - pos) / 1000).toInt()
+                    else -> 0
+                }
+                val shifting = recorder != null || a != null || (!player.playWhenReady && hlsNow())
+                _ui.update {
+                    it.copy(shift = if (!shifting && behind < 15) null else ShiftUi(!player.playWhenReady, behind.coerceAtLeast(0), a != null,
+                        it.shift?.note?.takeIf { _ -> player.playbackState != Player.STATE_READY }))
+                }
+                if (!shifting && behind < 15) break
+                delay(1000)
+            }
+        }
+    }
+
+    private fun stopShift() {
+        shiftTicker?.cancel(); shiftTicker = null
+        recorder?.stop(); recorder = null
+        archiveStart = null
+    }
+
     private fun looksHls(url: String): Boolean = url.substringBefore('?').endsWith(".m3u8", ignoreCase = true)
 
     private fun prepareCurrent() {
@@ -302,6 +464,8 @@ class PlayerViewModel @Inject constructor(
 
     private fun onFailure(reason: String) {
         retry?.cancel()
+        // Paused or rewound: problems are handled by the time-shift code, not by reconnecting to live.
+        if (recorder != null || archiveStart != null) { shiftProblem(reason); return }
         if (candidates.isEmpty()) return
         when {
             // Still looking for an address that works: try the next one straight away.
@@ -342,6 +506,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         watchdog?.cancel(); retry?.cancel(); loadJob?.cancel(); eventTimer?.cancel(); guideJob?.cancel()
+        stopShift()
         player.removeListener(listener)
         player.release()
         ai?.release()

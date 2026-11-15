@@ -263,6 +263,13 @@ private fun VideoArea(
                     if (e.type == KeyEventType.KeyDown && typed.length < 5) typed += digit
                     return@onKeyEvent true
                 }
+                // Remote media keys: play/pause, rewind and fast forward.
+                when (e.key) {
+                    Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> { if (e.type == KeyEventType.KeyUp) vm.togglePause(); return@onKeyEvent true }
+                    Key.MediaRewind -> { if (e.type == KeyEventType.KeyUp) vm.jump(-30); return@onKeyEvent true }
+                    Key.MediaFastForward -> { if (e.type == KeyEventType.KeyUp) vm.jump(30); return@onKeyEvent true }
+                    else -> Unit
+                }
                 // Menu on a remote changes the picture size (Fit, Fill, Zoom).
                 if (e.key == Key.Menu) {
                     if (e.type == KeyEventType.KeyUp) vm.cycleSize()
@@ -374,6 +381,16 @@ private fun VideoArea(
                         FocusCard(onClick = vm::cycleSize) {
                             Text("Size: ${size.label}", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
                         }
+                        // Pause, rewind and Go live.
+                        val sh = ui.shift
+                        FocusCard(onClick = { vm.jump(-30) }) { Text("⏪ 30s", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
+                        FocusCard(onClick = vm::togglePause) {
+                            Text(if (sh?.paused == true) "▶ Play" else "⏸ Pause", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
+                        }
+                        if (sh != null) {
+                            FocusCard(onClick = { vm.jump(30) }) { Text("30s ⏩", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
+                            FocusCard(onClick = vm::goLive) { Text("● Go live", color = Vanta.Error, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1) }
+                        }
                         if (!isTv) {
                             val activity = LocalContext.current as? Activity
                             FocusCard(onClick = { locked = true; showUnlock = false }) { Text("🔒", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp) }
@@ -398,8 +415,18 @@ private fun VideoArea(
                         Spacer(Modifier.width(12.dp))
                         Text(
                             ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                         )
+                        ui.shift?.let { sh ->
+                            Spacer(Modifier.width(10.dp))
+                            val behind = if (sh.behindSec >= 3600) "%d:%02d:%02d".format(sh.behindSec / 3600, sh.behindSec / 60 % 60, sh.behindSec % 60)
+                                else "%d:%02d".format(sh.behindSec / 60, sh.behindSec % 60)
+                            Text(
+                                sh.note ?: ((if (sh.paused) "Paused · " else "") + "−$behind" + if (sh.fromArchive) " · catch-up" else ""),
+                                color = Vanta.Cyan, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
                         if (!compact) buttonsRow()
                     }
                     if (compact) buttonsRow()

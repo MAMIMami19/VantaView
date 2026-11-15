@@ -533,6 +533,17 @@ class ProviderRepository @Inject constructor(
         return PlayTarget(url, null, live.headers)
     }
 
+    /** True when the channel can play from any recent time (Xtream and M3U catch-up, not Stalker programme links). */
+    fun canTimeshift(channel: ChannelEntity): Boolean = channel.archiveDays > 0 && channel.catchupSource != null
+
+    /** The channel from [from] (wall clock) up to [to], from the provider's catch-up archive. */
+    suspend fun timeshift(channel: ChannelEntity, from: Long, to: Long): PlayTarget? {
+        if (!canTimeshift(channel)) return null
+        val live = resolveStream(channel)
+        val url = CatchUp.build(channel.catchupSource!!, live.url, from, to, System.currentTimeMillis()) ?: return null
+        return PlayTarget(url, null, live.headers)
+    }
+
     /** True when catch-up can be offered for this programme. */
     fun hasCatchUp(channel: ChannelEntity, programme: com.vantaview.app.data.db.ProgrammeEntity, now: Long = System.currentTimeMillis()): Boolean =
         channel.archiveDays > 0 && (programme.remoteId != null || channel.catchupSource != null) && programme.stop <= now &&
