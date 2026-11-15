@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.settings
 
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,8 +117,16 @@ private fun UpdateCard(info: UpdateInfo, percent: Int?, m: UpdateManager) {
             Text(info.notes, color = Vanta.TextDim, fontSize = 14.sp, lineHeight = 20.sp)
         }
         if (percent != null) {
-            Text("Downloading… $percent%", color = Vanta.Cyan)
-            LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+            // Focusable, and takes focus, so a TV remote stays here while the download runs.
+            val here = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+            androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { here.requestFocus() } }
+            FocusCard(onClick = {}, modifier = Modifier.fillMaxWidth().focusRequester(here)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Downloading… $percent%", color = Vanta.Cyan)
+                    LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                    Text("Android's installer opens when it's done.", color = Vanta.TextDim, fontSize = 13.sp)
+                }
+            }
         } else {
             GradientButton("Update now", onClick = { m.install(info) })
             Text("Android asks you to confirm before installing. Your profiles, playlists and settings stay.", color = Vanta.TextDim, fontSize = 13.sp)

@@ -1,3 +1,4 @@
+- Fix: on a TV, pressing Update now no longer jumps to the Playback settings; the download progress stays on screen.
 - New setup steps on first start: add your TV (Smart Add or free channels), then films and series (Cinemeta in one press). Both can be skipped.
 - Section names open their full list: Continue watching and Your Watchlist on Home, and every row on Movies and TV Series.
 - Press and hold a poster or a Continue watching card to remove it from your Watchlist or Continue watching.
@@ -5,4 +6,3 @@
 - Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
 - New Catch-up page (from Live TV or the TV Guide), with search of past programmes.
 - Movies and TV Series: a banner of new titles, a posters-only view, and details of the poster you're on (TVs).
-- In the player: ⋯ More has a sleep timer, stream info and "open in another player".

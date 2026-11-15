@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -84,6 +85,11 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page).imePadding()) {
         if (maxWidth >= 720.dp) {
             val shown = current?.takeIf { it in found } ?: found.firstOrNull()
+            // When something focused in the page goes away (e.g. Update now becomes the download progress), a TV
+            // drops focus onto the sidebar. That mustn't switch the page, so focus arriving just after the page
+            // lost it is ignored; moving up and down the sidebar still switches as before.
+            var paneHadFocus by remember { mutableStateOf(false) }
+            var paneLostAt by remember { mutableStateOf(0L) }
             Row(Modifier.fillMaxSize()) {
                 Column(
                     Modifier.width(300.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -94,14 +100,21 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
                         FocusCard(
                             onClick = { current = sec },
                             selected = sec == shown,
-                            modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) current = sec },
+                            modifier = Modifier.fillMaxWidth().onFocusChanged {
+                                if (it.isFocused && System.currentTimeMillis() - paneLostAt > 400) current = sec
+                            },
                         ) { Text(sec.title, color = Vanta.Text, fontWeight = if (sec == shown) FontWeight.Bold else FontWeight.Normal) }
                     }
                     if (found.isEmpty()) NoMatch()
                 }
                 if (shown != null) key(shown) {
                     Column(
-                        Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp),
+                        Modifier.weight(1f).fillMaxHeight()
+                            .onFocusChanged {
+                                if (paneHadFocus && !it.hasFocus) paneLostAt = System.currentTimeMillis()
+                                paneHadFocus = it.hasFocus
+                            }
+                            .verticalScroll(rememberScrollState()).padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         com.vantaview.app.ui.PageTitle(shown.title)
