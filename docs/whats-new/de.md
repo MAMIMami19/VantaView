@@ -1,0 +1,8 @@
+- M3U-Playlist-Links werden jetzt verschlüsselt gespeichert, und der darin enthaltene Zugang wird in allen gespeicherten Sender- und Filmadressen verborgen. Vorhandene Playlists werden nach dem Update einmal verschlüsselt und neu geladen.
+- Filme und Serien aus deiner M3U-Playlist oder deinem Xtream-Codes-Zugang erscheinen jetzt unter Filme und Serien, mit Postern und Details von TMDB. Sie erscheinen auch als „Aus deiner Playlist“, wenn du denselben Titel über ein Add-on öffnest. Aktualisiere die Playlist einmal, um sie zu holen; sie erscheinen auch ohne Add-ons.
+- Während ein Torrent oder Debrid-Stream vorbereitet wird, ist sein Fortschritt 5 Sekunden zu sehen und verschwindet dann. Tippe auf den Bildschirm, um ihn wieder zu sehen.
+- Torrent-Ergebnisse laufen jetzt auch ohne Debrid-Konto. Hast du eines, wird Debrid weiterhin zuerst genutzt. Während ein Torrent läuft, teilt er mit anderen; beim Schließen hört er auf und löscht die Datei. Abschaltbar unter Einstellungen › Wiedergabe.
+- VantaView spricht jetzt Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Niederländisch, Polnisch und Türkisch. Es folgt deinem Gerät, oder wähle unter Einstellungen › Darstellung für jedes Profil eine Sprache. Film- und Seriendetails kommen auch in dieser Sprache.
+- Fehlerbehebung: Auf einem Fernseher springt Jetzt aktualisieren nicht mehr zu den Wiedergabe-Einstellungen; der Download-Fortschritt bleibt sichtbar.
+- Neue Schritte beim ersten Start: Füge dein TV hinzu (Smart-Hinzufügen oder kostenlose Sender), dann Filme und Serien (Cinemeta mit einem Tipp). Beides lässt sich überspringen.
+- Abschnittsnamen öffnen ihre ganze Liste: Weiterschauen und Deine Merkliste auf der Startseite und jede Reihe bei Filme und Serien.

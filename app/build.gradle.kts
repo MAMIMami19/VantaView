@@ -17,12 +17,13 @@ val traktId = secret("TRAKT_CLIENT_ID")
 val traktSecret = secret("TRAKT_CLIENT_SECRET")
 val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
 
-// docs/WHATS-NEW.md goes inside the app, for the "What's new" pop-up after an update.
+// docs/WHATS-NEW.md goes inside the app, for the "What's new" pop-up after an update, with its
+// translations from docs/whats-new/<language>.md (as whats_new_<language>.md).
 val whatsNewDir = layout.buildDirectory.dir("generated/whatsnew")
 val copyWhatsNew by tasks.registering(Copy::class) {
-    from(rootProject.file("docs/WHATS-NEW.md"))
+    from(rootProject.file("docs/WHATS-NEW.md")) { rename { "whats_new.md" } }
+    from(rootProject.file("docs/whats-new")) { include("*.md"); rename { "whats_new_$it" } }
     into(whatsNewDir)
-    rename { "whats_new.md" }
 }
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(copyWhatsNew) }
 

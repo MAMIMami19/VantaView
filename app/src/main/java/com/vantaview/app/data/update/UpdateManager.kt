@@ -98,12 +98,19 @@ class UpdateManager @Inject constructor(
 
     fun markWhatsNewSeen() { sp.edit().putInt("whats_new_seen", BuildConfig.VERSION_CODE).apply() }
 
-    /** This version's "What's new" bullets, from the copy of docs/WHATS-NEW.md inside the app. */
-    fun bundledWhatsNew(): List<String> = runCatching {
-        context.assets.open("whats_new.md").bufferedReader().readLines()
-    }.getOrDefault(emptyList())
-        .map { it.trim() }.filter { it.startsWith("- ") || it.startsWith("* ") }
-        .map { plainNotes(it).removePrefix("• ").trim() }
+    /**
+     * This version's "What's new" bullets, from the copy of docs/WHATS-NEW.md inside the app, in the app's
+     * language when its translation (docs/whats-new/<language>.md) has the same number of bullets.
+     */
+    fun bundledWhatsNew(): List<String> {
+        fun read(name: String) = runCatching { context.assets.open(name).bufferedReader().readLines() }.getOrDefault(emptyList())
+            .map { it.trim() }.filter { it.startsWith("- ") || it.startsWith("* ") }
+            .map { plainNotes(it).removePrefix("• ").trim() }
+        val english = read("whats_new.md")
+        val lang = com.vantaview.app.ui.I18n.lang
+        if (lang == "en") return english
+        return read("whats_new_$lang.md").takeIf { it.size == english.size } ?: english
+    }
 
     /** Checks once a day, when the app starts. */
     fun checkIfDue() {
@@ -149,11 +156,14 @@ class UpdateManager @Inject constructor(
         val assets = o.optJSONArray("assets") ?: return null
         var apk: JSONObject? = null
         var versionTxt: String? = null
+        var translated: String? = null
+        val lang = com.vantaview.app.ui.I18n.lang
         for (i in 0 until assets.length()) {
             val a = assets.getJSONObject(i)
             val n = a.optString("name")
             if (n.endsWith(".apk", true)) apk = a
             if (n == "version.txt") versionTxt = a.optString("browser_download_url")
+            if (lang != "en" && n == "whats-new-$lang.md") translated = a.optString("browser_download_url")
         }
         apk ?: return null
         val code = versionTxt?.let { get(it)?.trim()?.toLongOrNull() }
@@ -166,7 +176,9 @@ class UpdateManager @Inject constructor(
         } else o.optString("name").ifBlank { o.optString("tag_name") }
         return Found(
             UpdateInfo(
-                name = name, notes = plainNotes(whatsNew(body)), apkUrl = apk.optString("browser_download_url"),
+                // The release's notes in the app's language when the build attached them, otherwise in English.
+                name = name, notes = plainNotes(translated?.let { get(it) }?.trim()?.ifBlank { null } ?: whatsNew(body)),
+                apkUrl = apk.optString("browser_download_url"),
                 size = apk.optLong("size"), test = test,
             ),
             newer, code ?: published,

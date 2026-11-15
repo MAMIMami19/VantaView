@@ -49,6 +49,8 @@ jobs:
             echo "Test build ${{ github.run_number }} from commit ${{ github.sha }}."
             echo "Signed with a shared test key. Source: this repository (GPL-3.0-or-later)."
           } > release-notes.md
+          # The same notes in each language the app speaks, for the update card.
+          for f in docs/whats-new/*.md; do cp "$f" "whats-new-$(basename "$f")"; done
       - name: Publish as the "test-latest" pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -58,4 +60,5 @@ jobs:
           files: |
             VantaView-test.apk
             version.txt
+            whats-new-*.md
           body_path: release-notes.md

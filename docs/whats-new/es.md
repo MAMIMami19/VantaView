@@ -1,0 +1,8 @@
+- Los enlaces de listas M3U ahora se guardan cifrados, y el acceso que contienen se oculta en todas las direcciones de canales y películas guardadas. Las listas existentes se cifran y se vuelven a cargar una vez tras actualizar.
+- Las películas y series de tu lista M3U o tu acceso Xtream Codes ahora aparecen en Películas y Series, con pósteres y detalles de TMDB. También aparecen como "De tu lista" al abrir el mismo título desde un complemento. Actualiza la lista una vez para traerlas; también se muestran aunque no tengas complementos.
+- Mientras un torrent o una emisión debrid se prepara, su progreso se muestra 5 segundos y luego se oculta. Toca la pantalla para volver a verlo.
+- Los resultados torrent ahora se reproducen sin cuenta debrid. Si tienes una, debrid se sigue usando primero. Mientras se reproduce, un torrent comparte con otras personas, y deja de hacerlo y borra el archivo al cerrarlo. Puedes desactivarlo en Ajustes › Reproducción.
+- VantaView ya habla español, francés, alemán, italiano, portugués, neerlandés, polaco y turco. Sigue el idioma de tu dispositivo, o elige uno para cada perfil en Ajustes › Apariencia. Los detalles de películas y series también llegan en ese idioma.
+- Corrección: en una TV, pulsar Actualizar ahora ya no salta a los ajustes de Reproducción; el progreso de la descarga se queda en pantalla.
+- Nuevos pasos al iniciar por primera vez: añade tu TV (Añadido inteligente o canales gratuitos) y luego películas y series (Cinemeta de un toque). Ambos se pueden omitir.
+- Los nombres de las secciones abren su lista completa: Seguir viendo y Mi lista en Inicio, y cada fila de Películas y Series.
