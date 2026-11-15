@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.player
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import android.app.Activity
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -116,27 +118,19 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
         vm.ai?.let { AiCaption(it, vm.settings, Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = if (controls) 120.dp else 28.dp)) }
 
         if (!locked && !pip && (controls || ui.failed != null || ui.preparing != null)) {
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!isTv) {
-                    FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text) }
-                    Spacer(Modifier.width(14.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(ui.title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    ui.subtitle?.let { Text(it, color = Vanta.TextDim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (ui.isSeries) FocusCard(onClick = { vm.loadEpisodes(); episodesOpen = true }) { Text("Episodes", color = Vanta.Text) }
-                    FocusCard(onClick = { speedOpen = true }) { Text(if (ui.speed == 1f) "Speed" else "${ui.speed}×", color = Vanta.Text) }
+            // On an upright phone the buttons go on their own line under the title.
+            val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 600
+            val buttons: @Composable () -> Unit = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = if (compact) Modifier.horizontalScroll(rememberScrollState()) else Modifier,
+                ) {
+                    if (ui.isSeries) FocusCard(onClick = { vm.loadEpisodes(); episodesOpen = true }) { Text("Episodes", color = Vanta.Text, maxLines = 1) }
+                    FocusCard(onClick = { speedOpen = true }) { Text(if (ui.speed == 1f) "Speed" else "${ui.speed}×", color = Vanta.Text, maxLines = 1) }
                     if (ui.streams.size > 1) {
                         val cur = ui.streams.getOrNull(ui.index)
                         FocusCard(onClick = { picking = true }) {
-                            Text("Streams" + (cur?.let { "  (${qualityLabel(it)})" } ?: ""), color = Vanta.Text)
+                            Text("Streams" + (cur?.let { "  (${qualityLabel(it)})" } ?: ""), color = Vanta.Text, maxLines = 1)
                         }
                     }
                     if (!isTv) {
@@ -144,6 +138,25 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
                         if (PlayerPip.supported(activity)) FocusCard(onClick = { PlayerPip.enter(activity) }) { Text("⧉", color = Vanta.Text) }
                     }
                 }
+            }
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
+                    .padding(horizontal = if (compact) 12.dp else 20.dp, vertical = if (compact) 8.dp else 14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!isTv) {
+                        FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text, maxLines = 1) }
+                        Spacer(Modifier.width(if (compact) 10.dp else 14.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(ui.title, color = Color.White, fontSize = if (compact) 16.sp else 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        ui.subtitle?.let { Text(it, color = Vanta.TextDim, fontSize = if (compact) 13.sp else 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                    if (!compact) buttons()
+                }
+                if (compact) buttons()
             }
         }
         if (locked) {

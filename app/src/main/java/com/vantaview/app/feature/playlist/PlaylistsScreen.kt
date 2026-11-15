@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package com.vantaview.app.feature.playlist
 
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -190,18 +192,13 @@ private fun ProviderCard(
                     color = Vanta.TextDim, fontSize = 13.sp,
                 )
             }
-            Spacer(Modifier.width(8.dp))
-            if (p.channelCount > 0) {
-                FocusCard(onClick = onCountries) { Text("Countries", color = Vanta.Text) }
-                Spacer(Modifier.width(8.dp))
-            }
-            onGuide?.let {
-                FocusCard(onClick = it) { Text(if (p.customEpg != null) "Guide ✓" else "Guide", color = Vanta.Text) }
-                Spacer(Modifier.width(8.dp))
-            }
-            FocusCard(onClick = onRefresh) { Text("Refresh", color = Vanta.Text) }
-            Spacer(Modifier.width(8.dp))
-            FocusCard(onClick = onDelete) { Text("Remove", color = Vanta.Error) }
+        }
+        // The buttons wrap onto a second line when the card is narrow (a phone held upright).
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (p.channelCount > 0) FocusCard(onClick = onCountries) { Text("Countries", color = Vanta.Text, maxLines = 1, softWrap = false) }
+            onGuide?.let { FocusCard(onClick = it) { Text(if (p.customEpg != null) "Guide ✓" else "Guide", color = Vanta.Text, maxLines = 1, softWrap = false) } }
+            FocusCard(onClick = onRefresh) { Text("Refresh", color = Vanta.Text, maxLines = 1, softWrap = false) }
+            FocusCard(onClick = onDelete) { Text("Remove", color = Vanta.Error, maxLines = 1, softWrap = false) }
         }
         val (line, colour) = when (state) {
             is SyncState.Running -> "${state.stage}…" to Vanta.Cyan

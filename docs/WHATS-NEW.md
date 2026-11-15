@@ -1,3 +1,4 @@
+- Phones held upright: the player buttons, source buttons and film details buttons move onto their own line instead of squashing the title.
 - After an update, VantaView shows what's new the first time it opens. Turn it off in Settings › Updates.
 - Movies and TV Series: the search, sort and filter bar scrolls away with the page, so the tiles get the room (a phone on its side) and the page follows as you move down.
 - An add-on whose server certificate isn't trusted can now be trusted by you (like a browser's "proceed anyway") from Sources › Add-ons.
@@ -5,4 +6,3 @@
 - Live TV has a Radio tab: radio stations move there, out of the TV channel list.
 - Fixes: choosing Settings in the menu while in Settings no longer jumps to Home; Settings opens on its list; channel numbers no longer all show 1; buttons no longer split words ("Every ing", "Can cel").
 - Add-ons and providers whose servers send an incomplete security certificate now connect, and older Fire TVs trust Let's Encrypt sites.
-- Live TV: Now, Next and After; long titles scroll; order channels your way and edit favourites.

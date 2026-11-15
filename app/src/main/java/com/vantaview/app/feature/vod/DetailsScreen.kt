@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package com.vantaview.app.feature.vod
 
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -128,7 +130,7 @@ fun DetailsScreen(
             item {
                 // Watchlist and Watched (shown in Library).
                 val saved by vm.saved.collectAsStateWithLifecycle()
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     FocusCard(onClick = vm::toggleWatchlist, selected = saved.first) {
                         Text(if (saved.first) "✓ On Watchlist" else "+ Watchlist", color = if (saved.first) Vanta.Cyan else Vanta.Text)
                     }

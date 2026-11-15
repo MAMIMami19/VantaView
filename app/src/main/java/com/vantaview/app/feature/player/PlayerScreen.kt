@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.annotation.OptIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -356,34 +357,22 @@ private fun VideoArea(
         if (overlay && !locked && !PlayerPip.inPip) {
             val pad = if (compact) 12.dp else 20.dp
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                Row(
-                    Modifier.fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
-                        .padding(horizontal = pad, vertical = if (compact) 8.dp else 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!isTv) {
-                        FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text) }
-                        Spacer(Modifier.width(14.dp))
-                    }
-                    Text(ui.number.toString(), color = Vanta.Cyan, fontSize = if (compact) 15.sp else 18.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-                    )
+                // The channel's name, and the Audio, Subtitles, Size, lock and picture-in-picture buttons.
+                // A phone held upright has no room for both on one line, so the buttons go underneath.
+                val buttonsRow: @Composable () -> Unit = {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.onFocusChanged { buttonsFocused = it.hasFocus },
+                        modifier = Modifier.onFocusChanged { buttonsFocused = it.hasFocus }
+                            .then(if (compact) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier),
                     ) {
                         FocusCard(onClick = { picker = C.TRACK_TYPE_AUDIO }, modifier = Modifier.focusRequester(buttons)) {
-                            Text("Audio", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                            Text("Audio", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
                         }
                         FocusCard(onClick = { picker = C.TRACK_TYPE_TEXT }) {
-                            Text("Subtitles", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                            Text("Subtitles", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
                         }
                         FocusCard(onClick = vm::cycleSize) {
-                            Text("Size: ${size.label}", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp)
+                            Text("Size: ${size.label}", color = Vanta.Text, fontSize = if (compact) 13.sp else 15.sp, maxLines = 1)
                         }
                         if (!isTv) {
                             val activity = LocalContext.current as? Activity
@@ -393,6 +382,27 @@ private fun VideoArea(
                             }
                         }
                     }
+                }
+                Column(
+                    Modifier.fillMaxWidth()
+                        .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
+                        .padding(horizontal = pad, vertical = if (compact) 8.dp else 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!isTv) {
+                            FocusCard(onClick = onBack) { Text("‹ Back", color = Vanta.Text, maxLines = 1) }
+                            Spacer(Modifier.width(if (compact) 10.dp else 14.dp))
+                        }
+                        Text(ui.number.toString(), color = Vanta.Cyan, fontSize = if (compact) 15.sp else 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            ui.title, color = Color.White, fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Bold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                        )
+                        if (!compact) buttonsRow()
+                    }
+                    if (compact) buttonsRow()
                 }
 
                 Column(
