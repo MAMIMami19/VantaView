@@ -142,6 +142,52 @@ class LibraryStore @Inject constructor(
         bump()
     }
 
+    // ---- Shared with you ----
+
+    /** A title another profile shared with this one, with an optional message. */
+    data class Shared(val title: SavedTitle, val from: String, val message: String?, val at: Long) {
+        val key get() = "${title.key}:$at"
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val shared: Flow<List<Shared>> = combine(session.current, changed) { id, _ -> sharedFor(id) }
+
+    fun sharedNow(): List<Shared> = sharedFor(session.id)
+
+    /** Puts [t] in [toProfile]'s Library under "Shared with you". */
+    fun share(toProfile: Long, t: SavedTitle, from: String, message: String?) {
+        val list = listOf(Shared(t, from, message?.trim()?.ifBlank { null }, System.currentTimeMillis())) +
+            sharedFor(toProfile).filter { it.title.key != t.key }
+        writeShared(toProfile, list.take(100))
+    }
+
+    fun removeShared(s: Shared) = writeShared(session.id, sharedFor(session.id).filter { it.key != s.key })
+
+    /** Shares not yet seen on Home ("Mum shared … with you"). */
+    fun unseenShares(): List<Shared> = sharedFor(session.id).filter { it.at > sp.getLong("shared_seen_${session.id}", 0L) }
+    fun markSharesSeen() { sp.edit().putLong("shared_seen_${session.id}", System.currentTimeMillis()).apply(); bump() }
+
+    private fun sharedFor(profile: Long): List<Shared> = runCatching {
+        val a = JSONArray(sp.getString("shared_$profile", "[]"))
+        (0 until a.length()).map { i ->
+            val o = a.getJSONObject(i)
+            Shared(
+                SavedTitle(o.getString("type"), o.getString("id"), o.optString("name"), o.optString("poster").ifBlank { null }, o.optString("year").ifBlank { null }, o.optLong("at")),
+                o.optString("from"), o.optString("message").ifBlank { null }, o.optLong("at"),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    private fun writeShared(profile: Long, list: List<Shared>) {
+        val a = JSONArray()
+        list.forEach { s ->
+            a.put(JSONObject().put("type", s.title.type).put("id", s.title.id).put("name", s.title.name).put("poster", s.title.poster.orEmpty())
+                .put("year", s.title.year.orEmpty()).put("from", s.from).put("message", s.message.orEmpty()).put("at", s.at))
+        }
+        sp.edit().putString("shared_$profile", a.toString()).apply()
+        bump()
+    }
+
     // ---- Reminders ----
 
     val reminders: Flow<List<Reminder>> = combine(session.current, changed) { id, _ -> remindersFor(id) }

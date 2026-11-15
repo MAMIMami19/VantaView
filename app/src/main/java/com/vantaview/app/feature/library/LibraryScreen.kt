@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.feature.library
 
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +65,8 @@ class LibraryViewModel @Inject constructor(
     /** Watchlist series with an episode out since they were added or last opened. */
     val withNew: StateFlow<Set<String>> = library.watchlist.map { newEpisodes.withNew(it) }.state(emptySet())
     val reminders: StateFlow<List<Reminder>> = library.reminders.state(emptyList())
+    val shared: StateFlow<List<LibraryStore.Shared>> = library.shared.state(emptyList())
+    fun removeShared(s: LibraryStore.Shared) = library.removeShared(s)
     /** Unfinished films and episodes, most recent first. */
     val continuing: StateFlow<List<HistoryEntry>> = history.entries.map { l -> l.filter { !it.finished } }.state(emptyList())
 
@@ -69,7 +74,7 @@ class LibraryViewModel @Inject constructor(
     fun unwatch(t: SavedTitle) = library.setWatched(t, false)
 }
 
-private enum class Tab(val label: String) { WATCHLIST("Watchlist"), CONTINUE("Continue watching"), WATCHED("Watched"), REMINDERS("Reminders") }
+private enum class Tab(val label: String) { WATCHLIST("Watchlist"), CONTINUE("Continue watching"), WATCHED("Watched"), SHARED("Shared with you"), REMINDERS("Reminders") }
 
 /** Library: Watchlist, Continue watching, Watched and programme reminders for this profile. */
 @Composable
@@ -84,6 +89,7 @@ fun LibraryScreen(
     val reminders by vm.reminders.collectAsStateWithLifecycle()
     val continuing by vm.continuing.collectAsStateWithLifecycle()
     val withNew by vm.withNew.collectAsStateWithLifecycle()
+    val shared by vm.shared.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         com.vantaview.app.ui.PageTitle("Library")
@@ -91,7 +97,7 @@ fun LibraryScreen(
             items(Tab.entries) { t ->
                 val n = when (t) {
                     Tab.WATCHLIST -> watchlist.size; Tab.CONTINUE -> continuing.size
-                    Tab.WATCHED -> watched.size; Tab.REMINDERS -> reminders.size
+                    Tab.WATCHED -> watched.size; Tab.REMINDERS -> reminders.size; Tab.SHARED -> shared.size
                 }
                 FocusCard(onClick = { tab = t }, selected = tab == t) {
                     Text("${t.label} · $n", color = if (tab == t) Vanta.Cyan else Vanta.Text, fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal)
@@ -118,6 +124,7 @@ fun LibraryScreen(
                 onOpenTitle(m.type, m.id, e?.title ?: m.name, m.poster, if (m.type == "movie") "movie" else e?.videoId)
             }
             Tab.REMINDERS -> Reminders(reminders, onPlayChannel, vm::cancel)
+            Tab.SHARED -> SharedList(shared, onOpen = { t -> onOpenTitle(t.type, t.id, t.name, t.poster, null) }, onRemove = vm::removeShared)
         }
     }
 }
@@ -155,6 +162,35 @@ private fun Reminders(list: List<Reminder>, onPlay: (Long) -> Unit, onCancel: (R
                 }
                 if (r.start <= now) FocusCard(onClick = { onPlay(r.channelId) }) { Text("▶ Watch", color = Vanta.Text) }
                 FocusCard(onClick = { onCancel(r) }) { Text("Cancel", color = Vanta.Text) }
+            }
+        }
+    }
+}
+
+/** Titles other profiles shared with this one, with who shared them and their message. */
+@Composable
+private fun SharedList(items: List<LibraryStore.Shared>, onOpen: (SavedTitle) -> Unit, onRemove: (LibraryStore.Shared) -> Unit) {
+    if (items.isEmpty()) {
+        Text("Nothing shared yet. Other profiles can share a film or series with you: press and hold its poster.", color = Vanta.TextDim, fontSize = 15.sp)
+        return
+    }
+    androidx.compose.foundation.lazy.LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(items.size, key = { items[it].key }) { i ->
+            val s = items[i]
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FocusCard(onClick = { onOpen(s.title) }, modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        androidx.compose.foundation.layout.Box(Modifier.size(width = 54.dp, height = 80.dp).clip(Vanta.Shape).background(Vanta.SurfaceHigh)) {
+                            s.title.poster?.let { coil.compose.AsyncImage(model = it, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(s.title.name, color = Vanta.Text, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text("From ${s.from}", color = Vanta.Cyan, fontSize = 13.sp)
+                            s.message?.let { Text("\u201C$it\u201D", color = Vanta.TextDim, fontSize = 14.sp, maxLines = 3) }
+                        }
+                    }
+                }
+                FocusCard(onClick = { onRemove(s) }) { Text("Remove", color = Vanta.Error, maxLines = 1, softWrap = false) }
             }
         }
     }

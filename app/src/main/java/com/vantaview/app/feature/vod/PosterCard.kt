@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,12 +30,16 @@ import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
 
 @Composable
-fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp), badge: String? = null) {
+fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp), badge: String? = null, onFocused: ((MetaPreview) -> Unit)? = null) {
     // Press and hold (or the remote's Menu key): Watchlist and Watched.
     var actions by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     if (actions) TitleActionsDialog(item, onDismiss = { actions = false })
     Column(modifier) {
-        FocusCard(onClick = onClick, onLongClick = { actions = true }, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().height(177.dp)) {
+        FocusCard(
+            onClick = onClick, onLongClick = { actions = true }, padding = PaddingValues(0.dp),
+            modifier = Modifier.fillMaxWidth().height(177.dp)
+                .then(if (onFocused != null) Modifier.onFocusChanged { if (it.isFocused) onFocused(item) } else Modifier),
+        ) {
             Box(Modifier.fillMaxSize().clip(Vanta.Shape).background(Vanta.SurfaceHigh), contentAlignment = Alignment.Center) {
                 Text(
                     item.name, color = Vanta.TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,

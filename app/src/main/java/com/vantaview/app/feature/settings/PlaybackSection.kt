@@ -98,6 +98,20 @@ fun PlaybackSection(s: PlaybackSettings) {
 
 /** Choice chips that keep their words whole: they wrap onto a second line instead of squeezing. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/** Settings › Appearance › Screensaver (this profile). */
+@Composable
+fun ScreensaverSection(s: PlaybackSettings) {
+    var mins by remember { mutableStateOf(s.ambientMinutes) }
+    Section("Screensaver") {
+        Text(
+            "After a while without a key press or touch on a menu, show slowly changing film and series pictures with the time and weather. " +
+                "Never while something is playing.",
+            color = Vanta.TextDim, fontSize = 13.sp,
+        )
+        Choices(listOf(0, 5, 10, 15, 30), mins, { if (it == 0) "Off" else "$it min" }) { mins = it; s.ambientMinutes = it }
+    }
+}
+
 @Composable
 private fun <T> Choices(options: List<T>, chosen: T, label: (T) -> String, onPick: (T) -> Unit) {
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

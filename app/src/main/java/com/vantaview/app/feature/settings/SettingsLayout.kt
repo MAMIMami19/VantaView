@@ -43,10 +43,10 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
     ),
     APPEARANCE(
         "Appearance", "Look, theme, accent colour, text size, sidebar, loading screen and language",
-        "look style skin glass broadcast wave classic theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language",
+        "look style skin glass broadcast wave classic theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language screensaver ambient idle",
     ),
     SUBTITLES("Subtitles and audio", "Audio and subtitle languages, when subtitles show, their size and colour", "subtitle subtitles captions cc audio language track size yellow box"),
-    SOURCES("Sources and storage", "Refreshing playlists and the TV guide, free channels, and space used", "playlist refresh free tv channels countries storage space cache clear pictures guide epg update downloads"),
+    SOURCES("Sources and storage", "Refreshing playlists and the TV guide, free channels, and space used", "playlist refresh free tv channels countries storage space cache clear pictures guide epg update downloads speed test internet bandwidth"),
     WEATHER("Weather", "Weather on Home: on or off, °C or °F, and where", "weather temperature celsius fahrenheit location town city forecast"),
     TRAKT(
         "Trakt", "Link Trakt to sync your Watchlist, what you've watched, Continue watching, recommendations and lists",

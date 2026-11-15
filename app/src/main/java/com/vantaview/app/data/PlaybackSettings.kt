@@ -202,6 +202,11 @@ class PlaybackSettings @Inject constructor(
         get() = sp.getBoolean("trailer_sound", true)
         set(v) { sp.edit().putBoolean("trailer_sound", v).apply() }
 
+    /** Minutes without a key press or touch on a menu before the screensaver starts; 0 = never. */
+    var ambientMinutes: Int
+        get() = sp.getInt("ambient_minutes", 10)
+        set(v) { sp.edit().putInt("ambient_minutes", v).apply() }
+
     /** Programme reminders also show while something is playing. */
     var remindersWhilePlaying: Boolean
         get() = sp.getBoolean("remind_playing", true)

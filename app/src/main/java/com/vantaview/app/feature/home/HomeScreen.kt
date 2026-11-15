@@ -88,6 +88,7 @@ fun HomeScreen(
     val favs by vm.favourites.collectAsStateWithLifecycle()
     val watchlist by vm.watchlist.collectAsStateWithLifecycle()
     val withNew by vm.withNewEpisode.collectAsStateWithLifecycle()
+    val newShares by vm.newShares.collectAsStateWithLifecycle()
     val onNow by vm.onNow.collectAsStateWithLifecycle()
     val preview by vm.preview.collectAsStateWithLifecycle()
     val newSeason by vm.newSeason.collectAsStateWithLifecycle()
@@ -170,6 +171,26 @@ fun HomeScreen(
                             pair.forEach { r -> BigTile(r, byRoute[r]?.subtitle, Modifier.weight(1f).fillMaxHeight()) { onSection(r) } }
                         }
                     }
+                }
+            }
+
+            // "Mum shared Doctor Who with you", until dismissed.
+            newShares.firstOrNull()?.let { sh ->
+                Row(
+                    Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "${sh.from} shared ${sh.title.name} with you" + if (newShares.size > 1) " (and ${newShares.size - 1} more)" else "",
+                            color = Vanta.Text, fontWeight = FontWeight.Bold,
+                        )
+                        sh.message?.let { Text("\u201C$it\u201D", color = Vanta.TextDim, fontSize = 14.sp, maxLines = 2) }
+                    }
+                    FocusCard(onClick = { vm.dismissShares(); onOpenTitle(sh.title.type, sh.title.id, sh.title.name, sh.title.poster, null) }) {
+                        Text("Open", color = Vanta.Text, maxLines = 1, softWrap = false)
+                    }
+                    FocusCard(onClick = vm::dismissShares) { Text("Dismiss", color = Vanta.Text, maxLines = 1, softWrap = false) }
                 }
             }
 

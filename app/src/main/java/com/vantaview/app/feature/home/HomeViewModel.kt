@@ -80,6 +80,13 @@ class HomeViewModel @Inject constructor(
     newEpisodes: com.vantaview.app.data.library.NewEpisodes,
     profiles: ProfileRepository,
 ) : ViewModel() {
+    /** Titles shared with this profile that Home hasn't shown yet. */
+    val newShares: StateFlow<List<com.vantaview.app.data.library.LibraryStore.Shared>> = library.shared
+        .mapLatest { library.unseenShares() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val lib = library
+    fun dismissShares() = lib.markSharesSeen()
+
     /** The Watchlist for the row on Home, newest first. */
     val watchlist: StateFlow<List<com.vantaview.app.data.library.SavedTitle>> =
         library.watchlist.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

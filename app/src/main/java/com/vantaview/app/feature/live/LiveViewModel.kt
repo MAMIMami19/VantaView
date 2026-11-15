@@ -122,8 +122,35 @@ class LiveViewModel @Inject constructor(
 
     private val device = CountryDetect.deviceCountry()
 
+    // ---- Group order and visibility, per playlist (and per profile, with the other Playback settings) ----
+
+    private val groupLayout = MutableStateFlow(0)
+    private val SEP = "\u0001"
+    private fun orderOf(pid: Long): List<String> = playback.getString("catorder_$pid")?.split(SEP)?.filter { it.isNotEmpty() }.orEmpty()
+    private fun hiddenOf(pid: Long): Set<String> = playback.getString("cathidden_$pid")?.split(SEP)?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+
+    /** The groups before hiding and reordering (for the Edit groups dialog). */
+    var groupsForEditing: List<CategoryEntity> = emptyList(); private set
+    fun hiddenGroups(): Set<String> = active.value?.let { hiddenOf(it.id) }.orEmpty()
+
+    fun saveGroupLayout(order: List<String>, hidden: Set<String>) {
+        val pid = active.value?.id ?: return
+        playback.setString("catorder_$pid", order.joinToString(SEP))
+        playback.setString("cathidden_$pid", hidden.joinToString(SEP))
+        groupLayout.value++
+    }
+
+    private fun applyLayout(list: List<CategoryEntity>): List<CategoryEntity> {
+        val pid = list.firstOrNull()?.providerId ?: return list
+        groupsForEditing = list
+        val order = orderOf(pid).withIndex().associate { (i, id) -> id to i }
+        val hidden = hiddenOf(pid)
+        return list.filter { it.remoteId !in hidden }
+            .let { l -> if (order.isEmpty()) l else l.withIndex().sortedBy { (i, c) -> order[c.remoteId]?.toDouble() ?: (order.size + i).toDouble() }.map { it.value } }
+    }
+
     val categories: StateFlow<List<CategoryEntity>> =
-        combine(allCategories, allowed, scan, chosen, parental.changes) { cats, allow, sc, pick, _ ->
+        combine(combine(allCategories, groupLayout) { c, _ -> c }, allowed, scan, chosen, parental.changes) { cats, allow, sc, pick, _ ->
             val kidsOk = when {
                 allow != null -> KidsFilter.categories(cats, allow)
                 parental.hiding -> cats.filter { !parental.isAdult(it) } // Settings › Parental control
@@ -131,11 +158,12 @@ class LiveViewModel @Inject constructor(
             }
             // Radio groups live under the Radio tab.
             val tvOnly = kidsOk.filter { !Regex("(?i)\\bradio|rádio|радио").containsMatchIn(it.name) }
-            if (sc == null) tvOnly
+            val base = if (sc == null) tvOnly
             else tvOnly
                 .filter { c -> pick == null || sc.inCategory(c.remoteId).any { it in pick } }
                 // Categories with this device's country first; otherwise keep the provider's order.
                 .sortedBy { if (device != null && device in sc.inCategory(it.remoteId)) 0 else 1 }
+            applyLayout(base)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Short label for the Countries button, or null when the playlist has fewer than two countries. */

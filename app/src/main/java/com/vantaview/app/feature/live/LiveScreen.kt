@@ -167,15 +167,18 @@ fun LiveScreen(
             val sort by vm.sort.collectAsStateWithLifecycle()
             var sortOpen by remember { mutableStateOf(false) }
             var editFavs by remember { mutableStateOf(false) }
+            var editGroups by remember { mutableStateOf(false) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search channels or numbers", Modifier.weight(1f, fill = false))
                 if (query.isEmpty()) {
-                    FocusCard(onClick = { sortOpen = true }) { Text("Order: ${sort.label} ▾", color = Vanta.Text, fontSize = 14.sp) }
+                    FocusCard(onClick = { sortOpen = true }) { Text("Order: ${sort.label} ▾", color = Vanta.Text, fontSize = 14.sp, maxLines = 1, softWrap = false) }
+                    if (!isKids) FocusCard(onClick = { editGroups = true }) { Text("Groups ✎", color = Vanta.Text, fontSize = 14.sp, maxLines = 1, softWrap = false) }
                     if (filter == Filter.Favourites && channels.size > 1 && !isKids) {
                         FocusCard(onClick = { editFavs = true }) { Text("Edit favourites", color = Vanta.Text, fontSize = 14.sp) }
                     }
                 }
             }
+            if (editGroups) EditGroupsDialog(vm.groupsForEditing, vm.hiddenGroups(), onSave = { o, h -> vm.saveGroupLayout(o, h); editGroups = false }, onClose = { editGroups = false })
             if (sortOpen) SortDialog(sort, onPick = { vm.setSort(it); sortOpen = false }, onClose = { sortOpen = false })
             if (editFavs) EditFavouritesDialog(channels, onSave = { vm.saveFavouriteOrder(it); editFavs = false }, onRemove = vm::toggleFavourite, onClose = { editFavs = false })
             when (state) {
@@ -309,6 +312,46 @@ private fun RefreshButton(onClick: () -> Unit) {
     FocusCard(onClick = onClick, padding = PaddingValues(10.dp), contentAlignment = Alignment.Center) {
         Icon(Icons.Filled.Refresh, contentDescription = "Refresh playlist", tint = Vanta.Text)
     }
+}
+
+/** Reorder the playlist's groups and choose which show (this playlist and profile only). */
+@Composable
+private fun EditGroupsDialog(
+    groups: List<CategoryEntity>,
+    hidden: Set<String>,
+    onSave: (List<String>, Set<String>) -> Unit,
+    onClose: () -> Unit,
+) {
+    val order = remember { androidx.compose.runtime.mutableStateListOf(*groups.toTypedArray()) }
+    val off = remember { androidx.compose.runtime.mutableStateListOf(*hidden.toTypedArray()) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Groups", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Move groups up or down, and turn off the ones you never watch.", color = Vanta.TextDim, fontSize = 13.sp)
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(order.size, key = { order[it].remoteId }) { i ->
+                        val c = order[i]
+                        val shown = c.remoteId !in off
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(c.name, color = if (shown) Vanta.Text else Vanta.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            FocusCard(onClick = { if (i > 0) { order.add(i - 1, order.removeAt(i)) } }, padding = PaddingValues(8.dp)) { Text("▲", color = Vanta.Text) }
+                            FocusCard(onClick = { if (i < order.lastIndex) { order.add(i + 1, order.removeAt(i)) } }, padding = PaddingValues(8.dp)) { Text("▼", color = Vanta.Text) }
+                            androidx.compose.material3.Switch(checked = shown, onCheckedChange = { on -> if (on) off.remove(c.remoteId) else off.add(c.remoteId) })
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { com.vantaview.app.ui.GradientButton("Save", onClick = { onSave(order.map { it.remoteId }, off.toSet()) }) },
+        dismissButton = {
+            Row {
+                androidx.compose.material3.TextButton(onClick = { onSave(emptyList(), emptySet()) }) { Text("Reset") }
+                androidx.compose.material3.TextButton(onClick = onClose) { Text("Cancel") }
+            }
+        },
+    )
 }
 
 @Composable

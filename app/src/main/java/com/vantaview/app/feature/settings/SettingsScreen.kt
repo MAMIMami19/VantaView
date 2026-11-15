@@ -154,9 +154,9 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
             SettingsSection.ABOUT -> HelpAbout()
             SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
             SettingsSection.PARENTAL -> ParentalSection(onEditProfile)
-            SettingsSection.APPEARANCE -> AppearanceSection(vm.appearance)
+            SettingsSection.APPEARANCE -> { AppearanceSection(vm.appearance); ScreensaverSection(vm.playback) }
             SettingsSection.UPDATES -> UpdatesSection(vm.updates)
-            SettingsSection.SOURCES -> SourcesSection()
+            SettingsSection.SOURCES -> { SourcesSection(); SpeedTestSection() }
             SettingsSection.SUBTITLES -> { SubtitlesSection(vm.playback); AiSubtitlesSection(vm.aiSubs) }
             else -> ComingSoon(section)
         }

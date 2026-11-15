@@ -99,6 +99,11 @@ class CatalogViewModel @Inject constructor(
     val sort: StateFlow<CatalogSort> = _sort
     fun setSort(s: CatalogSort) { _sort.value = s; sp.edit().putString("sort_$type", s.name).apply() }
 
+    /** Posters only, in one grid, instead of rows. */
+    private val _grid = MutableStateFlow(sp.getBoolean("grid_$type", false))
+    val grid: StateFlow<Boolean> = _grid
+    fun setGrid(on: Boolean) { _grid.value = on; sp.edit().putBoolean("grid_$type", on).apply() }
+
     private val _ui = MutableStateFlow(CatalogUi())
     val ui: StateFlow<CatalogUi> = _ui
     val filter = MutableStateFlow(CatalogFilter())

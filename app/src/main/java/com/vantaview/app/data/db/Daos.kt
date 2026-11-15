@@ -119,6 +119,10 @@ interface ContentDao {
     suspend fun searchChannels(providerIds: List<Long>, query: String): List<ChannelEntity>
 
     /** Channels whose guide ID is one of [keys] (to show a programme's channel). */
+    /** The first channels of a playlist (by number), e.g. one to run the speed test on. */
+    @Query("SELECT * FROM channel WHERE providerId = :providerId ORDER BY number, sortKey LIMIT :n")
+    suspend fun channelsPage(providerId: Long, n: Int): List<ChannelEntity>
+
     /** Channels with catch-up (Catch-up page), in channel-number order. */
     @Query("SELECT * FROM channel WHERE providerId IN (:providerIds) AND archiveDays > 0 ORDER BY number, sortKey")
     suspend fun catchUpChannels(providerIds: List<Long>): List<ChannelEntity>

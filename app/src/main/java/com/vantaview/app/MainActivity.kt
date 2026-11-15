@@ -60,6 +60,11 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var updates: com.vantaview.app.data.update.UpdateManager
     @Inject lateinit var sourceSettings: com.vantaview.app.data.SourceSettings
     @Inject lateinit var playbackSettings: com.vantaview.app.data.PlaybackSettings
+
+    /** The last key press or touch, for the screensaver. */
+    private val lastInput = kotlinx.coroutines.flow.MutableStateFlow(System.currentTimeMillis())
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean { lastInput.value = System.currentTimeMillis(); return super.dispatchKeyEvent(event) }
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean { lastInput.value = System.currentTimeMillis(); return super.dispatchTouchEvent(ev) }
     @Inject lateinit var library: com.vantaview.app.data.library.LibraryStore
     @Inject lateinit var reminderAlarms: com.vantaview.app.data.library.ReminderScheduler
 
@@ -101,7 +106,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val look by appearance.state.collectAsState()
             VantaTheme(look) {
-                AppNav(prefs, providers, addons, profiles, parental, updates, library, playRequest, remindWhilePlaying = { playbackSettings.remindersWhilePlaying }, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, parental, updates, library, playRequest, remindWhilePlaying = { playbackSettings.remindersWhilePlaying }, lastInput = lastInput, onExit = { finish() })
             }
         }
     }
@@ -148,6 +153,7 @@ private fun AppNav(
     library: com.vantaview.app.data.library.LibraryStore,
     playRequest: kotlinx.coroutines.flow.MutableStateFlow<Long?>,
     remindWhilePlaying: () -> Boolean = { true },
+    lastInput: kotlinx.coroutines.flow.StateFlow<Long>? = null,
     onExit: () -> Unit,
 ) {
     val nav = rememberNavController()
@@ -383,6 +389,10 @@ private fun AppNav(
     LaunchedEffect(splash) { if (!splash) { kotlinx.coroutines.delay(420); splashShown = false } }
     if (splashShown) com.vantaview.app.ui.SplashScreen(leaving = !splash)
     // Programme reminders: pop-ups while the app is open, and opening a channel from a notification.
+    // The screensaver, on menus only (never over a film or channel).
+    if (!splashShown && profile != null && lastInput != null) com.vantaview.app.feature.ambient.AmbientHost(
+        lastInput, allowed = route?.let { !it.startsWith("player") && it != "vod" && !it.startsWith("details") } == true,
+    )
     if (!splashShown && profile != null) com.vantaview.app.feature.library.ReminderHost(
         library,
         // Settings › Playback can keep reminders off the screen while something plays.

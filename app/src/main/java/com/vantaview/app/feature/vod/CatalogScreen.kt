@@ -71,6 +71,8 @@ fun CatalogScreen(
 
         val sort by vm.sort.collectAsStateWithLifecycle()
         val filter by vm.filter.collectAsStateWithLifecycle()
+        val grid by vm.grid.collectAsStateWithLifecycle()
+        var focused by remember { mutableStateOf<MetaPreview?>(null) }
         var picking by remember { mutableStateOf<String?>(null) }
         // Search, sort and filters. While browsing they scroll away with the rows, so short screens
         // (a phone on its side) show the tiles; while searching they stay at the top.
@@ -80,6 +82,9 @@ fun CatalogScreen(
         Spacer(Modifier.height(10.dp))
         // Sort: applies to every row and to search results.
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "view") {
+                FocusCard(onClick = { vm.setGrid(!grid) }) { Text(if (grid) "☰ Rows" else "▦ Posters", color = Vanta.Text, fontSize = 14.sp, maxLines = 1, softWrap = false) }
+            }
             items(CatalogSort.entries.toList(), key = { it.name }) { o ->
                 FocusCard(onClick = { vm.setSort(o) }, selected = o == sort) {
                     Text(o.label, color = if (o == sort) Vanta.Cyan else Vanta.Text, fontSize = 14.sp,
@@ -150,8 +155,37 @@ fun CatalogScreen(
                 "Your add-ons have no ${if (vm.type == "series") "series" else "film"} catalogues to browse. " +
                     "You can still search above, or add a catalogue add-on such as Cinemeta on the Sources page."
             )
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+            grid -> {
+                // Posters only: every loaded title in one grid.
+                header()
+                val all = ui.rows.filter(filter::keepRow).flatMap { r -> (ui.rowStates[r.key] as? RowState.Ready)?.items.orEmpty() }
+                    .let { l -> ui.traktRows.flatMap { it.items } + l }.distinctBy { it.id }.filter(filter::keep).let(sort::apply)
+                if (all.isEmpty()) Message(if (ui.rowStates.values.any { it is RowState.Loading }) "Loading…" else "Nothing here matches.")
+                else LazyVerticalGrid(
+                    columns = GridCells.Adaptive(118.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(all, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, modifier = Modifier) }
+                }
+            }
+            else -> Column {
+              // The banner: the newest titles (from a "new" or "year" catalogue when there is one).
+              val newRow = Regex("(?i)\\b(new|recent|latest|year)")
+              val bannerRow = ui.rows.firstOrNull { newRow.containsMatchIn(it.title) && ui.rowStates[it.key] is RowState.Ready }
+                  ?: ui.rows.firstOrNull { ui.rowStates[it.key] is RowState.Ready }
+              val bannerItems = (bannerRow?.let { ui.rowStates[it.key] } as? RowState.Ready)?.items.orEmpty().filter(filter::keep).take(8)
+              val bannerLabel = if (bannerRow != null && newRow.containsMatchIn(bannerRow.title)) "Recently added" else "Popular now"
+              // TVs and wide screens: the banner stays at the top and shows the poster with focus.
+              if (wide && bannerItems.isNotEmpty()) {
+                  HeroBanner(bannerLabel, bannerItems, focused, 220.dp, onOpen)
+                  Spacer(Modifier.height(12.dp))
+              }
+              LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "header") { header() }
+                if (!wide && bannerItems.isNotEmpty()) item(key = "banner") { HeroBanner(bannerLabel, bannerItems, null, 190.dp, onOpen) }
                 if (ui.tiles.isNotEmpty() && !filter.any) browseGroups(ui.tiles, wide, onTile)
                 items(ui.traktRows, key = { it.key }) { row ->
                     val shown = row.items.filter(filter::keep) // Trakt's own order
@@ -159,7 +193,7 @@ fun CatalogScreen(
                         com.vantaview.app.ui.SectionTitle(row.title)
                         Spacer(Modifier.height(8.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(shown, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                            items(shown, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, onFocused = if (wide) ({ m -> focused = m }) else null) }
                         }
                     }
                 }
@@ -172,7 +206,7 @@ fun CatalogScreen(
                                 st.items.filter(filter::keep).let { shown ->
                                     if (shown.isEmpty()) Text(if (filter.any) "Nothing here matches the filters" else "Empty", color = Vanta.TextDim)
                                     else LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        items(sort.apply(shown), key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                                        items(sort.apply(shown), key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, onFocused = if (wide) ({ m -> focused = m }) else null) }
                                     }
                                 }
                             RowState.Failed -> Text("Couldn't load this row", color = Vanta.Error)
@@ -180,6 +214,7 @@ fun CatalogScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

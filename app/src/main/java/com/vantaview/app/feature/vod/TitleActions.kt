@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -66,7 +67,24 @@ import javax.inject.Inject
 class TitleActionsViewModel @Inject constructor(
     private val library: LibraryStore,
     private val browse: BrowseRepository,
+    private val profiles: com.vantaview.app.data.profile.ProfileRepository,
 ) : ViewModel() {
+    /** The other profiles a title can be shared with. */
+    val others = kotlinx.coroutines.flow.MutableStateFlow<List<com.vantaview.app.data.db.ProfileEntity>>(emptyList())
+    init {
+        viewModelScope.launch {
+            val me = profiles.current()?.id
+            others.value = profiles.all().filter { it.id != me }
+        }
+    }
+
+    fun share(m: MetaPreview, to: com.vantaview.app.data.db.ProfileEntity, message: String, done: () -> Unit) {
+        viewModelScope.launch {
+            val from = profiles.current()?.name ?: "Someone"
+            change(m, done) { t -> library.share(to.id, t, from, message) }
+        }
+    }
+
     fun inWatchlist(m: MetaPreview) = library.inWatchlist(m.type, m.id)
     fun isWatched(m: MetaPreview) = library.isWatched(m.type, m.id)
 
@@ -131,6 +149,8 @@ private fun ActionsPanel(maxW: androidx.compose.ui.unit.Dp, rows: @Composable ()
 @Composable
 fun TitleActionsDialog(item: MetaPreview, onDismiss: () -> Unit, vm: TitleActionsViewModel = hiltViewModel()) {
     var tick by remember { mutableIntStateOf(0) }
+    var sharing by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var sent by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val listed = remember(tick) { vm.inWatchlist(item) }
     val watched = remember(tick) { vm.isWatched(item) }
     val first = remember { FocusRequester() }
@@ -157,8 +177,47 @@ fun TitleActionsDialog(item: MetaPreview, onDismiss: () -> Unit, vm: TitleAction
                 if (watched) "Mark as not watched" else "Mark as watched", if (watched) "✓" else "○",
                 onClick = { vm.setWatched(item, !watched) { tick++ } },
             )
+            val others by vm.others.collectAsStateWithLifecycle()
+            if (others.isNotEmpty()) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x22FFFFFF)))
+                ActionRow("Share with another profile", "➚", onClick = { sharing = true })
+            }
         }
+        sent?.let { Spacer(Modifier.height(10.dp)); Text(it, color = Vanta.Cyan, fontSize = 14.sp) }
     }
+    if (sharing) ShareDialog(vm.others.collectAsStateWithLifecycle().value, onClose = { sharing = false }) { to, msg ->
+        vm.share(item, to, msg) { sent = "Shared with ${to.name}."; sharing = false }
+    }
+}
+
+/** Pick who to share with, and an optional message. */
+@Composable
+private fun ShareDialog(
+    others: List<com.vantaview.app.data.db.ProfileEntity>,
+    onClose: () -> Unit,
+    onShare: (com.vantaview.app.data.db.ProfileEntity, String) -> Unit,
+) {
+    var to by remember { androidx.compose.runtime.mutableStateOf(others.firstOrNull()) }
+    var msg by remember { androidx.compose.runtime.mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose, containerColor = Vanta.Panel,
+        title = { Text("Share with", color = Vanta.Text) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                others.forEach { p ->
+                    FocusCard(onClick = { to = p }, selected = to?.id == p.id, modifier = Modifier.fillMaxWidth()) {
+                        Text(p.name, color = if (to?.id == p.id) Vanta.Cyan else Vanta.Text)
+                    }
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = msg, onValueChange = { if (it.length <= 140) msg = it }, singleLine = false, maxLines = 3,
+                    label = { Text("Message (optional)") }, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { com.vantaview.app.ui.GradientButton("Share", onClick = { to?.let { onShare(it, msg) } }, enabled = to != null) },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Cancel") } },
+    )
 }
 
 /** The "⋯" of an episode (or press and hold it): the episode's card with Watched for it and its season. */
