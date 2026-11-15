@@ -1,8 +1,8 @@
-- Trakt: link each profile to Trakt in Settings › Trakt. Your Watchlist, what you've watched and Continue watching stay in step, and your Trakt recommendations and lists appear on Movies and TV Series.
-- Home has a "Your Watchlist" row, and Watchlist series show "New episode" when one comes out.
-- Home on an upright phone: the greeting and date stay on one line each, with the weather underneath.
-- Press and hold any film or series poster (or press Menu on a remote) to add it to your Watchlist or mark it watched. An episode's "⋯" now marks it, or its whole season, as watched.
-- Film and series pages show "More like this" at the bottom, under the episodes.
-- Trusting an add-on's server now works even when its certificate is issued under a different name, and a failure after trusting shows the real reason.
-- Phones held upright: the player buttons, source buttons and film details buttons move onto their own line instead of squashing the title.
-- After an update, VantaView shows what's new the first time it opens. Turn it off in Settings › Updates.
+- Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
+- Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
+- New Catch-up page (from Live TV or the TV Guide), with search of past programmes.
+- Movies and TV Series: a banner of new titles, a posters-only view, and details of the poster you're on (TVs).
+- In the player: ⋯ More has a sleep timer, stream info and "open in another player".
+- Share a film or series with another profile (press and hold its poster); it shows on their Home and in Library.
+- Each profile has its own Playback, Subtitles and Weather settings. New: screensaver, speed test, guide time offset and log file.
+- Trakt: link each profile in Settings › Trakt to sync your Watchlist, history and Continue watching.

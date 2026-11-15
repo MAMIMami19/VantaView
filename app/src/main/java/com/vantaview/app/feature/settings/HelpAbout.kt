@@ -44,6 +44,9 @@ private val services = listOf(
     Credit("Open-Meteo", "Weather on Home · open-meteo.com (CC BY 4.0)"),
     Credit("TMDB", "Films and series behind the Movies and TV Series tiles · themoviedb.org. This product uses the TMDB API but is not endorsed or certified by TMDB."),
     Credit("Cinemeta", "Films and series behind the tiles when there's no TMDB key · v3-cinemeta.strem.io"),
+    Credit("IntroDB", "Intro and end-credits times for Skip intro · introdb.app"),
+    Credit("SkipDB", "Intro and end-credits times · skipdb.tv. Contains data from SkipDB, made available under the ODbL"),
+    Credit("Cloudflare speed test", "The server the internet speed test downloads from · speed.cloudflare.com"),
     Credit("Trakt", "Watchlist, history, Continue watching, recommendations and lists sync · trakt.tv. Not made or endorsed by Trakt"),
 )
 

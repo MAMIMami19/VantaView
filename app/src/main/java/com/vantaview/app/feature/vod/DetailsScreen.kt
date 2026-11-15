@@ -303,8 +303,8 @@ private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boole
 @Composable
 private fun TrailerView(videoId: String, muted: Boolean, modifier: Modifier) {
     val html = """
-        <html><body style="margin:0;background:#000;overflow:hidden">
-        <iframe width="100%" height="100%" frameborder="0" allow="autoplay; encrypted-media"
+        <html style="height:100%"><body style="margin:0;height:100%;background:#000;overflow:hidden">
+        <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allow="autoplay; encrypted-media"
           src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=${if (muted) 1 else 0}&controls=0&loop=1&playlist=$videoId&rel=0&playsinline=1&modestbranding=1"></iframe>
         </body></html>
     """.trimIndent()
@@ -316,7 +316,11 @@ private fun TrailerView(videoId: String, muted: Boolean, modifier: Modifier) {
                     isFocusableInTouchMode = false
                     setBackgroundColor(android.graphics.Color.BLACK)
                     settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
                     settings.mediaPlaybackRequiresUserGesture = false
+                    // Android's web view only draws HTML5 video (not just its sound) with a chrome client.
+                    webChromeClient = android.webkit.WebChromeClient()
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                     // YouTube's embedded player needs a web address to play from.
                     loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "utf-8", null)
                 }

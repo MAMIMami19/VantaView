@@ -18,9 +18,9 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Built-in neon avatars
 - [x] Optional 4-digit PIN
 - [x] Kids profiles with an age limit and no Settings
-- [ ] Separate favourites, watchlist, history, Continue watching and settings per profile *(all done except playback and most other settings, which all profiles share)*
+- [x] Separate favourites, watchlist, history, Continue watching and settings per profile
 - [x] Copy sources from the main profile
-- [ ] Share a title to another profile (goes to their Library, with a message)
+- [x] Share a title to another profile (goes to their Library, with a message)
 
 ## Sources (Add Playlist)
 
@@ -43,7 +43,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Continue watching row
 - [x] Favourite channels row
 - [x] NEW SEASON and COMING SOON badges, new season message
-- [ ] Shared with you message
+- [x] Shared with you message
 - [x] Weather by the clock with 5-day forecast **(later)**
 
 ## Live TV and guide
@@ -54,46 +54,46 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Full programme descriptions and scrolling long titles
 - [x] Search, sort and edit favourites
 - [x] Reminders for programmes not yet started (1/5/10/15 min, default 5)
-- [ ] Category order and visibility per source
+- [x] Category order and visibility per source (Live TV › Groups)
 
 ## Catch-up
 
-- [ ] Catch-up page: groups, channels, days, past programmes
+- [x] Catch-up page: groups, channels, days, past programmes
 - [x] Watch from start in the guide
-- [ ] Search past programmes
+- [x] Search past programmes
 
 ## Player
 
 - [x] Live: previous/next channel, remote Up/Down changes channel
-- [ ] Live: pause and rewind with Go live
+- [x] Live: pause and rewind with Go live (catch-up channels rewind through the archive; others record on the device from the moment you pause, up to 30 minutes)
 - [x] Live: Now/Next bar and quick channel list
 - [x] Audio, subtitles and picture size
-- [ ] Smart anti-buffering with Medium buffer by default *(Small, Medium and Large buffer sizes, Medium by default; no automatic adjusting yet)*
+- [x] Smart anti-buffering with Medium buffer by default (adjusts itself after stalls; small devices stay at Medium or below)
 - [x] Auto-reconnect with "Reconnecting" message
 - [x] VOD: ±10s, speed, Episodes, resume
-- [ ] Skip intro and Next episode countdown
+- [x] Skip intro (IntroDB, then SkipDB) and Next episode countdown
 - [x] Controls hide after 5 seconds (adjustable)
 - [x] Phone: swipe gestures, lock button, picture-in-picture
 - [ ] Record from the player **(later)**
 
 ## Movies and TV Series
 
-- [ ] Recently added banner (Nuvio style)
+- [x] Recently added banner (Nuvio style)
 - [x] Genre tiles
 - [x] Sort, Genre, Year and Source filters
-- [ ] Posters-only grid (Stremio style)
-- [ ] Info on focus on TV
-- [ ] TMDB artwork and details (Bearer token) *(TMDB fills the Movies and TV Series tiles when the build has a key; details pages still use add-ons)*
+- [x] Posters-only grid (Stremio style)
+- [x] Info on focus on TV
+- [x] TMDB artwork and details (Bearer token)
 
 ## Details pages
 
 - [x] Movie details: Play/Resume, Trailer, Watchlist, Watched
-- [ ] Trailer auto-play after 20s with sound and mute
+- [x] Trailer auto-play after 20s with sound and mute
 - [x] Auto-pick best source, Choose source in the menu
 - [x] Cast row and More like this (at the bottom, under the episodes)
-- [ ] Actor page with Available and All tabs, sort and filters *(a person's page lists what they're in, from search or a details page's cast; no tabs, sort or filters yet)*
+- [x] Actor page with Available and All tabs, sort and filters
 - [x] Series details: season tabs, episode cards, Resume S2 E4
-- [ ] Coming soon seasons
+- [x] Coming soon seasons
 - [ ] Download episode or whole season **(later)**
 
 ## Search
@@ -104,7 +104,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Library
 
-- [ ] Shared with you
+- [x] Shared with you
 - [x] Watchlist (also a row on Home, with "New episode" badges on series)
 - [ ] Downloads **(later)**
 - [ ] Recordings **(later)**
@@ -119,16 +119,16 @@ This file is ticked off in the same commit that finishes a feature.
 ## Settings
 
 - [x] Two panes on TV, list on phone, search settings
-- [ ] Playback: buffer, trailers, reminders, controls, mini player, gestures *(trailers and reminders get their settings when those features are built)*
+- [x] Playback: buffer, trailers, reminders, controls, mini player, gestures
 - [x] Appearance: Dark/Light/Follow device, accent colour, language
 - [x] Subtitles and audio
 - [x] Sources and storage, Free channels settings
 - [x] Local backup and restore
 - [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN
 - [x] Check for updates (downloads the APK and opens the installer)
-- [ ] Speed test
+- [x] Speed test
 - [x] App tour and support
-- [ ] Ambient mode
+- [x] Ambient mode (screensaver on menus)
 - [x] Terms, Credits, About
 - [x] Trakt sync: per-profile sign-in with a code; Watchlist, watched films and episodes, Continue watching (scrobbling) and recommendations and lists rows
 - [ ] Connected servers: Jellyfin, Sonarr, Radarr **(later)**
@@ -136,14 +136,14 @@ This file is ticked off in the same commit that finishes a feature.
 ## Suggested for the first release (not yet agreed)
 
 - [x] Type a channel number on the remote
-- [ ] Last channel button
-- [ ] Guide time offset per source
-- [ ] Open in another player (VLC, MX Player)
-- [ ] Sleep timer
+- [x] Last channel button
+- [x] Guide time offset per source
+- [x] Open in another player (VLC, MX Player)
+- [x] Sleep timer
 - [x] Auto-refresh sources on a schedule
-- [ ] Stream info overlay
+- [x] Stream info overlay
 - [x] Start on last channel option
-- [ ] Export a log file
+- [x] Export a log file
 
 ## Built that wasn't on the original list
 
