@@ -33,7 +33,9 @@ fun debridLabel(s: AddonStream): String? {
     return when {
         cached.isNotEmpty() -> "⚡ " + cached.joinToString("/") { it.short } + " cached"
         unknown.isNotEmpty() -> unknown.joinToString("/") { it.short } + " · checked on play"
-        else -> "⬇ Download first"
+        // Not on any debrid service (or none connected): VantaView plays it as a torrent, if that's on.
+        s.cache.isEmpty() -> "Torrent"
+        else -> "Torrent · not cached"
     }
 }
 

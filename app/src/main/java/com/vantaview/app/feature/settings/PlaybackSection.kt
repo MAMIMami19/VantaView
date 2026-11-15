@@ -35,6 +35,7 @@ fun PlaybackSection(s: PlaybackSettings) {
     var remindMins by remember { mutableStateOf(s.reminderMinutes) }
     var auto by remember { mutableStateOf(s.autoBuffer) }
     var skipIntro by remember { mutableStateOf(s.skipIntro) }
+    var torrents by remember { mutableStateOf(s.playTorrents) }
     var nextEp by remember { mutableStateOf(s.nextEpisode) }
     var autoTrailers by remember { mutableStateOf(s.autoTrailers) }
     var trailerSound by remember { mutableStateOf(s.trailerSound) }
@@ -62,6 +63,11 @@ fun PlaybackSection(s: PlaybackSettings) {
             autoTrailers = it; s.autoTrailers = it
         }
         if (autoTrailers) Toggle("Trailers with sound", "Off starts them muted; you can unmute on the page.", trailerSound) { trailerSound = it; s.trailerSound = it }
+        Toggle(
+            "Play torrents in VantaView",
+            "Torrent results play here when no debrid account has them ready. While it plays, a torrent shares the parts you have with other people, and they can see your IP address; it stops sharing and deletes the file when you close the player.",
+            torrents,
+        ) { torrents = it; s.playTorrents = it }
     }
 
     Section("Player controls") {

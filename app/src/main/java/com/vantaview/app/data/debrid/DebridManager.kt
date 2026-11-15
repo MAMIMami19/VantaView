@@ -48,9 +48,10 @@ class DebridManager @Inject constructor(
      * (by quality), then torrents whose state can't be checked in advance, then uncached torrents.
      * Without any debrid account, torrent results are left out.
      */
-    suspend fun annotate(streams: List<AddonStream>): List<AddonStream> {
+    suspend fun annotate(streams: List<AddonStream>, keepTorrents: Boolean = false): List<AddonStream> {
         val accounts = store.all
-        if (accounts.isEmpty()) return streams.filter { it.infoHash == null }
+        // Without debrid, torrents stay only when VantaView plays them itself, after the direct links.
+        if (accounts.isEmpty()) return if (keepTorrents) streams.sortedBy { it.isTorrent } else streams.filter { it.infoHash == null }
         val hashes = streams.mapNotNull { it.infoHash?.lowercase() }.distinct()
         if (hashes.isEmpty()) return streams
 

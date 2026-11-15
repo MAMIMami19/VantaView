@@ -59,6 +59,7 @@ private val libraries = listOf(
     Credit("Coil", "Apache 2.0"),
     Credit("ZXing (QR codes)", "Apache 2.0"),
     Credit("whisper.cpp and OpenAI Whisper models (AI subtitles)", "MIT"),
+    Credit("libtorrent and libtorrent4j (playing torrents)", "BSD / MIT"),
     Credit("Tabler Icons (tile pictures) · tabler.io", "MIT"),
     Credit("flag-icons (International tile pictures) · github.com/lipis/flag-icons", "MIT"),
     Credit("Bebas Neue by Ryoichi Tsunekawa (tile titles)", "SIL Open Font License 1.1"),

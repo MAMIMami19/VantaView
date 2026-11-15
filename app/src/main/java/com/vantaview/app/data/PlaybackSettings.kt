@@ -183,6 +183,11 @@ class PlaybackSettings @Inject constructor(
     // ---- Films and series ----
 
     /** Show "Skip intro" when the intro databases know where an episode's intro is. */
+    /** Torrent results play inside VantaView when no debrid account has them ready. */
+    var playTorrents: Boolean
+        get() = sp.getBoolean("play_torrents", true)
+        set(v) { sp.edit().putBoolean("play_torrents", v).apply() }
+
     var skipIntro: Boolean
         get() = sp.getBoolean("skip_intro", true)
         set(v) { sp.edit().putBoolean("skip_intro", v).apply() }

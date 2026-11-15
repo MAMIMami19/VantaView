@@ -49,6 +49,8 @@ object I18n {
     private class Tpl(val regex: Regex, val slots: List<Int>, val out: String)
 
     private var exact: Map<String, String> = emptyMap()
+    /** The same lines in capitals, for headings the code shows upper-cased. */
+    private var upper: Map<String, String> = emptyMap()
     private var byStart: Map<String, List<Tpl>> = emptyMap()
     private var byEnd: Map<String, List<Tpl>> = emptyMap()
     private var loose: List<Tpl> = emptyList()
@@ -102,6 +104,8 @@ object I18n {
             }
         }
         exact = map; byStart = start; byEnd = end; loose = rest
+        val loc = if (l == "pt") Locale("pt", "BR") else Locale(l)
+        upper = map.entries.filter { !it.key.contains('{') }.associate { it.key.uppercase(Locale.ROOT) to it.value.uppercase(loc) }
         synchronized(cache) { cache.clear() }
         loaded = l
         lang = l
@@ -110,6 +114,7 @@ object I18n {
 
     private fun core(s: String): String? {
         exact[s]?.let { return it }
+        upper[s]?.let { return it }
         val cands = (byStart[s.take(2)].orEmpty()) + (byEnd[s.takeLast(2)].orEmpty()) + loose
         for (t in cands) {
             val m = t.regex.matchEntire(s) ?: continue

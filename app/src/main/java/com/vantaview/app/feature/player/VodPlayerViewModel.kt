@@ -62,6 +62,7 @@ class VodPlayerViewModel @Inject constructor(
     private val session: VodSession,
     private val trakt: com.vantaview.app.data.trakt.TraktSync,
     private val skips: com.vantaview.app.data.player.SkipSegments,
+    private val torrents: com.vantaview.app.data.torrent.TorrentEngine,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(VodUi())
     val ui: StateFlow<VodUi> = _ui
@@ -214,7 +215,7 @@ class VodPlayerViewModel @Inject constructor(
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch {
             val raw = runCatching { addons.streams("series", v.id) }.getOrDefault(emptyList())
-            val streams = runCatching { debrid.annotate(raw) }.getOrDefault(raw.filter { !it.isTorrent })
+            val streams = runCatching { debrid.annotate(raw, settings.playTorrents) }.getOrDefault(raw.filter { !it.isTorrent })
             if (streams.isEmpty()) {
                 _ui.update { it.copy(preparing = null, failed = "No playable streams for S${v.season} E${v.episode}.") }
                 return@launch
@@ -325,41 +326,64 @@ class VodPlayerViewModel @Inject constructor(
     }
 
     /**
-     * Plays stream [index]. A torrent is first turned into a link through the debrid accounts; when it isn't
-     * cached, an [explicit] pick is downloaded on the service (with progress shown), otherwise the next
-     * stream is tried.
+     * Plays stream [index]. A torrent is first turned into a link through the debrid accounts; when none has
+     * it ready, VantaView plays the torrent itself if that's on (Settings › Playback). With that off, an
+     * [explicit] pick is downloaded on the debrid service, otherwise the next stream is tried.
      */
     private fun playIndex(index: Int, positionMs: Long, explicit: Boolean) {
         val s = _ui.value.streams.getOrNull(index) ?: return
         resolveJob?.cancel()
         _ui.update { it.copy(index = index, preparing = null) }
+        // A torrent that was playing stops sharing when another stream takes over.
+        torrents.stopAddress(currentUrl)
         if (!s.isTorrent) { playUrl(s.url, s.headers, positionMs); return }
 
         player.stop()
-        _ui.update { it.copy(preparing = "Getting the link from your debrid service…") }
         resolveJob = viewModelScope.launch {
-            val r = debrid.resolve(s, season, episode, allowDownload = explicit) { svc, pct ->
-                _ui.update { it.copy(preparing = com.vantaview.app.ui.tr("Not cached yet. Downloading on {0}", svc.label) + (pct?.let { p -> ": $p%" } ?: "…") + "\n" + com.vantaview.app.ui.tr("It will play when ready.")) }
-            }
-            when (r) {
-                is com.vantaview.app.data.debrid.Resolve.Ready -> {
+            val own = settings.playTorrents
+            if (debrid.hasAccounts) {
+                _ui.update { it.copy(preparing = "Getting the link from your debrid service…") }
+                // Debrid first. When it doesn't have the file ready, VantaView plays the torrent itself (if
+                // that's on) rather than waiting for the service to download it.
+                val r = debrid.resolve(s, season, episode, allowDownload = explicit && !own) { svc, pct ->
+                    _ui.update { it.copy(preparing = com.vantaview.app.ui.tr("Not cached yet. Downloading on {0}", svc.label) + (pct?.let { p -> ": $p%" } ?: "…") + "\n" + com.vantaview.app.ui.tr("It will play when ready.")) }
+                }
+                if (r is com.vantaview.app.data.debrid.Resolve.Ready) {
                     _ui.update { it.copy(preparing = null) }
                     playUrl(r.url, emptyMap(), positionMs)
+                    return@launch
                 }
-                else -> {
+                if (!own) {
                     val reason = when (r) {
                         is com.vantaview.app.data.debrid.Resolve.Failed -> r.message
                         else -> "Not cached on your debrid service"
                     }
-                    val next = index + 1
-                    if (!explicit && next < _ui.value.streams.size) {
-                        _ui.update { it.copy(preparing = null, notice = "$reason. Trying the next stream (${next + 1} of ${_ui.value.streams.size})") }
-                        playIndex(next, 0, explicit = false)
-                    } else {
-                        _ui.update { it.copy(preparing = null, failed = "$reason. Choose another stream, or pick this one to download it first.") }
-                    }
+                    failOrNext(index, explicit, reason, "$reason. Choose another stream, or pick this one to download it first.")
+                    return@launch
                 }
             }
+            if (!own) { failOrNext(index, explicit, "Torrent", "Your add-ons only found torrent results. Connect a debrid account on Sources → Debrid to play them."); return@launch }
+            _ui.update { it.copy(preparing = "Finding people sharing this torrent…") }
+            val url = runCatching {
+                torrents.prepare(s, season, episode) { line -> _ui.update { it.copy(preparing = line) } }
+            }.getOrElse { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                failOrNext(index, explicit, e.message ?: "The torrent couldn't be started.", e.message ?: "The torrent couldn't be started.")
+                return@launch
+            }
+            _ui.update { it.copy(preparing = null) }
+            playUrl(url, emptyMap(), positionMs)
+        }
+    }
+
+    /** After [index] couldn't play: the next stream when this one was picked automatically, otherwise an error. */
+    private fun failOrNext(index: Int, explicit: Boolean, reason: String, failed: String) {
+        val next = index + 1
+        if (!explicit && next < _ui.value.streams.size) {
+            _ui.update { it.copy(preparing = null, notice = "$reason. Trying the next stream (${next + 1} of ${_ui.value.streams.size})") }
+            playIndex(next, 0, explicit = false)
+        } else {
+            _ui.update { it.copy(preparing = null, failed = failed) }
         }
     }
 
@@ -371,7 +395,10 @@ class VodPlayerViewModel @Inject constructor(
         currentUrl = url
         currentHeaders = headers
         val ua = headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.value ?: "VantaView/${BuildConfig.VERSION_NAME}"
-        val http = OkHttpDataSource.Factory(okHttp)
+        // A torrent may pause while pieces arrive, so its local address gets a long wait before giving up.
+        val client = if (com.vantaview.app.data.torrent.TorrentEngine.isLocal(url))
+            okHttp.newBuilder().readTimeout(3, java.util.concurrent.TimeUnit.MINUTES).build() else okHttp
+        val http = OkHttpDataSource.Factory(client)
             .setUserAgent(ua)
             .setDefaultRequestProperties(headers.filterKeys { !it.equals("User-Agent", true) })
         val item = MediaItem.Builder().setUri(url).apply {
@@ -387,6 +414,8 @@ class VodPlayerViewModel @Inject constructor(
         saveProgress()
         if (player.playbackState != Player.STATE_ENDED) scrobble("stop")
         resolveJob?.cancel()
+        // The torrent stops sharing and its file is deleted as soon as the player closes.
+        torrents.stopAddress(currentUrl)
         player.removeListener(listener)
         player.release()
         ai?.release()

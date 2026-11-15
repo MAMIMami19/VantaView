@@ -104,6 +104,13 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+    // Playing torrents without a debrid account (MIT licence; libtorrent itself is BSD).
+    val libtorrent4j = "2.1.0-38"
+    implementation("org.libtorrent4j:libtorrent4j:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-arm:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-arm64:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-x86:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrent4j")
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     // Backups: QR codes for sending to a phone, and saving into a folder the user picks.
