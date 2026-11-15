@@ -76,6 +76,8 @@ data class CatalogUi(
     val results: List<MetaPreview>? = null,
     /** Watch now, genres, decades, themes and countries at the top of the page. */
     val tiles: List<com.vantaview.app.data.browse.BrowseTile> = emptyList(),
+    /** Trakt recommendations and the user's own Trakt lists (when this profile is linked). */
+    val traktRows: List<com.vantaview.app.data.trakt.TraktRow> = emptyList(),
 )
 
 @OptIn(FlowPreview::class)
@@ -84,6 +86,7 @@ class CatalogViewModel @Inject constructor(
     private val repo: AddonRepository,
     private val profiles: com.vantaview.app.data.profile.ProfileRepository,
     private val browse: com.vantaview.app.data.browse.BrowseRepository,
+    private val trakt: com.vantaview.app.data.trakt.TraktSync,
     @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
     savedState: SavedStateHandle,
 ) : ViewModel() {
@@ -123,6 +126,13 @@ class CatalogViewModel @Inject constructor(
                         rowStates = it.rowStates.filterKeys { k -> rows.any { r -> r.key == k } })
                 }
                 rows.forEach { load(it) }
+            }
+        }
+        // Trakt rows: reloaded when the profile changes, Trakt is linked or unlinked, or a sync finishes.
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(trakt.storeVersion, profiles.observeCurrent()) { _, p -> p }.collect { p ->
+                val rows = if (p?.isKids == true) emptyList() else runCatching { trakt.rows(type) }.getOrDefault(emptyList())
+                _ui.update { it.copy(traktRows = rows) }
             }
         }
         viewModelScope.launch {

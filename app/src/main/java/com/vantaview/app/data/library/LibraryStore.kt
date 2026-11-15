@@ -18,6 +18,13 @@ data class SavedTitle(val type: String, val id: String, val name: String, val po
     val key get() = "$type:$id"
 }
 
+/** A change the user made to the Library, for Trakt to copy. */
+sealed class LibraryChange {
+    data class Watchlist(val title: SavedTitle, val on: Boolean) : LibraryChange()
+    data class Watched(val title: SavedTitle, val on: Boolean) : LibraryChange()
+    data class Episodes(val seriesId: String, val videoIds: List<String>, val on: Boolean) : LibraryChange()
+}
+
 /** A reminder for a programme on a channel. */
 data class Reminder(
     val channelId: Long, val channelName: String, val title: String,
@@ -40,6 +47,11 @@ class LibraryStore @Inject constructor(
     private val changed = MutableStateFlow(0)
     private fun bump() { changed.value++ }
 
+    private val _changes = kotlinx.coroutines.flow.MutableSharedFlow<Pair<Long, LibraryChange>>(extraBufferCapacity = 64)
+    /** Changes the user makes (with the profile they were made on); not ones copied in from Trakt. */
+    val changes: kotlinx.coroutines.flow.SharedFlow<Pair<Long, LibraryChange>> = _changes
+    private fun tell(c: LibraryChange) { _changes.tryEmit(session.id to c) }
+
     // ---- Watchlist and Watched ----
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,11 +61,30 @@ class LibraryStore @Inject constructor(
     fun inWatchlist(type: String, id: String) = titles("watch_${session.id}").any { it.type == type && it.id == id }
     fun isWatched(type: String, id: String) = titles("seen_${session.id}").any { it.type == type && it.id == id }
 
-    fun setWatchlist(t: SavedTitle, on: Boolean) = toggle("watch_${session.id}", t, on)
-    fun setWatched(t: SavedTitle, on: Boolean) {
-        toggle("seen_${session.id}", t, on)
-        if (on) toggle("watch_${session.id}", t, false) // watched titles leave the Watchlist
+    fun setWatchlist(t: SavedTitle, on: Boolean) {
+        toggle("watch_${session.id}", t, on)
+        tell(LibraryChange.Watchlist(t, on))
     }
+    fun setWatched(t: SavedTitle, on: Boolean) {
+        val wasListed = on && inWatchlist(t.type, t.id)
+        toggle("seen_${session.id}", t, on)
+        tell(LibraryChange.Watched(t, on))
+        if (wasListed) setWatchlist(t, false) // watched films leave the Watchlist
+    }
+
+    fun watchlistNow(profile: Long = session.id): List<SavedTitle> = titles("watch_$profile")
+    fun watchedNow(profile: Long = session.id): List<SavedTitle> = titles("seen_$profile")
+
+    /** Replaces a profile's Watchlist or Watched list with what a Trakt sync worked out (no change is reported back). */
+    fun replaceFromSync(profile: Long, watchlist: List<SavedTitle>?, watched: List<SavedTitle>?) {
+        watchlist?.let { saveTitles("watch_$profile", it) }
+        watched?.let { saveTitles("seen_$profile", it) }
+        bump()
+    }
+
+    /** When the user last opened a series' page, for "New episode" badges. */
+    fun lastOpened(seriesId: String): Long = sp.getLong("opened_${session.id}_$seriesId", 0L)
+    fun markOpened(seriesId: String) { sp.edit().putLong("opened_${session.id}_$seriesId", System.currentTimeMillis()).apply(); bump() }
 
     private fun toggle(k: String, t: SavedTitle, on: Boolean) {
         val list = titles(k).filter { it.key != t.key }
@@ -89,6 +120,25 @@ class LibraryStore @Inject constructor(
     fun setEpisodesWatched(seriesId: String, videoIds: Collection<String>, on: Boolean) {
         val now = watchedEpisodes(seriesId).let { if (on) it + videoIds else it - videoIds.toSet() }
         sp.edit().putStringSet(epsKey(seriesId), now).apply()
+        bump()
+        tell(LibraryChange.Episodes(seriesId, videoIds.toList(), on))
+    }
+
+    /** Every watched episode id of a profile, by series. */
+    fun allWatchedEpisodes(profile: Long = session.id): Map<String, Set<String>> {
+        val prefix = "eps_${profile}_"
+        return sp.all.filterKeys { it.startsWith(prefix) }.mapNotNull { (k, v) ->
+            @Suppress("UNCHECKED_CAST") (v as? Set<String>)?.let { k.removePrefix(prefix) to it.toSet() }
+        }.toMap()
+    }
+
+    /** Sets a profile's watched episodes to exactly these (from a Trakt sync; no change is reported back). */
+    fun replaceEpisodesFromSync(profile: Long, bySeries: Map<String, Set<String>>) {
+        val prefix = "eps_${profile}_"
+        val e = sp.edit()
+        sp.all.keys.filter { it.startsWith(prefix) }.forEach { e.remove(it) }
+        bySeries.forEach { (series, ids) -> if (ids.isNotEmpty()) e.putStringSet(prefix + series, ids) }
+        e.apply()
         bump()
     }
 

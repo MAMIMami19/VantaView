@@ -12,6 +12,9 @@ plugins {
 val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream -> this.load(stream) }
 }
+fun secret(name: String) = (localProps.getProperty(name) ?: System.getenv(name) ?: "").trim().replace("\"", "")
+val traktId = secret("TRAKT_CLIENT_ID")
+val traktSecret = secret("TRAKT_CLIENT_SECRET")
 val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
 
 // docs/WHATS-NEW.md goes inside the app, for the "What's new" pop-up after an update.
@@ -36,6 +39,8 @@ android {
         // TMDB read access token for Movies and TV Series tiles: from local.properties, or the
         // TMDB_ACCESS_TOKEN environment variable (a GitHub Actions secret on CI). Never in the repo.
         buildConfigField("String", "TMDB_ACCESS_TOKEN", "\"$tmdb\"")
+        buildConfigField("String", "TRAKT_CLIENT_ID", "\"$traktId\"")
+        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"$traktSecret\"")
         minSdk = 24
         targetSdk = 34
         versionCode = (System.getenv("VV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()

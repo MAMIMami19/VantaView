@@ -42,6 +42,8 @@ jobs:
         env:
           # Optional: add a TMDB_ACCESS_TOKEN repository secret to fill every Movies and TV Series tile.
           TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
         run: gradle --no-daemon --stacktrace testReleaseUnitTest assembleRelease
       - name: Rename APK
         run: |

@@ -86,6 +86,8 @@ fun HomeScreen(
     val tiles by vm.tiles.collectAsStateWithLifecycle()
     val cont by vm.continueWatching.collectAsStateWithLifecycle()
     val favs by vm.favourites.collectAsStateWithLifecycle()
+    val watchlist by vm.watchlist.collectAsStateWithLifecycle()
+    val withNew by vm.withNewEpisode.collectAsStateWithLifecycle()
     val onNow by vm.onNow.collectAsStateWithLifecycle()
     val preview by vm.preview.collectAsStateWithLifecycle()
     val newSeason by vm.newSeason.collectAsStateWithLifecycle()
@@ -187,6 +189,20 @@ fun HomeScreen(
                 }
             }
 
+            // The Watchlist; series with a new episode out are marked and come first.
+            if (watchlist.isNotEmpty()) {
+                com.vantaview.app.ui.SectionTitle("Your Watchlist")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(watchlist.sortedByDescending { it.id in withNew }, key = { "wl-" + it.type + it.id }) { t ->
+                        com.vantaview.app.feature.vod.PosterCard(
+                            com.vantaview.app.data.addon.MetaPreview(t.id, t.type, t.name, t.poster, t.year, null),
+                            onClick = { onOpenTitle(t.type, t.id, t.name, t.poster, null) },
+                            badge = if (t.id in withNew) "New episode" else null,
+                        )
+                    }
+                }
+            }
+
             if (onNow.isNotEmpty()) {
                 com.vantaview.app.ui.SectionTitle("On now")
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -201,7 +217,7 @@ fun HomeScreen(
                 }
             }
 
-            if (cont.isEmpty() && favs.isEmpty()) {
+            if (cont.isEmpty() && favs.isEmpty() && watchlist.isEmpty()) {
                 Text(
                     "Films and episodes you start appear under Continue watching, and channels you star appear here as favourites.",
                     color = Vanta.TextDim, fontSize = 14.sp,

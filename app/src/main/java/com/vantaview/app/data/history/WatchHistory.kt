@@ -67,6 +67,15 @@ class WatchHistory @Inject constructor(
         save(session.id, list.take(MAX))
     }
 
+    fun getFor(profile: Long, type: String, metaId: String): HistoryEntry? = load(profile).firstOrNull { it.type == type && it.metaId == metaId }
+
+    /** Records progress for a given profile (Trakt sync), keeping the list newest first. */
+    @Synchronized
+    fun recordFor(profile: Long, e: HistoryEntry) {
+        val list = (load(profile).filter { it.key != e.key } + e).sortedByDescending { it.updatedAt }
+        save(profile, list.take(MAX))
+    }
+
     @Synchronized
     fun remove(type: String, metaId: String) = save(session.id, load(session.id).filter { !(it.type == type && it.metaId == metaId) })
 

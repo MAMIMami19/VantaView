@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -75,8 +76,19 @@ class HomeViewModel @Inject constructor(
     private val weatherRepo: com.vantaview.app.data.weather.WeatherRepository,
     private val playback: com.vantaview.app.data.PlaybackSettings,
     private val parental: com.vantaview.app.data.profile.ParentalControl,
+    library: com.vantaview.app.data.library.LibraryStore,
+    newEpisodes: com.vantaview.app.data.library.NewEpisodes,
     profiles: ProfileRepository,
 ) : ViewModel() {
+    /** The Watchlist for the row on Home, newest first. */
+    val watchlist: StateFlow<List<com.vantaview.app.data.library.SavedTitle>> =
+        library.watchlist.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Watchlist series with an episode out since they were added or last opened. */
+    val withNewEpisode: StateFlow<Set<String>> = library.watchlist
+        .mapLatest { newEpisodes.withNew(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     val profile: StateFlow<ProfileEntity?> = profiles.observeCurrent().stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val providerIds = providers.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

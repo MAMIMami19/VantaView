@@ -149,6 +149,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
     SettingsLayout { section ->
         when (section) {
             SettingsSection.WEATHER -> WeatherSection(vm)
+            SettingsSection.TRAKT -> TraktSection()
             SettingsSection.BACKUP -> backupContent()
             SettingsSection.ABOUT -> HelpAbout()
             SettingsSection.PLAYBACK -> PlaybackSection(vm.playback)
@@ -309,7 +310,7 @@ private fun PasswordDialog(
 
 /** Draws a QR code for [text] (black on white, with a quiet border). */
 @Composable
-private fun QrCode(text: String, modifier: Modifier) {
+internal fun QrCode(text: String, modifier: Modifier) {
     val matrix = remember(text) { QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0) }
     Canvas(modifier.background(Color.White).padding(10.dp)) {
         val n = matrix.width

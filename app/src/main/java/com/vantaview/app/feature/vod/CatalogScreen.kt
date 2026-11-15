@@ -153,6 +153,16 @@ fun CatalogScreen(
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "header") { header() }
                 if (ui.tiles.isNotEmpty() && !filter.any) browseGroups(ui.tiles, wide, onTile)
+                items(ui.traktRows, key = { it.key }) { row ->
+                    val shown = row.items.filter(filter::keep) // Trakt's own order
+                    if (shown.isNotEmpty()) Column {
+                        com.vantaview.app.ui.SectionTitle(row.title)
+                        Spacer(Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(shown, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }) }
+                        }
+                    }
+                }
                 items(ui.rows.filter(filter::keepRow), key = { it.key }) { row ->
                     Column {
                         com.vantaview.app.ui.SectionTitle(row.title)

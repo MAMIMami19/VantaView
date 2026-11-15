@@ -18,7 +18,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Built-in neon avatars
 - [x] Optional 4-digit PIN
 - [x] Kids profiles with an age limit and no Settings
-- [ ] Separate favourites, watchlist, history, Continue watching and settings per profile *(no watchlist yet)*
+- [ ] Separate favourites, watchlist, history, Continue watching and settings per profile *(all done except playback and most other settings, which all profiles share)*
 - [x] Copy sources from the main profile
 - [ ] Share a title to another profile (goes to their Library, with a message)
 
@@ -105,7 +105,7 @@ This file is ticked off in the same commit that finishes a feature.
 ## Library
 
 - [ ] Shared with you
-- [x] Watchlist
+- [x] Watchlist (also a row on Home, with "New episode" badges on series)
 - [ ] Downloads **(later)**
 - [ ] Recordings **(later)**
 
@@ -130,7 +130,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] App tour and support
 - [ ] Ambient mode
 - [x] Terms, Credits, About
-- [ ] Trakt sync **(later)**
+- [x] Trakt sync: per-profile sign-in with a code; Watchlist, watched films and episodes, Continue watching (scrobbling) and recommendations and lists rows
 - [ ] Connected servers: Jellyfin, Sonarr, Radarr **(later)**
 
 ## Suggested for the first release (not yet agreed)

@@ -54,10 +54,13 @@ class LibraryViewModel @Inject constructor(
     private val library: LibraryStore,
     private val alarms: ReminderScheduler,
     history: WatchHistory,
+    newEpisodes: com.vantaview.app.data.library.NewEpisodes,
 ) : ViewModel() {
     private fun <T> Flow<T>.state(initial: T) = stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initial)
     val watchlist: StateFlow<List<SavedTitle>> = library.watchlist.state(emptyList())
     val watched: StateFlow<List<SavedTitle>> = library.watched.state(emptyList())
+    /** Watchlist series with an episode out since they were added or last opened. */
+    val withNew: StateFlow<Set<String>> = library.watchlist.map { newEpisodes.withNew(it) }.state(emptySet())
     val reminders: StateFlow<List<Reminder>> = library.reminders.state(emptyList())
     /** Unfinished films and episodes, most recent first. */
     val continuing: StateFlow<List<HistoryEntry>> = history.entries.map { l -> l.filter { !it.finished } }.state(emptyList())
@@ -80,6 +83,7 @@ fun LibraryScreen(
     val watched by vm.watched.collectAsStateWithLifecycle()
     val reminders by vm.reminders.collectAsStateWithLifecycle()
     val continuing by vm.continuing.collectAsStateWithLifecycle()
+    val withNew by vm.withNew.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         com.vantaview.app.ui.PageTitle("Library")
@@ -98,6 +102,7 @@ fun LibraryScreen(
             Tab.WATCHLIST -> Posters(
                 watchlist.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
                 "Nothing here yet. Use + Watchlist on a film or series to save it for later.",
+                badges = withNew.associateWith { "New episode" },
             ) { m -> onOpenTitle(m.type, m.id, m.name, m.poster, null) }
             Tab.WATCHED -> Posters(
                 watched.map { MetaPreview(it.id, it.type, it.name, it.poster, it.year, null) },
@@ -118,13 +123,13 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun Posters(items: List<MetaPreview>, empty: String, onOpen: (MetaPreview) -> Unit) {
+private fun Posters(items: List<MetaPreview>, empty: String, badges: Map<String, String> = emptyMap(), onOpen: (MetaPreview) -> Unit) {
     if (items.isEmpty()) { Text(empty, color = Vanta.TextDim, fontSize = 15.sp); return }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(124.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize(),
     ) {
-        items(items, key = { it.type + it.id }) { m -> PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth()) }
+        items(items, key = { it.type + it.id }) { m -> PosterCard(m, onClick = { onOpen(m) }, modifier = Modifier.fillMaxWidth(), badge = badges[m.id]) }
     }
 }
 

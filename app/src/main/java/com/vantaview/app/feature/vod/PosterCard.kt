@@ -29,7 +29,7 @@ import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
 
 @Composable
-fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp)) {
+fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp), badge: String? = null) {
     // Press and hold (or the remote's Menu key): Watchlist and Watched.
     var actions by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     if (actions) TitleActionsDialog(item, onDismiss = { actions = false })
@@ -44,6 +44,15 @@ fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modi
                     AsyncImage(
                         model = item.poster, contentDescription = item.name,
                         contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                // e.g. "New episode" on a series from the Watchlist.
+                badge?.let {
+                    Text(
+                        it, color = androidx.compose.ui.graphics.Color.Black, fontSize = 11.sp, maxLines = 1,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
+                            .clip(RoundedCornerShape(6.dp)).background(Vanta.Cyan).padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
             }

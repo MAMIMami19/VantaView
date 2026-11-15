@@ -55,6 +55,7 @@ class VodPlayerViewModel @Inject constructor(
     private val history: com.vantaview.app.data.history.WatchHistory,
     private val addons: com.vantaview.app.data.addon.AddonRepository,
     private val session: VodSession,
+    private val trakt: com.vantaview.app.data.trakt.TraktSync,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(VodUi())
     val ui: StateFlow<VodUi> = _ui
@@ -77,11 +78,16 @@ class VodPlayerViewModel @Inject constructor(
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
-            if (state == Player.STATE_ENDED) saveProgress()
+            if (state == Player.STATE_ENDED) { saveProgress(); scrobble("stop", 100f) }
             if (state == Player.STATE_READY) {
                 startedOk = true
                 _ui.update { it.copy(failed = null) }
             }
+        }
+
+        // Trakt: "watching now" while playing, and keeps the place when paused.
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) scrobble("start") else if (player.playbackState != Player.STATE_ENDED) scrobble("pause")
         }
 
         override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
@@ -170,6 +176,7 @@ class VodPlayerViewModel @Inject constructor(
     fun playEpisode(v: com.vantaview.app.data.addon.Video) {
         val r = request ?: return
         saveProgress()
+        scrobble("stop")
         _ui.update { it.copy(preparing = "Finding streams for S${v.season} E${v.episode}…", failed = null) }
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch {
@@ -196,6 +203,14 @@ class VodPlayerViewModel @Inject constructor(
 
     fun pause() { player.playWhenReady = false; saveProgress() }
 
+    /** Tells Trakt (when linked) what's playing and how far through it is. */
+    private fun scrobble(action: String, percent: Float? = null) {
+        val r = request ?: return
+        val dur = player.duration
+        val p = percent ?: if (dur > 0 && dur != C.TIME_UNSET) player.currentPosition * 100f / dur else return
+        trakt.scrobble(action, r.type, r.metaId, r.videoId, r.title, p)
+    }
+
     /** Records where this profile got to, for Continue watching and resume. */
     private fun saveProgress() {
         val r = request ?: return
@@ -212,8 +227,12 @@ class VodPlayerViewModel @Inject constructor(
             )
         )
         // A film watched to the end counts as Watched (Library).
-        if (r.type == "movie" && pos >= dur * 0.92) {
+        if (r.type == "movie" && pos >= dur * 0.92 && !library.isWatched(r.type, r.metaId)) {
             library.setWatched(com.vantaview.app.data.library.SavedTitle(r.type, r.metaId, r.title, r.poster, null, 0), true)
+        }
+        // An episode watched to the end is marked watched too.
+        if (r.type == "series" && r.videoId.isNotBlank() && pos >= dur * 0.92 && r.videoId !in library.watchedEpisodes(r.metaId)) {
+            library.setEpisodesWatched(r.metaId, listOf(r.videoId), true)
         }
     }
 
@@ -272,6 +291,7 @@ class VodPlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         saveProgress()
+        if (player.playbackState != Player.STATE_ENDED) scrobble("stop")
         resolveJob?.cancel()
         player.removeListener(listener)
         player.release()

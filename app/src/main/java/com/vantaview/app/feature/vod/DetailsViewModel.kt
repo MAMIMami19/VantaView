@@ -199,6 +199,8 @@ class DetailsViewModel @Inject constructor(
 
     // ---- Watchlist and Watched ----
 
+    init { if (type == "series" && id.isNotBlank()) library.markOpened(id) }
+
     private val _saved = kotlinx.coroutines.flow.MutableStateFlow(library.inWatchlist(type, id) to library.isWatched(type, id))
     /** (on the Watchlist, watched) */
     val saved: kotlinx.coroutines.flow.StateFlow<Pair<Boolean, Boolean>> = _saved
