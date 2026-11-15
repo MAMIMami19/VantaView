@@ -84,7 +84,9 @@ tap_text "Continue"; sleep 4; shot after-profile
 tap_text "Only this time"; tap_text "While using"; tap_text "Don't allow"; sleep 2
 tap_text "Add free channels"; sleep 25; shot countries
 tap_text "United Kingdom"; sleep 1; tap_text "Save"; sleep 10; shot after-countries
-key BACK; key BACK; sleep 2; shot home
+# Setup steps 3 and 4: Continue from live TV, add Cinemeta, then Continue to Home.
+scroll; scroll; shot setup-tv-end; tap_text "Continue"; sleep 3; shot setup-films
+tap_text "Add Cinemeta"; sleep 8; shot setup-films-added; scroll; tap_text "Continue"; sleep 4; shot home
 scroll; shot home-scrolled
 # Add Cinemeta so Movies and TV Series have rows.
 menu "Sources"; shot sources; tap_text "Add-ons"; sleep 2; shot sources-addons; tap_text "Add Cinemeta"; sleep 8; shot sources-cinemeta
