@@ -37,6 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -268,15 +270,35 @@ internal fun Section(title: String, alwaysOpen: Boolean = false, content: @Compo
     }
     val fixed = group == null || group.titles.size == 1
     val expanded = fixed || group?.open == title
+    // Keeps this title where it is on screen while sections above close and this one opens, instead of the
+    // page jumping: each frame of the animation, the page scrolls by however far the title has moved.
+    val scroll = LocalSettingsScroll.current
+    val headerY = remember { floatArrayOf(Float.NaN) }
+    var anchorAt by remember { mutableStateOf<Float?>(null) }
+    androidx.compose.runtime.LaunchedEffect(anchorAt) {
+        val anchor = anchorAt ?: return@LaunchedEffect
+        if (scroll == null) return@LaunchedEffect
+        val until = System.nanoTime() + 700_000_000L
+        while (System.nanoTime() < until) {
+            androidx.compose.runtime.withFrameNanos { }
+            val moved = headerY[0] - anchor
+            if (!moved.isNaN() && kotlin.math.abs(moved) >= 1f) scroll.dispatchRawDelta(moved)
+        }
+        anchorAt = null
+    }
     Column(
-        Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(if (fixed) 16.dp else 8.dp),
+        Modifier.fillMaxWidth()
+            .onGloballyPositioned { headerY[0] = it.positionInRoot().y }.background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(if (fixed) 16.dp else 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (fixed) {
             Text(title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         } else {
             FocusCard(
-                onClick = { group!!.open = if (group.open == title) null else title },
+                onClick = {
+                    anchorAt = headerY[0].takeIf { !it.isNaN() }
+                    group!!.open = if (group.open == title) null else title
+                },
                 selected = expanded,
                 modifier = Modifier.fillMaxWidth(),
             ) {

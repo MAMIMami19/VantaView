@@ -37,6 +37,9 @@ import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.Vanta
 
 /** The Settings sections, in the agreed order. [keywords] are extra words the search box matches. */
+/** The scrolling settings page, so a drop-down can keep its title still while sections open and close. */
+internal val LocalSettingsScroll = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.foundation.ScrollState?> { null }
+
 enum class SettingsSection(val title: String, val summary: String, val keywords: String) {
     PLAYBACK(
         "Playback", "Buffer size, how long controls stay, mini player, start on last channel, picture size and phone gestures",
@@ -108,17 +111,18 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
                     if (found.isEmpty()) NoMatch()
                 }
                 if (shown != null) key(shown) {
+                    val paneScroll = rememberScrollState()
                     Column(
                         Modifier.weight(1f).fillMaxHeight()
                             .onFocusChanged {
                                 if (paneHadFocus && !it.hasFocus) paneLostAt = System.currentTimeMillis()
                                 paneHadFocus = it.hasFocus
                             }
-                            .verticalScroll(rememberScrollState()).padding(20.dp),
+                            .verticalScroll(paneScroll).padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         com.vantaview.app.ui.PageTitle(shown.title)
-                        content(shown)
+                        androidx.compose.runtime.CompositionLocalProvider(LocalSettingsScroll provides paneScroll) { content(shown) }
                         Spacer(Modifier.height(24.dp))
                     }
                 }
@@ -126,8 +130,9 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
         } else {
             val open = current
             BackHandler(enabled = open != null) { current = null }
+            val listScroll = rememberScrollState()
             Column(
-                Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+                Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(listScroll).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(if (open == null) 8.dp else 14.dp),
             ) {
                 if (open == null) {
@@ -144,7 +149,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
                 } else key(open) {
                     FocusCard(onClick = { current = null }) { Text("‹ Settings", color = Vanta.Text) }
                     com.vantaview.app.ui.PageTitle(open.title)
-                    content(open)
+                    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsScroll provides listScroll) { content(open) }
                     Spacer(Modifier.height(24.dp))
                 }
             }
