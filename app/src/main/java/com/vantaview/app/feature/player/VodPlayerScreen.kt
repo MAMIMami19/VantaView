@@ -200,7 +200,7 @@ fun VodPlayerScreen(onBack: () -> Unit, vm: VodPlayerViewModel = hiltViewModel()
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@kotlin.OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun SpeedDialog(current: Float, onPick: (Float) -> Unit, onClose: () -> Unit) {
     androidx.compose.material3.AlertDialog(
