@@ -140,12 +140,14 @@ class AddonRepository @Inject constructor(
         }
     }
 
-    suspend fun loadCatalog(ref: CatalogRef): List<MetaPreview> {
+    suspend fun loadCatalog(ref: CatalogRef, skip: Int = 0): List<MetaPreview> {
         if (portalVod.isPortal(ref)) {
+            if (skip > 0) return emptyList()
             val p = db.providers().get(-ref.addon.entity.id) ?: return emptyList()
             return portalVod.load(p, ref)
         }
-        val extra = ref.genre?.let { "/genre=${enc(it)}" }.orEmpty()
+        val extra = listOfNotNull(ref.genre?.let { "genre=${enc(it)}" }, skip.takeIf { it > 0 }?.let { "skip=$it" })
+            .joinToString("&").let { if (it.isEmpty()) "" else "/$it" }
         val url = "${ref.addon.base}/catalog/${enc(ref.catalog.type)}/${enc(ref.catalog.id)}$extra.json"
         return json(url, maxAgeMs = 6 * 3_600_000L)?.optJSONArray("metas")?.let { arr ->
             (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { AddonJson.preview(it, ref.catalog.type) }

@@ -334,17 +334,23 @@ fun PageTitle(text: String, modifier: Modifier = Modifier) {
 
 /** A heading inside a page (a catalogue row, a group of tiles), in the look's own style. */
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+fun SectionTitle(text: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val look = Vanta.Look
-    Text(
-        if (look == com.vantaview.app.data.Look.TILES) text.lowercase() else text,
-        color = if (look == com.vantaview.app.data.Look.BLADES) Vanta.Cyan else Vanta.Text,
-        fontWeight = when (look) {
-            com.vantaview.app.data.Look.TILES, com.vantaview.app.data.Look.SPOTLIGHT -> FontWeight.Light
-            com.vantaview.app.data.Look.FLUENT, com.vantaview.app.data.Look.CROSS -> FontWeight.SemiBold
-            else -> FontWeight.Bold
-        },
-        fontSize = androidx.compose.ui.unit.TextUnit(if (look == com.vantaview.app.data.Look.TILES) 21f else 17f, androidx.compose.ui.unit.TextUnitType.Sp),
-        modifier = modifier,
-    )
+    val label: @Composable () -> Unit = {
+        Text(
+            (if (look == com.vantaview.app.data.Look.TILES) text.lowercase() else text) + if (onClick != null) "  ›" else "",
+            color = if (look == com.vantaview.app.data.Look.BLADES) Vanta.Cyan else Vanta.Text,
+            fontWeight = when (look) {
+                com.vantaview.app.data.Look.TILES, com.vantaview.app.data.Look.SPOTLIGHT -> FontWeight.Light
+                com.vantaview.app.data.Look.FLUENT, com.vantaview.app.data.Look.CROSS -> FontWeight.SemiBold
+                else -> FontWeight.Bold
+            },
+            fontSize = androidx.compose.ui.unit.TextUnit(if (look == com.vantaview.app.data.Look.TILES) 21f else 17f, androidx.compose.ui.unit.TextUnitType.Sp),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+    }
+    // A section that opens: the title is a button to its full page ("See all").
+    if (onClick == null) Box(modifier) { label() }
+    else FocusCard(onClick = onClick, modifier = modifier, padding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) { label() }
 }

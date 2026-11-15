@@ -190,7 +190,7 @@ private fun AppNav(
         route == "catchup" -> Section.LIVE // Catch-up sits under Live TV in the menu
         route == "guide" -> Section.GUIDE
         route == "search" -> Section.SEARCH
-        route == "library" -> Section.LIBRARY
+        route.startsWith("library") -> Section.LIBRARY
         route == "movies" -> Section.MOVIES
         route == "series" -> Section.SERIES
         route.startsWith("sources") -> Section.SOURCES
@@ -255,7 +255,8 @@ private fun AppNav(
                     android.widget.Toast.makeText(context, "Press Back again to exit", android.widget.Toast.LENGTH_SHORT).show()
                 }
                 HomeScreen(
-                    onSection = { route -> nav.goTo(route) },
+                    // A link with a choice ("library?tab=watchlist") opens that page fresh on that tab.
+                    onSection = { route -> nav.goTo(route, restore = '?' !in route) },
                     onOpenTitle = { type, id, name, poster, play ->
                         nav.navigate(
                             "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
@@ -272,6 +273,19 @@ private fun AppNav(
                     onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                     onCatchUpPage = { nav.navigate("catchup") },
                 )
+            }
+            // A whole row of Movies or TV Series.
+            composable(
+                "row/{type}?key={key}&title={title}",
+                arguments = listOf(
+                    navArgument("type") { type = NavType.StringType },
+                    navArgument("key") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                ),
+            ) {
+                com.vantaview.app.feature.vod.CatalogRowScreen(onOpen = { m ->
+                    nav.navigate("details/${Uri.encode(m.type)}?id=${Uri.encode(m.id)}&name=${Uri.encode(m.name)}&poster=${Uri.encode(m.poster.orEmpty())}")
+                })
             }
             composable("catchup") {
                 com.vantaview.app.feature.catchup.CatchUpScreen(onPlayRecording = { nav.navigate("vod") })
@@ -294,8 +308,9 @@ private fun AppNav(
                     },
                 )
             }
-            composable("library") {
+            composable("library?tab={tab}", arguments = listOf(navArgument("tab") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
                 com.vantaview.app.feature.library.LibraryScreen(
+                    initialTab = e.arguments?.getString("tab"),
                     onOpenTitle = { type, id, name, poster, play ->
                         nav.navigate(
                             "details/${Uri.encode(type)}?id=${Uri.encode(id)}&name=${Uri.encode(name)}" +
@@ -320,6 +335,7 @@ private fun AppNav(
                         },
                         onAddAddon = { nav.goTo("sources?tab=addons", restore = false) },
                         onTile = { t -> nav.navigate("browse/$kind/${t.key}") },
+                        onRow = { key, title -> nav.navigate("row/$kind?key=${Uri.encode(key)}&title=${Uri.encode(title)}") },
                     )
                 }
             }

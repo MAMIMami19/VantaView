@@ -46,6 +46,8 @@ fun CatalogScreen(
     onOpen: (MetaPreview) -> Unit,
     onAddAddon: () -> Unit,
     onTile: (com.vantaview.app.data.browse.BrowseTile) -> Unit = {},
+    /** Opens a whole row (its title was chosen): the row's key and title. */
+    onRow: (String, String) -> Unit = { _, _ -> },
     vm: CatalogViewModel = hiltViewModel(),
 ) {
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 720
@@ -190,7 +192,7 @@ fun CatalogScreen(
                 items(ui.traktRows, key = { it.key }) { row ->
                     val shown = row.items.filter(filter::keep) // Trakt's own order
                     if (shown.isNotEmpty()) Column {
-                        com.vantaview.app.ui.SectionTitle(row.title)
+                        com.vantaview.app.ui.SectionTitle(row.title, onClick = { onRow(row.key, row.title) })
                         Spacer(Modifier.height(8.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(shown, key = { it.id }) { PosterCard(it, onClick = { onOpen(it) }, onFocused = if (wide) ({ m -> focused = m }) else null) }
@@ -199,7 +201,7 @@ fun CatalogScreen(
                 }
                 items(ui.rows.filter(filter::keepRow), key = { it.key }) { row ->
                     Column {
-                        com.vantaview.app.ui.SectionTitle(row.title)
+                        com.vantaview.app.ui.SectionTitle(row.title, onClick = { onRow(row.key, row.title) })
                         Spacer(Modifier.height(8.dp))
                         when (val st = ui.rowStates[row.key]) {
                             is RowState.Ready ->

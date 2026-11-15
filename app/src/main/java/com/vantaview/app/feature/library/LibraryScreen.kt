@@ -82,11 +82,12 @@ private enum class Tab(val label: String) { WATCHLIST("Watchlist"), CONTINUE("Co
 /** Library: Watchlist, Continue watching, Watched and programme reminders for this profile. */
 @Composable
 fun LibraryScreen(
+    initialTab: String? = null,
     onOpenTitle: (type: String, id: String, name: String, poster: String?, play: String?) -> Unit,
     onPlayChannel: (Long) -> Unit,
     vm: LibraryViewModel = hiltViewModel(),
 ) {
-    var tab by rememberSaveable { mutableStateOf(Tab.WATCHLIST) }
+    var tab by rememberSaveable { mutableStateOf(Tab.entries.firstOrNull { it.name.equals(initialTab, true) } ?: Tab.WATCHLIST) }
     val watchlist by vm.watchlist.collectAsStateWithLifecycle()
     val watched by vm.watched.collectAsStateWithLifecycle()
     val reminders by vm.reminders.collectAsStateWithLifecycle()

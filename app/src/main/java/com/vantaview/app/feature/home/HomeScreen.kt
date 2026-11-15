@@ -200,7 +200,7 @@ fun HomeScreen(
             }
 
             if (cont.isNotEmpty()) {
-                com.vantaview.app.ui.SectionTitle("Continue watching")
+                com.vantaview.app.ui.SectionTitle("Continue watching", onClick = { onSection("library?tab=continue") })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(cont, key = { it.entry.key }) { c ->
                         ContinueCard(c, Modifier.width(if (wide) 256.dp else 200.dp)) {
@@ -212,7 +212,7 @@ fun HomeScreen(
 
             // The Watchlist; series with a new episode out are marked and come first.
             if (watchlist.isNotEmpty()) {
-                com.vantaview.app.ui.SectionTitle("Your Watchlist")
+                com.vantaview.app.ui.SectionTitle("Your Watchlist", onClick = { onSection("library?tab=watchlist") })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(watchlist.sortedByDescending { it.id in withNew }, key = { "wl-" + it.type + it.id }) { t ->
                         com.vantaview.app.feature.vod.PosterCard(
@@ -225,14 +225,14 @@ fun HomeScreen(
             }
 
             if (onNow.isNotEmpty()) {
-                com.vantaview.app.ui.SectionTitle("On now")
+                com.vantaview.app.ui.SectionTitle("On now", onClick = { onSection("guide") })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(onNow, key = { it.first.id }) { (ch, p) -> OnNowCard(ch, p, now.time) { onPlayChannel(ch.id) } }
                 }
             }
 
             if (favs.isNotEmpty()) {
-                com.vantaview.app.ui.SectionTitle("Favourite channels")
+                com.vantaview.app.ui.SectionTitle("Favourite channels", onClick = { onSection("live") })
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(favs, key = { it.id }) { ch -> ChannelCard(ch) { onPlayChannel(ch.id) } }
                 }

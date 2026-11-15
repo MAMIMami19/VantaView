@@ -1,3 +1,4 @@
+- Section names open their full list: Continue watching and Your Watchlist on Home, and every row on Movies and TV Series.
 - Press and hold a poster or a Continue watching card to remove it from your Watchlist or Continue watching.
 - Films and series: Skip intro, a Next episode countdown, trailers on details pages, and "Coming soon" seasons.
 - Live TV: pause, rewind and Go live; a Last channel button; reorder or hide groups (Groups ✎).
@@ -5,4 +6,3 @@
 - Movies and TV Series: a banner of new titles, a posters-only view, and details of the poster you're on (TVs).
 - In the player: ⋯ More has a sleep timer, stream info and "open in another player".
 - Share a film or series with another profile (press and hold its poster); it shows on their Home and in Library.
-- Each profile has its own Playback, Subtitles and Weather settings. New: screensaver, speed test, guide time offset and log file.
