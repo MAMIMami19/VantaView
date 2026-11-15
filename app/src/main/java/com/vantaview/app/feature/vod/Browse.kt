@@ -80,6 +80,24 @@ fun BrowseTileCard(t: BrowseTile, width: Dp, onClick: () -> Unit) {
     }
 }
 
+/** The tile groups at the top of Movies and TV Series, one list item each so the page scrolls to follow focus. */
+fun androidx.compose.foundation.lazy.LazyListScope.browseGroups(tiles: List<BrowseTile>, wide: Boolean, onTile: (BrowseTile) -> Unit) {
+    val width = if (wide) 250.dp else 200.dp
+    BrowseGroup.entries.forEach { g ->
+        val list = tiles.filter { it.group == g }
+        if (list.isEmpty()) return@forEach
+        item(key = "group-${g.name}") {
+            Column {
+                com.vantaview.app.ui.SectionTitle(g.title)
+                Spacer(Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(list, key = { it.key }) { t -> BrowseTileCard(t, width) { onTile(t) } }
+                }
+            }
+        }
+    }
+}
+
 /** The tile groups at the top of Movies and TV Series. */
 @Composable
 fun BrowseGroups(tiles: List<BrowseTile>, wide: Boolean, onTile: (BrowseTile) -> Unit) {

@@ -69,10 +69,16 @@ fun CatalogScreen(
             return@Column
         }
 
+        val sort by vm.sort.collectAsStateWithLifecycle()
+        val filter by vm.filter.collectAsStateWithLifecycle()
+        var picking by remember { mutableStateOf<String?>(null) }
+        // Search, sort and filters. While browsing they scroll away with the rows, so short screens
+        // (a phone on its side) show the tiles; while searching they stay at the top.
+        val header: @Composable () -> Unit = {
+          Column {
         com.vantaview.app.ui.SearchToggle(query, { vm.query.value = it }, "Search ${title.lowercase()}")
         Spacer(Modifier.height(10.dp))
         // Sort: applies to every row and to search results.
-        val sort by vm.sort.collectAsStateWithLifecycle()
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(CatalogSort.entries.toList(), key = { it.name }) { o ->
                 FocusCard(onClick = { vm.setSort(o) }, selected = o == sort) {
@@ -82,8 +88,6 @@ fun CatalogScreen(
             }
         }
         // Filters: genre, decade and source (add-on or portal).
-        val filter by vm.filter.collectAsStateWithLifecycle()
-        var picking by remember { mutableStateOf<String?>(null) }
         Spacer(Modifier.height(8.dp))
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { FocusCard(onClick = { picking = "genre" }, selected = filter.genre != null) { Text("Genre: ${filter.genre ?: "Any"} ▾", color = Vanta.Text, fontSize = 14.sp) } }
@@ -94,6 +98,9 @@ fun CatalogScreen(
             }
             item { FocusCard(onClick = { picking = "source" }, selected = filter.source != null) { Text("Source: ${filter.source ?: "Any"} ▾", color = Vanta.Text, fontSize = 14.sp) } }
             if (filter.any) item { FocusCard(onClick = { vm.filter.value = CatalogFilter() }) { Text("Clear filters", color = Vanta.Cyan, fontSize = 14.sp) } }
+        }
+            Spacer(Modifier.height(12.dp))
+          }
         }
         picking?.let { what ->
             val options: List<Pair<String, () -> Unit>> = when (what) {
@@ -118,7 +125,8 @@ fun CatalogScreen(
                 confirmButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("Close") } },
             )
         }
-        Spacer(Modifier.height(12.dp))
+        val browsing = query.isBlank() && !(ui.loaded && ui.rows.isEmpty() && ui.tiles.isEmpty())
+        if (!browsing) header()
 
         val results = ui.results?.let { sort.apply(it) }?.filter(filter::keep)
         when {
@@ -143,7 +151,8 @@ fun CatalogScreen(
                     "You can still search above, or add a catalogue add-on such as Cinemeta on the Sources page."
             )
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                if (ui.tiles.isNotEmpty() && !filter.any) item(key = "browse") { BrowseGroups(ui.tiles, wide, onTile) }
+                item(key = "header") { header() }
+                if (ui.tiles.isNotEmpty() && !filter.any) browseGroups(ui.tiles, wide, onTile)
                 items(ui.rows.filter(filter::keepRow), key = { it.key }) { row ->
                     Column {
                         com.vantaview.app.ui.SectionTitle(row.title)
