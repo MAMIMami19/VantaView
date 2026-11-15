@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,12 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
+
+// Secrets come from local.properties or the environment (CI secrets), never from the repo.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream -> this.load(stream) }
+}
+val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
 
 android {
     namespace = "com.vantaview.app"
@@ -16,10 +24,6 @@ android {
         buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         // TMDB read access token for Movies and TV Series tiles: from local.properties, or the
         // TMDB_ACCESS_TOKEN environment variable (a GitHub Actions secret on CI). Never in the repo.
-        val localProps = java.util.Properties().apply {
-            rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
-        }
-        val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
         buildConfigField("String", "TMDB_ACCESS_TOKEN", "\"$tmdb\"")
         minSdk = 24
         targetSdk = 34
