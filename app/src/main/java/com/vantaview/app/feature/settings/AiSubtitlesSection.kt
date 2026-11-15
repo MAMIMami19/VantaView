@@ -25,6 +25,7 @@ import com.vantaview.app.data.aisubs.AiMode
 import com.vantaview.app.data.aisubs.AiModel
 import com.vantaview.app.data.aisubs.AiSubtitles
 import com.vantaview.app.data.aisubs.ModelState
+import com.vantaview.app.data.aisubs.TranslationState
 import com.vantaview.app.ui.FocusCard
 import com.vantaview.app.ui.GradientButton
 import com.vantaview.app.ui.Vanta
@@ -90,11 +91,33 @@ fun AiSubtitlesSection(ai: AiSubtitles) {
                     GradientButton("Try again", onClick = ai::download)
                 }
             }
+            if (mode == AiMode.ARABIC) TranslationModelBlock(ai)
         }
         if (state == ModelState.Ready || mode == AiMode.OFF) {
             FocusCard(onClick = ai::deleteModels) { Text("Delete downloaded models", color = Vanta.Text) }
         }
         Text("Speech recognition by whisper.cpp and OpenAI's Whisper models (MIT licence).", color = Vanta.TextDim, fontSize = 11.sp)
+        Text("Arabic translation by Google ML Kit, on this device.", color = Vanta.TextDim, fontSize = 11.sp)
+    }
+}
+
+/** The Arabic translation model: what it is, and whether it's on the device. */
+@Composable
+private fun TranslationModelBlock(ai: AiSubtitles) {
+    val translationState by ai.translator.state.collectAsState()
+    Text("Arabic translation model", color = Vanta.Text)
+    Text(
+        "Foreign speech is translated into Arabic on this device, free, with no account. The Arabic model is about 30 MB, downloaded once. Each other language downloads automatically the first time it is heard.",
+        color = Vanta.TextDim, fontSize = 13.sp,
+    )
+    when (val s = translationState) {
+        TranslationState.Missing -> GradientButton("Download the Arabic model (~30 MB)", onClick = ai.translator::downloadArabic)
+        TranslationState.Downloading -> Text("Downloading the translation model…", color = Vanta.Cyan)
+        TranslationState.Ready -> Text("Translation ready. Foreign speech will be translated into Arabic.", color = Vanta.Cyan, fontSize = 14.sp)
+        is TranslationState.Failed -> {
+            Text(s.message, color = Vanta.Error, fontSize = 13.sp)
+            GradientButton("Try again", onClick = ai.translator::downloadArabic)
+        }
     }
 }
 
@@ -120,7 +143,7 @@ private fun Requirements(ai: AiSubtitles) {
             "Not for 1 GB devices like the basic Fire TV Stick or Fire TV Stick Lite.",
             "Works the processor hard: phones drain faster and get warm, and weaker devices may stutter.",
             "Words appear about 5 to 7 seconds after they're spoken.",
-            "Accuracy drops with music, crowd noise, people talking over each other and strong accents. Translation is into English only.",
+            "Accuracy drops with music, crowd noise, people talking over each other and strong accents.",
             "Needs 31 MB (Fast) or 57 MB (Better) of storage for the speech model.",
         ).forEach { Text("•  $it", color = Vanta.Text, fontSize = 13.sp, lineHeight = 18.sp) }
         Text(

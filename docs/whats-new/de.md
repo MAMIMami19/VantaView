@@ -1,3 +1,4 @@
+- Die KI-Untertitel haben jetzt einen arabischen Modus: Unter Einstellungen › Untertitel und Audio untertiteln arabische Untertitel arabische Sender direkt und übersetzen ausländische Sender auf dem Gerät ins Arabische. Das arabische Modell (ca. 30 MB) wird einmal heruntergeladen.
 - VantaView spricht jetzt Arabisch, mit einem Layout von rechts nach links. Es folgt deinem Gerät, oder wähle unter Einstellungen › Darstellung für jedes Profil Arabisch. Film- und Seriendetails kommen auch auf Arabisch.
 - Die Einstellungsseiten sind übersichtlicher: Jeder Abschnitt ist jetzt ein Dropdown, und beim Öffnen schließen sich die anderen. Der Startbildschirm zeigt Version und Build-Nummer, und VantaView sucht bei jedem Start nach Updates.
 - Ein richtiger Speedtest unter Einstellungen › Quellen: Ping, Download und Upload auf einer Live-Anzeige, dazu, was deine Verbindung abspielen kann.

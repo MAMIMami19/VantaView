@@ -1,3 +1,4 @@
+- Les sous-titres IA ont maintenant un mode arabe : dans Réglages › Sous-titres et audio, les sous-titres arabes sous-titrent directement les chaînes arabes et traduisent les chaînes étrangères en arabe sur l'appareil. Le modèle arabe (environ 30 Mo) se télécharge une fois.
 - VantaView parle maintenant arabe, avec une mise en page de droite à gauche. Il suit la langue de votre appareil, ou choisissez-le pour chaque profil dans Réglages › Apparence. Les détails des films et séries arrivent aussi en arabe.
 - Les pages de Réglages sont plus claires : chaque section est désormais un menu déroulant, et en ouvrir une ferme les autres. L'écran de démarrage affiche la version et le numéro de build, et VantaView recherche les mises à jour à chaque démarrage.
 - Un vrai test de débit dans Réglages › Sources : ping, téléchargement et envoi sur un cadran en direct, avec ce que votre connexion peut lire.

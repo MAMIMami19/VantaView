@@ -84,12 +84,24 @@ class AiSubtitleEngine(private val ai: AiSubtitles) : TeeAudioProcessor.AudioBuf
                     WhisperNative.transcribe(ctx, chunk, ai.mode == AiMode.ENGLISH, threads, prompt)
                 }
                 val lang = out.substringBefore('\n')
-                val text = clean(out.substringAfter('\n', ""))
+                val spoken = clean(out.substringAfter('\n', ""))
+                // Arabic mode: Arabic speech is already Arabic; anything else goes through
+                // on-device translation (whisper itself only translates into English).
+                var translation: TranslationResult? = null
+                var text = spoken
+                if (spoken != null && ai.mode == AiMode.ARABIC && lang != "ar") {
+                    translation = ai.translator.toArabic(spoken, lang)
+                    text = (translation as? TranslationResult.Done)?.let { clean(it.text) } ?: spoken
+                }
                 _line.value = text?.let { AiLine(it, lang) }
-                if (text != null) prompt = text.takeLast(120)
+                if (spoken != null) prompt = spoken.takeLast(120)
                 // Falling behind: drop the oldest audio so the words stay close to the picture.
                 val took = System.currentTimeMillis() - started
-                _status.value = if (took > 6_000) "This device is too slow for live AI subtitles. Try the Fast model." else null
+                _status.value = when {
+                    took > 6_000 -> "This device is too slow for live AI subtitles. Try the Fast model."
+                    translation == TranslationResult.Downloading -> "Downloading the translation model…"
+                    else -> null
+                }
                 synchronized(lock) { if (len > 16_000 * 10) { System.arraycopy(buf, len - 16_000 * 5, buf, 0, 16_000 * 5); len = 16_000 * 5 } }
             }
         }
@@ -154,11 +166,12 @@ class AiSubtitleEngine(private val ai: AiSubtitles) : TeeAudioProcessor.AudioBuf
 
     companion object {
         private val junk = Regex("""(?i)^\s*(\[.*]|\(.*\)|♪+|thank you\.?|thanks for watching!?|subtitles by .*|you)\s*$""")
+        private val junkAr = Regex("""^\s*(شكرا( لكم| لك)?( على المشاهدة)?\.?|اشترك(وا)? في القناة|تابعونا|لا تنس(وا)? الاشتراك|شكرا جزيلا)\s*$""")
 
         /** Drops whisper's guesses on music or silence, and bracketed sound labels. */
         fun clean(raw: String): String? {
             val t = raw.replace(Regex("""\[[^]]*]|\([^)]*\)|♪"""), " ").replace(Regex("""\s+"""), " ").trim()
-            if (t.length < 2 || junk.matches(t)) return null
+            if (t.length < 2 || junk.matches(t) || junkAr.matches(t)) return null
             return t
         }
     }

@@ -172,7 +172,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Light ripple on the loading screen, and a ripple burst from the profile you pick (still with animations off)
 - [x] Appearance extras: Black (OLED) theme, custom accent colour, text size, sidebar auto-hide switch, loading screen switch
 - [x] Updates can offer test builds (switch in Settings › Updates)
-- [x] AI subtitles (beta): on-device captions or English translation with whisper.cpp, model downloaded when chosen
+- [x] AI subtitles (beta): on-device captions, English translation with whisper.cpp, or Arabic subtitles (Arabic captioned directly, other languages translated on-device with ML Kit); models downloaded when chosen
 - [x] Storage: space used by type; clear pictures, TV guide and update downloads; TV guide refresh setting
 - [x] Search page in the sidebar and on Home; Library page (Watchlist, Continue watching, Watched, Reminders); films marked watched when finished
 - [x] Reminder pop-ups in the app, notifications when it is closed

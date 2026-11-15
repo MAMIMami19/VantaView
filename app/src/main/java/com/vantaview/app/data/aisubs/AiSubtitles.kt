@@ -20,6 +20,7 @@ import javax.inject.Singleton
 enum class AiMode(val label: String, val detail: String) {
     OFF("Off", ""),
     ENGLISH("English subtitles", "Any language turned into English text. Foreign channels are translated."),
+    ARABIC("Arabic subtitles", "Any language turned into Arabic text. Arabic channels are captioned directly; foreign channels are translated."),
     ORIGINAL("Same-language captions", "Text in the language being spoken."),
 }
 
@@ -47,6 +48,8 @@ class AiSubtitles @Inject constructor(
     @ApplicationContext private val context: Context,
     http: OkHttpClient,
     @AppScope private val scope: CoroutineScope,
+    /** On-device translation into Arabic (ML Kit); used by the Arabic mode. */
+    val translator: AiTranslator,
 ) {
     private val http = http.newBuilder().followRedirects(true).build()
     private val sp = context.getSharedPreferences("aisubs", Context.MODE_PRIVATE)
@@ -139,5 +142,6 @@ class AiSubtitles @Inject constructor(
     fun deleteModels() {
         dir.listFiles()?.forEach { it.delete() }
         _model.value = stateOf(model)
+        translator.deleteModels()
     }
 }

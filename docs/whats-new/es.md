@@ -1,3 +1,4 @@
+- Los subtítulos con IA tienen ahora un modo árabe: en Ajustes › Subtítulos y audio, los subtítulos árabes subtitulan directamente los canales árabes y traducen los canales extranjeros al árabe en el dispositivo. El modelo árabe (unos 30 MB) se descarga una vez.
 - VantaView ahora habla árabe, con un diseño de derecha a izquierda. Sigue el idioma de tu dispositivo, o elígelo para cada perfil en Ajustes › Apariencia. Los detalles de películas y series también llegan en árabe.
 - Las páginas de Ajustes están más ordenadas: cada sección es ahora un desplegable, y al abrir una se cierran las demás. La pantalla de inicio muestra la versión y la compilación, y VantaView busca actualizaciones cada vez que se inicia.
 - Una prueba de velocidad completa en Ajustes › Fuentes: ping, descarga y subida en un indicador en directo, con lo que tu conexión puede reproducir.

@@ -1,3 +1,4 @@
+- Yapay zekâ altyazılarının artık bir Arapça modu var: Ayarlar › Altyazı ve ses bölümünde Arapça altyazılar Arapça kanalları doğrudan altyazılarken yabancı kanalları cihazda Arapçaya çevirir. Arapça model (yaklaşık 30 MB) bir kez indirilir.
 - VantaView artık Arapça konuşuyor ve sağdan sola bir düzene sahip. Cihazının dilini izler ya da Ayarlar › Görünüm'den her profil için Arapçayı seç. Film ve dizi ayrıntıları da Arapça gelir.
 - Ayarlar sayfaları daha düzenli: her bölüm artık açılır bir menü ve birini açınca diğerleri kapanır. Açılış ekranı sürümü ve derleme numarasını gösterir; VantaView her açılışta güncellemeleri kontrol eder.
 - Ayarlar › Kaynaklar'da gerçek bir hız testi: ping, indirme ve yükleme canlı bir göstergede, bağlantının neyi oynatabileceğiyle birlikte.

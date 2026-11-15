@@ -144,6 +144,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    // AI subtitles in Arabic: on-device translation with ML Kit (free, no account; language
+    // models download on demand, about 30 MB each). Whisper itself only translates into English.
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
