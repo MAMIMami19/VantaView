@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val look by appearance.state.collectAsState()
             VantaTheme(look) {
-                AppNav(prefs, providers, addons, profiles, parental, updates, library, playRequest, onExit = { finish() })
+                AppNav(prefs, providers, addons, profiles, parental, updates, library, playRequest, remindWhilePlaying = { playbackSettings.remindersWhilePlaying }, onExit = { finish() })
             }
         }
     }
@@ -147,6 +147,7 @@ private fun AppNav(
     updates: com.vantaview.app.data.update.UpdateManager,
     library: com.vantaview.app.data.library.LibraryStore,
     playRequest: kotlinx.coroutines.flow.MutableStateFlow<Long?>,
+    remindWhilePlaying: () -> Boolean = { true },
     onExit: () -> Unit,
 ) {
     val nav = rememberNavController()
@@ -380,7 +381,7 @@ private fun AppNav(
     if (!splashShown && profile != null) com.vantaview.app.feature.library.ReminderHost(
         library,
         // Settings › Playback can keep reminders off the screen while something plays.
-        quiet = { !playbackSettings.remindersWhilePlaying && nav.currentDestination?.route?.let { it.startsWith("player") || it.startsWith("vod") } == true },
+        quiet = { !remindWhilePlaying() && nav.currentDestination?.route?.let { it.startsWith("player") || it.startsWith("vod") } == true },
     ) { id -> nav.navigate("player/$id") }
     val play by playRequest.collectAsState()
     LaunchedEffect(play, splashShown, profile) {
