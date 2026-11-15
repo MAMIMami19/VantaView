@@ -187,7 +187,9 @@ class BackupManager @Inject constructor(
         root.put("playlists", JSONArray().apply {
             provs.forEach { p ->
                 put(JSONObject().put("id", p.id).put("profileId", p.profileId).put("name", p.name).put("kind", p.kind)
-                    .put("baseUrl", p.baseUrl).put("username", p.username).put("epgUrl", p.epgUrl ?: "").put("createdAt", p.createdAt))
+                    // An encrypted playlist link only works on this device, and it may hold a login: it goes in the
+                    // locked part of the backup instead (see "links").
+                    .put("baseUrl", if (p.baseUrl.startsWith(com.vantaview.app.data.security.CredentialCrypto.ENC)) "" else p.baseUrl).put("username", p.username).put("epgUrl", p.epgUrl ?: "").put("createdAt", p.createdAt))
             }
         })
         root.put("favourites", JSONArray().apply {
@@ -209,6 +211,10 @@ class BackupManager @Inject constructor(
         if (!password.isNullOrEmpty()) {
             val secrets = JSONObject()
             secrets.put("passwords", JSONObject().apply { provs.forEach { p -> put(p.id.toString(), crypto.decrypt(p.passwordEnc)) } })
+            secrets.put("links", JSONObject().apply {
+                provs.filter { it.baseUrl.startsWith(com.vantaview.app.data.security.CredentialCrypto.ENC) }
+                    .forEach { p -> put(p.id.toString(), crypto.reveal(p.baseUrl)) }
+            })
             secrets.put("debrid", JSONArray().apply {
                 debrid.all.forEach { a ->
                     put(JSONObject().put("service", a.service.id).put("label", a.label).put("token", a.token)
@@ -276,6 +282,7 @@ class BackupManager @Inject constructor(
             if (password.isNullOrEmpty()) null else JSONObject(BackupCrypto.unlock(box, password))
         }
         val passwords = secrets?.optJSONObject("passwords")
+        val links = secrets?.optJSONObject("links")
         fun arr(n: String): List<JSONObject> = o.optJSONArray(n)?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it) } }.orEmpty()
 
         val profiles = arr("profiles").map { p ->
@@ -288,7 +295,12 @@ class BackupManager @Inject constructor(
         val playlists = arr("playlists").map { p ->
             ProviderEntity(
                 id = p.optLong("id"), profileId = p.optLong("profileId"), name = p.optString("name"), kind = p.optString("kind"),
-                baseUrl = p.optString("baseUrl"), username = p.optString("username"),
+                // M3U links are kept encrypted (older backups have them in plain view; either way they're encrypted now).
+                baseUrl = (links?.optString(p.optLong("id").toString())?.ifEmpty { null } ?: p.optString("baseUrl")).let { link ->
+                    if (p.optString("kind") == "M3U" && (link.startsWith("http://", true) || link.startsWith("https://", true)) &&
+                        !link.equals(com.vantaview.app.data.repo.FREE_TV_URL, true)) crypto.protect(link) else link
+                },
+                username = p.optString("username"),
                 passwordEnc = passwords?.optString(p.optLong("id").toString())?.let(crypto::encrypt) ?: "",
                 epgUrl = p.optString("epgUrl").ifEmpty { null }, createdAt = p.optLong("createdAt", System.currentTimeMillis()),
             )
@@ -362,7 +374,7 @@ class BackupManager @Inject constructor(
         playlists.forEach { p ->
             val owner = profileMap[p.profileId] ?: return@forEach
             val match = haveProviders.firstOrNull {
-                it.profileId == owner && it.kind == p.kind && it.baseUrl.equals(p.baseUrl, true) && it.username == p.username
+                it.profileId == owner && it.kind == p.kind && crypto.reveal(it.baseUrl).equals(crypto.reveal(p.baseUrl), true) && it.username == p.username
             }
             providerMap[p.id] = match?.id ?: dao.addProvider(p.copy(id = 0, profileId = owner, lastSyncAt = 0, channelCount = 0))
         }

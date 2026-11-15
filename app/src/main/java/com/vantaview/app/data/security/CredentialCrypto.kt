@@ -49,4 +49,12 @@ class CredentialCrypto @Inject constructor() {
             ""
         }
     }
+
+    /** A playlist link kept encrypted, as "enc:<cipher text>" (an M3U link often holds a username and password). */
+    fun protect(link: String): String = if (link.isEmpty() || link.startsWith(ENC)) link else ENC + encrypt(link)
+
+    /** The real link from [protect]; anything else is returned as it is. */
+    fun reveal(stored: String): String = if (stored.startsWith(ENC)) decrypt(stored.removePrefix(ENC)) else stored
+
+    companion object { const val ENC = "enc:" }
 }

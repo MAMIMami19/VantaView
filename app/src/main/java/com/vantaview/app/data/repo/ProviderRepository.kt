@@ -49,8 +49,8 @@ object GuideLinks {
 /** Free TV (github.com/Free-TV/IPTV): an M3U playlist of free TV channels around the world. */
 const val FREE_TV_URL = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"
 
-private const val USER_TOKEN = "{{vv_user}}"
-private const val PASS_TOKEN = "{{vv_pass}}"
+internal const val USER_TOKEN = "{{vv_user}}"
+internal const val PASS_TOKEN = "{{vv_pass}}"
 
 @Singleton
 class ProviderRepository @Inject constructor(
@@ -122,14 +122,53 @@ class ProviderRepository @Inject constructor(
         require(clean.startsWith("http://", true) || clean.startsWith("https://", true)) {
             "The playlist link must start with http:// or https://"
         }
+        val (user, pass) = linkLogin(clean)
         val id = db.providers().insert(
-            ProviderEntity(profileId = session.id, name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = clean, customEpg = guide.trim().ifBlank { null })
+            ProviderEntity(
+                profileId = session.id, name = name.ifBlank { "My playlist" }, kind = "M3U", baseUrl = storedLink(clean),
+                username = user.orEmpty(), passwordEnc = pass?.let(crypto::encrypt).orEmpty(), customEpg = guide.trim().ifBlank { null },
+            )
         )
         sync(id)
         return id
     }
 
     /** True when this playlist is the optional Free TV list. */
+    /** The username and password inside an M3U link (…get.php?username=…&password=…), when it has them. */
+    private fun linkLogin(link: String): Pair<String?, String?> {
+        fun param(n: String) = Regex("""[?&]$n=([^&#]+)""", RegexOption.IGNORE_CASE).find(link)?.groupValues?.get(1)
+            ?.let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }?.ifBlank { null }
+        val u = param("username")
+        val p = param("password")
+        return if (u != null && p != null) u to p else null to null
+    }
+
+    /** How an M3U link is kept: encrypted, except the public Free TV list and files on this device. */
+    private fun storedLink(link: String): String =
+        if (link.equals(FREE_TV_URL, ignoreCase = true) || link.startsWith("file:")) link else crypto.protect(link)
+
+    /** The real address of an M3U playlist. */
+    fun m3uLink(p: ProviderEntity): String = crypto.reveal(p.baseUrl)
+
+    init {
+        // Playlists added before links were encrypted: encrypt them now, and load them again so their channel and
+        // film addresses are saved with the login hidden too.
+        scope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(3_000) // after start-up, and after this class has finished setting up
+            runCatching {
+                db.backup().providers().filter { it.kind == "M3U" && !it.baseUrl.startsWith(CredentialCrypto.ENC) }.forEach { p ->
+                    val stored = storedLink(p.baseUrl)
+                    if (stored == p.baseUrl) return@forEach
+                    val (user, pass) = linkLogin(p.baseUrl)
+                    db.providers().update(
+                        p.copy(baseUrl = stored, username = user ?: p.username, passwordEnc = pass?.let(crypto::encrypt) ?: p.passwordEnc)
+                    )
+                    sync(p.id)
+                }
+            }
+        }
+    }
+
     fun isFreeTv(p: ProviderEntity): Boolean = p.kind == "M3U" && p.baseUrl.equals(FREE_TV_URL, ignoreCase = true)
 
     /** Adds the optional Free TV list (officially free channels), fetched now from its GitHub page, never bundled. */
@@ -262,7 +301,7 @@ class ProviderRepository @Inject constructor(
             f.bufferedReader().useLines { M3uParser.parse(it) }
         } else {
             setState(p.id, SyncState.Running("Downloading playlist"))
-            val request = Request.Builder().url(p.baseUrl).header("User-Agent", userAgent).build()
+            val request = Request.Builder().url(m3uLink(p)).header("User-Agent", userAgent).build()
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IllegalStateException("The server answered with error ${response.code}")
                 val body = response.body ?: throw IllegalStateException("The playlist is empty")
@@ -270,7 +309,9 @@ class ProviderRepository @Inject constructor(
             }
         }
         if (result.entries.isEmpty() && result.vod.isEmpty()) throw IllegalStateException("No channels were found in this playlist")
-        return saveM3uResult(p, result, hideCredentials = null)
+        // With the login known (from the link), it's hidden in every saved channel and film address.
+        val login = if (p.username.isNotEmpty()) crypto.decrypt(p.passwordEnc).takeIf { it.isNotEmpty() }?.let { p.username to it } else null
+        return saveM3uResult(p, result, hideCredentials = login)
     }
 
     /**
@@ -311,7 +352,11 @@ class ProviderRepository @Inject constructor(
             )
         }
         db.content().replaceLive(p.id, categories, channels)
-        if (result.epgUrl != null) db.providers().get(p.id)?.let { db.providers().update(it.copy(epgUrl = result.epgUrl)) }
+        if (result.epgUrl != null) db.providers().get(p.id)?.let {
+            // The playlist's own guide link often carries the login too; it's kept with placeholders.
+            val epg = hideCredentials?.let { (u, pw) -> hideLogin(result.epgUrl, u, pw) } ?: result.epgUrl
+            db.providers().update(it.copy(epgUrl = epg))
+        }
         // Films and series go to the Movies and TV Series pages.
         if (result.vod.isNotEmpty()) setState(p.id, SyncState.Running("Saving films and series"))
         val (items, episodes) = com.vantaview.app.data.vod.VodImport.fromM3u(p.id, result.vod) { url ->
@@ -360,6 +405,17 @@ class ProviderRepository @Inject constructor(
         db.vod().replace(p.id, items, emptyList())
         return items.size
     }
+
+    private fun hideLogin(url: String, u: String, pw: String): String {
+        fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+        return url.replace("=${enc(u)}", "=$USER_TOKEN").replace("=$u", "=$USER_TOKEN")
+            .replace("=${enc(pw)}", "=$PASS_TOKEN").replace("=$pw", "=$PASS_TOKEN")
+    }
+
+    /** A guide link saved with placeholders, filled in with the playlist's login. */
+    fun withLogin(p: ProviderEntity, url: String): String =
+        if (USER_TOKEN in url || PASS_TOKEN in url) url.replace(USER_TOKEN, URLEncoder.encode(p.username, "UTF-8"))
+            .replace(PASS_TOKEN, URLEncoder.encode(crypto.decrypt(p.passwordEnc), "UTF-8")) else url
 
     /** The address to play for a playlist film or episode, from how it was stored. */
     suspend fun vodAddress(providerId: Long, stored: String): String = withContext(Dispatchers.IO) {

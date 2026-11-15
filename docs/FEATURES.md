@@ -147,6 +147,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Built that wasn't on the original list
 
+- [x] M3U links encrypted on the device; logins in them hidden in saved channel, film and guide addresses, and kept in the locked part of backups
 - [x] Privacy page (docs/PRIVACY.md): where playlists and logins go, and every service the app connects to
 - [x] Films and series from M3U playlists and Xtream Codes: their own rows on Movies and TV Series, matched on TMDB for details, and offered as "From your playlist" on matching titles
 - [x] Play torrents without a debrid account (built-in engine, debrid tried first; shares only while playing and deletes the file on close; switch in Settings › Playback)

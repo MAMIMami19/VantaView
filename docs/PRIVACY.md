@@ -5,8 +5,8 @@ VantaView has no server of its own. Your playlists, logins and watch history sta
 ## Your playlists and logins
 
 - **Stored on your device only**, in VantaView's private storage, which other apps can't read.
-- **Xtream Codes and portal passwords** are encrypted with Android's own secure key store before they're saved.
-- **M3U links** are saved as you enter them. They often contain a username and password, so treat them like a password.
+- **Encrypted logins.** Xtream Codes and portal passwords, and M3U playlist links, are encrypted with Android's own secure key store before they're saved. Playlists added before this was in place are encrypted the first time the updated app starts.
+- **Hidden in saved addresses.** When an M3U link contains a username and password, they're also replaced with placeholders in every saved channel, film and TV guide address, and filled back in only when something plays.
 - **No cloud copy.** Android's automatic cloud backup is switched off for VantaView, so none of this is copied to Google.
 
 ## Who VantaView connects to
@@ -29,7 +29,7 @@ Your playlist provider login is only ever sent to that provider.
 
 ## Backups and log files
 
-- **Backups** are saved as a file on your device, or sent to your phone over your home Wi-Fi. Logins in a backup are locked with a password you choose. Without it, the backup restores everything except logins.
+- **Backups** are saved as a file on your device, or sent to your phone over your home Wi-Fi. Logins and M3U links in a backup are locked with a password you choose. Without it, the backup restores everything except logins and M3U links.
 - **Log files** are only made when you choose Save a log file. Logins, keys and MAC addresses are blanked out before it's saved, and it's only shared if you attach it to a problem report yourself.
 
 ## Two things to know
