@@ -15,8 +15,14 @@ print("   screen:", " | ".join(t[:45])[:1000])
 PY
 }
 key() { for k in "$@"; do adb shell input keyevent "KEYCODE_$k"; sleep 0.6; done; }
+# The emulator's own apps sometimes freeze; their "isn't responding" box would block every tap.
+clear_anr() {
+  if grep -q "isn&apos;t responding\|isn't responding" tv-out/ui.xml 2>/dev/null; then
+    echo "dismissing a system 'not responding' box"; adb shell input keyevent KEYCODE_BACK; sleep 1; dump
+  fi
+}
 tap_text() {
-  dump
+  dump; clear_anr
   xy=$(python3 - "$1" <<'PY'
 import re,sys
 t=sys.argv[1].lower(); x=open('tv-out/ui.xml',encoding='utf-8',errors='ignore').read()
@@ -40,6 +46,9 @@ menu() { tap_text "Menu"; sleep 1; tap_text "$1"; sleep 4; }
 crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime: |ANR in com.vantaview" > $OUT/crashes.txt || true; }
 
 adb install -r VantaView-test.apk || exit 1
+adb shell settings put global hide_error_dialogs 1
+adb shell settings put global anr_show_background 0
+sleep 20  # let the emulator's own apps settle first
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 0
 adb logcat -c
