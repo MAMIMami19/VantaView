@@ -71,6 +71,40 @@ class UpdateManager @Inject constructor(
 
     val lastCheck: Long get() = sp.getLong("last_check", 0)
 
+    // ---- "What's new" after an update ----
+
+    /** Settings › Updates: show what's new the first time the app opens after an update. */
+    var showWhatsNew: Boolean
+        get() = sp.getBoolean("show_whats_new", true)
+        set(v) { sp.edit().putBoolean("show_whats_new", v).apply() }
+
+    /**
+     * The bullets to show once after an update, or null. A fresh install shows nothing (it just
+     * remembers this version).
+     */
+    fun whatsNewToShow(): List<String>? {
+        val seen = sp.getInt("whats_new_seen", -1)
+        val now = BuildConfig.VERSION_CODE
+        if (seen == now) return null
+        // A fresh install (never updated) has nothing new to show.
+        val fresh = runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.firstInstallTime == info.lastUpdateTime
+        }.getOrDefault(false)
+        if (seen == -1 && fresh) { markWhatsNewSeen(); return null }
+        if (!showWhatsNew || seen > now) { markWhatsNewSeen(); return null }
+        return bundledWhatsNew().ifEmpty { markWhatsNewSeen(); null }
+    }
+
+    fun markWhatsNewSeen() { sp.edit().putInt("whats_new_seen", BuildConfig.VERSION_CODE).apply() }
+
+    /** This version's "What's new" bullets, from the copy of docs/WHATS-NEW.md inside the app. */
+    fun bundledWhatsNew(): List<String> = runCatching {
+        context.assets.open("whats_new.md").bufferedReader().readLines()
+    }.getOrDefault(emptyList())
+        .map { it.trim() }.filter { it.startsWith("- ") || it.startsWith("* ") }
+        .map { plainNotes(it).removePrefix("• ").trim() }
+
     /** Checks once a day, when the app starts. */
     fun checkIfDue() {
         if (System.currentTimeMillis() - lastCheck < 24 * 3_600_000L) return

@@ -174,6 +174,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Release 1.0 published, with a permanent download link (releases/latest/download/VantaView.apk)
 - [x] Checked on Android TV 9 (Fire TV base) and Google TV 14 emulators with the remote
 - [x] Looks (Settings › Appearance): VantaView, Glass, Broadcast, Wave and Classic, with previews; each changes colours, background, menu (Broadcast and Classic have a top menu on wide screens) and the TV Guide; appearance is saved per profile
+- [x] What's new pop-up once after an update (from docs/WHATS-NEW.md, built into the app), with an on/off switch and a preview in Settings › Updates
 - [x] Restore NuvioSync backups: add-ons, Watchlist, watched films and Continue watching (series carry on from the next episode)
 - [x] Live TV Radio tab: radio stations (found by name, group or the playlist's radio mark) kept apart from TV channels
 - [x] Movies and TV Series tiles: Watch now (Trending, Latest, Top rated), Genres, Decades, Themed and International, each opening a full page of titles; the app's own tile pictures

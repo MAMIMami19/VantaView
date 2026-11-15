@@ -383,10 +383,23 @@ private fun AppNav(
         if (!splashShown && profile != null) { playRequest.value = null; nav.navigate("player/$id") }
     }
 
+    // "What's new" once after an update (Settings › Updates can turn it off), before any update notice.
+    var whatsNew by remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(Unit) { whatsNew = updates.whatsNewToShow() }
+    whatsNew?.let { bullets ->
+        if (!splashShown && profile != null) {
+            com.vantaview.app.feature.settings.WhatsNewDialog(
+                bullets,
+                onClose = { updates.markWhatsNewSeen(); whatsNew = null },
+                onTurnOff = { updates.showWhatsNew = false; updates.markWhatsNewSeen(); whatsNew = null },
+            )
+        }
+    }
+
     // Update notice on launch (not for Kids profiles, and not over the loading screen).
     val notice by updates.notice.collectAsState()
     notice?.let { info ->
-        if (!splashShown && profile != null && profile?.isKids != true) {
+        if (!splashShown && profile != null && profile?.isKids != true && whatsNew == null) {
             com.vantaview.app.feature.settings.UpdateNotice(info, updates, onSettings = { nav.goTo(Section.SETTINGS.route) })
         }
     }

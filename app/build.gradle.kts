@@ -14,9 +14,20 @@ val localProps = Properties().apply {
 }
 val tmdb = (localProps.getProperty("TMDB_ACCESS_TOKEN") ?: System.getenv("TMDB_ACCESS_TOKEN") ?: "").trim().replace("\"", "")
 
+// docs/WHATS-NEW.md goes inside the app, for the "What's new" pop-up after an update.
+val whatsNewDir = layout.buildDirectory.dir("generated/whatsnew")
+val copyWhatsNew by tasks.registering(Copy::class) {
+    from(rootProject.file("docs/WHATS-NEW.md"))
+    into(whatsNewDir)
+    rename { "whats_new.md" }
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(copyWhatsNew) }
+
 android {
     namespace = "com.vantaview.app"
     compileSdk = 35
+
+    sourceSets["main"].assets.srcDir(whatsNewDir)
 
     defaultConfig {
         applicationId = "com.vantaview.app"

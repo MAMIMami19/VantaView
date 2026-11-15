@@ -79,6 +79,20 @@ fun UpdatesSection(m: UpdateManager) {
         }
     }
 
+    Section("What's new") {
+        var show by remember { mutableStateOf(m.showWhatsNew) }
+        var preview by remember { mutableStateOf(false) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Show what's new after an update", color = Vanta.Text)
+                Text("A short list of changes the first time VantaView opens after updating.", color = Vanta.TextDim, fontSize = 13.sp)
+            }
+            Switch(checked = show, onCheckedChange = { show = it; m.showWhatsNew = it })
+        }
+        com.vantaview.app.ui.FocusCard(onClick = { preview = true }) { Text("See what's new in this version", color = Vanta.Text) }
+        if (preview) WhatsNewDialog(m.bundledWhatsNew(), onClose = { preview = false })
+    }
+
     Section("Test builds") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -146,5 +160,30 @@ fun UpdateNotice(info: UpdateInfo, m: UpdateManager, onSettings: () -> Unit) {
             else if (downloading == null) GradientButton("Update now", onClick = { m.install(info) })
         },
         dismissButton = { if (downloading == null) TextButton(onClick = { m.later(info) }) { Text("Later") } },
+    )
+}
+
+/** The "What's new" pop-up: this version's changes as short bullets. */
+@Composable
+fun WhatsNewDialog(bullets: List<String>, onClose: () -> Unit, onTurnOff: (() -> Unit)? = null) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = Vanta.Panel,
+        title = { Text("What's new in VantaView ${com.vantaview.app.BuildConfig.VERSION_NAME}", color = Vanta.Text) },
+        text = {
+            androidx.compose.foundation.lazy.LazyColumn(
+                Modifier.heightIn(max = 380.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (bullets.isEmpty()) item { Text("Nothing listed for this version.", color = Vanta.TextDim) }
+                items(bullets.size) { i ->
+                    Row {
+                        Text("•  ", color = Vanta.Cyan, fontSize = 15.sp)
+                        Text(bullets[i], color = Vanta.Text, fontSize = 15.sp, lineHeight = 21.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = { com.vantaview.app.ui.GradientButton("Got it", onClick = onClose) },
+        dismissButton = onTurnOff?.let { off -> { androidx.compose.material3.TextButton(onClick = off) { Text("Don't show again") } } },
     )
 }
