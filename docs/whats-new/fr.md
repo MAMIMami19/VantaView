@@ -1,3 +1,4 @@
+- Ajoutez une playlist depuis votre téléphone : dans Sources ou pendant la configuration, choisissez Afficher le QR code, scannez-le et collez-y le message de votre fournisseur, un lien ou fichier M3U, ou Xtream Codes. Tout arrive directement sur la TV par le Wi-Fi de la maison.
 - L'image dans l'image peut maintenant être désactivée dans Réglages › Lecture, pour qu'appuyer sur Accueil ne réduise plus le lecteur dans une petite fenêtre.
 - Le Replay a maintenant sa propre tuile sur l'accueil, à côté de TV en direct et du Guide TV, quand votre playlist a des chaînes qui gardent les programmes passés. Le bouton Replay a quitté le Guide TV.
 - Les liens de playlists M3U sont désormais stockés chiffrés, et les identifiants qu'ils contiennent sont masqués dans toutes les adresses de chaînes et de films enregistrées. Les playlists existantes sont chiffrées et rechargées une fois après la mise à jour.
@@ -5,4 +6,3 @@
 - Pendant qu'un torrent ou un flux debrid se prépare, sa progression s'affiche 5 secondes puis se masque. Touchez l'écran pour la revoir.
 - Les résultats torrent se lisent maintenant sans compte debrid. Si vous en avez un, debrid reste utilisé en premier. Pendant la lecture, un torrent partage avec d'autres personnes, puis arrête et supprime le fichier quand vous le fermez. Vous pouvez désactiver cela dans Réglages › Lecture.
 - VantaView parle maintenant espagnol, français, allemand, italien, portugais, néerlandais, polonais et turc. Il suit la langue de votre appareil, ou choisissez-en une pour chaque profil dans Réglages › Apparence. Les détails des films et séries arrivent aussi dans cette langue.
-- Correction : sur une TV, appuyer sur Mettre à jour ne saute plus aux réglages de Lecture ; la progression du téléchargement reste à l'écran.

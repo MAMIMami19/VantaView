@@ -1,3 +1,4 @@
+- Voeg een playlist toe vanaf je telefoon: kies bij Bronnen of tijdens het instellen QR-code tonen, scan hem met je telefoon en plak daar het bericht van je provider, een M3U-link of -bestand, of Xtream Codes. Het gaat rechtstreeks via je wifi naar de tv.
 - Beeld-in-beeld kun je nu uitzetten bij Instellingen › Afspelen, zodat Home de speler niet meer tot een klein venster verkleint.
 - Terugkijken heeft nu een eigen tegel op Home, naast Live-tv en de tv-gids, als je playlist zenders heeft die eerdere programma's bewaren. De knop Terugkijken staat niet meer in de tv-gids.
 - M3U-playlistlinks worden nu versleuteld opgeslagen, en de login erin wordt verborgen in elk opgeslagen zender- en filmadres. Bestaande playlists worden na de update één keer versleuteld en opnieuw geladen.
@@ -5,4 +6,3 @@
 - Terwijl een torrent of debrid-stream klaargemaakt wordt, is de voortgang 5 seconden te zien en verdwijnt dan. Tik op het scherm om hem weer te zien.
 - Torrentresultaten spelen nu af zonder debrid-account. Heb je er een, dan wordt debrid nog steeds eerst gebruikt. Tijdens het afspelen deelt een torrent met anderen; bij sluiten stopt hij en wordt het bestand verwijderd. Uit te zetten bij Instellingen › Afspelen.
 - VantaView spreekt nu Spaans, Frans, Duits, Italiaans, Portugees, Nederlands, Pools en Turks. Het volgt je apparaat, of kies per profiel een taal bij Instellingen › Weergave. Film- en seriedetails komen ook in die taal.
-- Opgelost: op een tv springt Nu bijwerken niet meer naar de afspeelinstellingen; de downloadvoortgang blijft in beeld.

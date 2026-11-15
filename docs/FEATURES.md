@@ -147,6 +147,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Built that wasn't on the original list
 
+- [x] Add a playlist from a phone: QR code on Sources and in setup opens a form on the phone (provider message, M3U link or file, Xtream Codes) that sends it to the device over the home network
 - [x] Picture-in-picture switch (Settings › Playback): turns off the PiP button and shrinking on Home
 - [x] M3U links encrypted on the device; logins in them hidden in saved channel, film and guide addresses, and kept in the locked part of backups
 - [x] Privacy page (docs/PRIVACY.md): where playlists and logins go, and every service the app connects to

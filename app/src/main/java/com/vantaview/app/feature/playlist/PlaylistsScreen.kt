@@ -75,6 +75,8 @@ fun PlaylistsContent(vm: PlaylistsViewModel = hiltViewModel(), setup: Boolean = 
 
             if (!vm.hasFreeTv(providers)) FreeTvCard(onAdd = vm::addFreeTv)
 
+            PhoneAddCard(vm)
+
             Spacer(Modifier.height(6.dp))
             Text(if (setup) "Or add your own playlist" else "Add a playlist", color = Vanta.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
@@ -265,6 +267,41 @@ private fun GuideLinkDialog(p: ProviderEntity, offset: Int, onOffset: (Int) -> U
 }
 
 private fun offsetLabel(m: Int) = if (m < 60) "$m min" else "${m / 60} h" + if (m % 60 != 0) " ${m % 60} min" else ""
+
+/** "Add from your phone": a QR code that opens a form on a phone on the same Wi-Fi, which sends a playlist here. */
+@Composable
+private fun PhoneAddCard(vm: PlaylistsViewModel) {
+    val url by vm.phone.collectAsStateWithLifecycle()
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { vm.stopPhone() } }
+    Column(
+        Modifier.fillMaxWidth().background(Vanta.Surface, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Add from your phone", color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        val u = url
+        if (u == null) {
+            Text(
+                "Type, paste or pick your playlist on your phone instead of with the remote. Works with a provider message, an M3U link or file, and Xtream Codes.",
+                color = Vanta.TextDim,
+            )
+            GradientButton("Show QR code", onClick = vm::startPhone)
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.vantaview.app.feature.settings.QrCode(u, Modifier.width(200.dp).height(200.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Scan this with your phone's camera. Your phone needs to be on the same Wi-Fi as this device.", color = Vanta.Text)
+                    Text("Or open this address in a browser:", color = Vanta.TextDim, fontSize = 13.sp)
+                    Text(u, color = Vanta.Cyan, fontSize = 13.sp)
+                    Text(
+                        "It only works on your home network, and stops after 15 minutes or when you leave this page.",
+                        color = Vanta.TextDim, fontSize = 12.sp,
+                    )
+                    FocusCard(onClick = vm::stopPhone) { Text("Stop", color = Vanta.Text) }
+                }
+            }
+        }
+    }
+}
 
 /** Optional free channels from Free TV, added only when the user asks. */
 @Composable

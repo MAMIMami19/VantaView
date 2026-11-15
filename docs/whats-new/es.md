@@ -1,3 +1,4 @@
+- Añade una lista desde el móvil: en Fuentes o durante la configuración, elige Mostrar código QR, escanéalo con el móvil y pega allí el mensaje de tu proveedor, un enlace o archivo M3U, o Xtream Codes. Llega directamente a la TV por la Wi-Fi de casa.
 - La imagen en imagen ahora se puede desactivar en Ajustes › Reproducción, para que pulsar Inicio ya no reduzca el reproductor a una ventana pequeña.
 - A la carta ahora tiene su propio mosaico en Inicio, junto a TV en directo y la Guía de TV, cuando tu lista tiene canales que guardan programas emitidos. El botón A la carta ya no está en la Guía de TV.
 - Los enlaces de listas M3U ahora se guardan cifrados, y el acceso que contienen se oculta en todas las direcciones de canales y películas guardadas. Las listas existentes se cifran y se vuelven a cargar una vez tras actualizar.
@@ -5,4 +6,3 @@
 - Mientras un torrent o una emisión debrid se prepara, su progreso se muestra 5 segundos y luego se oculta. Toca la pantalla para volver a verlo.
 - Los resultados torrent ahora se reproducen sin cuenta debrid. Si tienes una, debrid se sigue usando primero. Mientras se reproduce, un torrent comparte con otras personas, y deja de hacerlo y borra el archivo al cerrarlo. Puedes desactivarlo en Ajustes › Reproducción.
 - VantaView ya habla español, francés, alemán, italiano, portugués, neerlandés, polaco y turco. Sigue el idioma de tu dispositivo, o elige uno para cada perfil en Ajustes › Apariencia. Los detalles de películas y series también llegan en ese idioma.
-- Corrección: en una TV, pulsar Actualizar ahora ya no salta a los ajustes de Reproducción; el progreso de la descarga se queda en pantalla.

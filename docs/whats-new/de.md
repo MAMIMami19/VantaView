@@ -1,3 +1,4 @@
+- Playlist vom Handy hinzufügen: Unter Quellen oder bei der Einrichtung „QR-Code zeigen“ wählen, mit dem Handy scannen und dort die Anbieter-Nachricht, einen M3U-Link oder eine M3U-Datei oder Xtream Codes eingeben. Alles geht direkt über dein WLAN an den Fernseher.
 - Bild-in-Bild lässt sich jetzt unter Einstellungen › Wiedergabe ausschalten, damit Home den Player nicht mehr zu einem kleinen Fenster verkleinert.
 - Catch-up hat jetzt eine eigene Kachel auf der Startseite, neben Live-TV und dem TV-Programm, wenn deine Playlist Sender mit vergangenen Sendungen hat. Die Catch-up-Schaltfläche ist aus dem TV-Programm verschwunden.
 - M3U-Playlist-Links werden jetzt verschlüsselt gespeichert, und der darin enthaltene Zugang wird in allen gespeicherten Sender- und Filmadressen verborgen. Vorhandene Playlists werden nach dem Update einmal verschlüsselt und neu geladen.
@@ -5,4 +6,3 @@
 - Während ein Torrent oder Debrid-Stream vorbereitet wird, ist sein Fortschritt 5 Sekunden zu sehen und verschwindet dann. Tippe auf den Bildschirm, um ihn wieder zu sehen.
 - Torrent-Ergebnisse laufen jetzt auch ohne Debrid-Konto. Hast du eines, wird Debrid weiterhin zuerst genutzt. Während ein Torrent läuft, teilt er mit anderen; beim Schließen hört er auf und löscht die Datei. Abschaltbar unter Einstellungen › Wiedergabe.
 - VantaView spricht jetzt Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Niederländisch, Polnisch und Türkisch. Es folgt deinem Gerät, oder wähle unter Einstellungen › Darstellung für jedes Profil eine Sprache. Film- und Seriendetails kommen auch in dieser Sprache.
-- Fehlerbehebung: Auf einem Fernseher springt Jetzt aktualisieren nicht mehr zu den Wiedergabe-Einstellungen; der Download-Fortschritt bleibt sichtbar.

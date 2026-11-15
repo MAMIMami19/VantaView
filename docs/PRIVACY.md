@@ -32,6 +32,10 @@ Your playlist provider login is only ever sent to that provider.
 - **Backups** are saved as a file on your device, or sent to your phone over your home Wi-Fi. Logins and M3U links in a backup are locked with a password you choose. Without it, the backup restores everything except logins and M3U links.
 - **Log files** are only made when you choose Save a log file. Logins, keys and MAC addresses are blanked out before it's saved, and it's only shared if you attach it to a problem report yourself.
 
+## Adding a playlist from your phone
+
+The QR code on Sources opens a page served by VantaView itself, on your home network. What you type or pick on your phone goes straight from the phone to your TV over your Wi-Fi, never through the internet. The page only answers its own secret address, and stops after 15 minutes or when you leave the page.
+
 ## Two things to know
 
 - **Plain `http://` providers.** Many IPTV providers use plain `http://` addresses. On those, the login travels unencrypted between your device and the provider, as it would in any app, so people on the same network or your internet provider could in principle see it. Ask your provider for an `https://` address if they have one.

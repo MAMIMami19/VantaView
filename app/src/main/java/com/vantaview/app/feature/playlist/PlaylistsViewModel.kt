@@ -5,10 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vantaview.app.data.profile.ProfileSession
 import com.vantaview.app.data.db.ProviderEntity
+import com.vantaview.app.data.remote.PhoneAddServer
 import com.vantaview.app.data.remote.SmartAdd
 import com.vantaview.app.data.remote.SmartAddResult
 import com.vantaview.app.data.repo.ProviderRepository
 import com.vantaview.app.data.repo.SyncState
+import com.vantaview.app.ui.tr
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,6 +52,7 @@ class PlaylistsViewModel @Inject constructor(
     private val countries: com.vantaview.app.data.country.CountryStore,
     private val guide: com.vantaview.app.data.guide.GuideRepository,
     private val db: com.vantaview.app.data.db.VantaDb,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : ViewModel() {
     val providers: StateFlow<List<ProviderEntity>> =
         repo.observe().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -117,6 +120,60 @@ class PlaylistsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _form.update { it.copy(message = e.message ?: "Couldn't read that file", isError = true) }
             }
+        }
+    }
+
+    /** "Add from your phone": the address in the QR code while it's on, or null. */
+    private val _phone = MutableStateFlow<String?>(null)
+    val phone: StateFlow<String?> = _phone
+    private var phoneServer: PhoneAddServer? = null
+    private var phoneTimer: kotlinx.coroutines.Job? = null
+
+    fun startPhone() {
+        if (phoneServer != null) return
+        val server = PhoneAddServer(java.io.File(context.cacheDir, "phone-add"), ::receive)
+        val url = runCatching { server.start() }.getOrNull()
+        if (url == null) {
+            _form.update { it.copy(message = tr("Connect this device to Wi-Fi or a network cable first."), isError = true) }
+            return
+        }
+        phoneServer = server
+        _phone.value = url
+        phoneTimer = viewModelScope.launch { kotlinx.coroutines.delay(15 * 60_000L); stopPhone() }
+    }
+
+    fun stopPhone() {
+        phoneTimer?.cancel(); phoneTimer = null
+        phoneServer?.stop(); phoneServer = null
+        _phone.value = null
+    }
+
+    override fun onCleared() = stopPhone()
+
+    /** Adds what the phone sent; the answer is shown on the phone ("!" first for a problem). */
+    private fun receive(r: PhoneAddServer.Received): String = kotlinx.coroutines.runBlocking {
+        try {
+            val id = when (r) {
+                is PhoneAddServer.Received.Message -> when (val s = SmartAdd.parse(r.text)) {
+                    is SmartAddResult.Xtream -> repo.addXtream("", s.server, s.username, s.password, "")
+                    is SmartAddResult.M3u -> repo.addM3u("", s.url, "")
+                    is SmartAddResult.Stalker -> repo.addStalker("", s.portal, s.mac, "MAG250", "", "", "", "")
+                    SmartAddResult.None -> return@runBlocking "!" + tr("Couldn't find a playlist link or login in that text.")
+                }
+                is PhoneAddServer.Received.M3u -> repo.addM3u(r.name, r.url, r.guide)
+                is PhoneAddServer.Received.Xtream -> {
+                    if (r.server.isBlank() || r.username.isBlank() || r.password.isBlank()) {
+                        return@runBlocking "!" + tr("Fill in the server address, username and password.")
+                    }
+                    repo.addXtream(r.name, r.server, r.username, r.password, r.guide)
+                }
+                is PhoneAddServer.Received.M3uFile -> repo.addM3uFile(r.name.ifBlank { "My playlist" }, android.net.Uri.fromFile(r.file), "")
+            }
+            session.setLastProvider(id)
+            _form.update { it.copy(message = tr("Playlist added from your phone. Loading channels…"), isError = false) }
+            tr("Added. Loading channels…")
+        } catch (e: Exception) {
+            "!" + (e.message ?: tr("Could not add the playlist"))
         }
     }
 

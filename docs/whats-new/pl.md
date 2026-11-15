@@ -1,3 +1,4 @@
+- Dodaj playlistę z telefonu: w Źródłach lub podczas konfiguracji wybierz Pokaż kod QR, zeskanuj go telefonem i wklej tam wiadomość od dostawcy, link lub plik M3U albo Xtream Codes. Trafia to prosto na telewizor przez domowe Wi-Fi.
 - Obraz w obrazie można teraz wyłączyć w Ustawienia › Odtwarzanie, aby Ekran główny nie zmniejszał już odtwarzacza do małego okna.
 - Archiwum ma teraz własny kafelek na stronie Start, obok TV na żywo i Programu TV, gdy Twoja playlista ma kanały z minionymi audycjami. Przycisk Archiwum zniknął z Programu TV.
 - Linki do playlist M3U są teraz przechowywane w postaci zaszyfrowanej, a dane logowania w nich są ukryte we wszystkich zapisanych adresach kanałów i filmów. Istniejące playlisty zostaną raz zaszyfrowane i wczytane ponownie po aktualizacji.
@@ -5,4 +6,3 @@
 - Gdy torrent lub strumień debrid się przygotowuje, postęp jest widoczny przez 5 sekund, a potem znika. Stuknij ekran, aby zobaczyć go ponownie.
 - Wyniki torrent odtwarzają się teraz bez konta debrid. Jeśli je masz, debrid nadal jest używany jako pierwszy. Podczas odtwarzania torrent udostępnia innym, a po zamknięciu przestaje i usuwa plik. Można to wyłączyć w Ustawienia › Odtwarzanie.
 - VantaView mówi teraz po hiszpańsku, francusku, niemiecku, włosku, portugalsku, niderlandzku, polsku i turecku. Używa języka urządzenia albo wybierz język dla każdego profilu w Ustawienia › Wygląd. Szczegóły filmów i seriali też są w tym języku.
-- Poprawka: na telewizorze naciśnięcie Aktualizuj teraz nie przenosi już do ustawień Odtwarzania; postęp pobierania zostaje na ekranie.
