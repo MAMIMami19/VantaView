@@ -130,7 +130,7 @@ rotate 1
 for page in "Home" "Live TV" "TV Guide" "Movies" "Settings"; do menu "$page"; shot "landscape-$page"; done
 rotate 0
 # Language: switch this profile to German and look round, so untranslated text stands out.
-menu "Settings"; tap_text "Appearance"; sleep 1; scroll; scroll; scroll; shot appearance-language; tap_text "Deutsch"; sleep 3; shot appearance-de
+menu "Settings"; tap_text "Appearance"; sleep 1; for i in 1 2 3 4 5 6; do scroll; done; shot appearance-language; tap_text "Deutsch"; sleep 3; shot appearance-de
 for page in "Start" "Live-TV" "TV-Programm" "Filme" "Mediathek" "Quellen" "Einstellungen"; do
   tap_text "Menü"; sleep 1; tap_text "$page"; sleep 4; shot "de-$page"; scroll; shot "de-$page-2"
 done
