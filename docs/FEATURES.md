@@ -90,7 +90,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Movie details: Play/Resume, Trailer, Watchlist, Watched
 - [ ] Trailer auto-play after 20s with sound and mute
 - [x] Auto-pick best source, Choose source in the menu
-- [x] Cast row and More like this
+- [x] Cast row and More like this (at the bottom, under the episodes)
 - [ ] Actor page with Available and All tabs, sort and filters *(a person's page lists what they're in, from search or a details page's cast; no tabs, sort or filters yet)*
 - [x] Series details: season tabs, episode cards, Resume S2 E4
 - [ ] Coming soon seasons
@@ -181,6 +181,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Console-style looks: Blades, Stack, Tiles, Fluent, Cross and Spotlight, each with its own Home dashboard on wide screens, plus its colours, background, menu, card corners and headings on every page
 - [x] Stalker portals: films and series on the Movies and TV Series pages, the portal's own TV guide, and Smart Add spots a portal address with a MAC address; full MAG sign-in, portal logos, optional box details (credit: Stalker-Portal by Jitendra Unatti)
 - [x] Release 1.0.1: fast non-debug builds (about 3 s to open on the TV emulators), logo shown on launch
+- [x] Press and hold a poster (or the remote's Menu key) for Watchlist and Watched; an episode's "⋯" marks it or its whole season as watched
 
 ## Before release
 

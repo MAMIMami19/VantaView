@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,8 +30,11 @@ import com.vantaview.app.ui.Vanta
 
 @Composable
 fun PosterCard(item: MetaPreview, onClick: () -> Unit, modifier: Modifier = Modifier.width(118.dp)) {
+    // Press and hold (or the remote's Menu key): Watchlist and Watched.
+    var actions by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (actions) TitleActionsDialog(item, onDismiss = { actions = false })
     Column(modifier) {
-        FocusCard(onClick = onClick, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().height(177.dp)) {
+        FocusCard(onClick = onClick, onLongClick = { actions = true }, padding = PaddingValues(0.dp), modifier = Modifier.fillMaxWidth().height(177.dp)) {
             Box(Modifier.fillMaxSize().clip(Vanta.Shape).background(Vanta.SurfaceHigh), contentAlignment = Alignment.Center) {
                 Text(
                     item.name, color = Vanta.TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,

@@ -79,6 +79,19 @@ class LibraryStore @Inject constructor(
         sp.edit().putString(k, a.toString()).apply()
     }
 
+    // ---- Watched episodes (per series) ----
+
+    private fun epsKey(seriesId: String) = "eps_${session.id}_$seriesId"
+
+    /** Episode ids of this series marked as watched on the profile in use. */
+    fun watchedEpisodes(seriesId: String): Set<String> = sp.getStringSet(epsKey(seriesId), emptySet()).orEmpty().toSet()
+
+    fun setEpisodesWatched(seriesId: String, videoIds: Collection<String>, on: Boolean) {
+        val now = watchedEpisodes(seriesId).let { if (on) it + videoIds else it - videoIds.toSet() }
+        sp.edit().putStringSet(epsKey(seriesId), now).apply()
+        bump()
+    }
+
     // ---- Reminders ----
 
     val reminders: Flow<List<Reminder>> = combine(session.current, changed) { id, _ -> remindersFor(id) }

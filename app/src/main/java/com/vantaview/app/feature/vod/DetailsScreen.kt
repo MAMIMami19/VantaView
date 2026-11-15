@@ -59,6 +59,8 @@ fun DetailsScreen(
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     var noYouTube by remember { mutableStateOf(false) }
+    var episodeActions by remember { mutableStateOf<Video?>(null) }
+    val watchedEps by vm.watchedEps.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.play.collect { onPlay() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { vm.refreshProgress() }
 
@@ -164,19 +166,6 @@ fun DetailsScreen(
                     }
                 } else Text("Cast: " + meta!!.cast.take(8).joinToString(", "), color = Vanta.TextDim, fontSize = 14.sp)
             }
-            if (ui.moreLike.isNotEmpty()) item {
-                Column {
-                    Text("More like this", color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(ui.moreLike.size) { i ->
-                            val m = ui.moreLike[i]
-                            PosterCard(m, onClick = { vm.openSimilar(m, onOpenTitle) })
-                        }
-                    }
-                }
-            }
-
             if (ui.loading) item { Text("Loading details…", color = Vanta.TextDim) }
             else if (meta == null) item {
                 Text(
@@ -201,15 +190,42 @@ fun DetailsScreen(
                 items(episodes, key = { it.id }) { v ->
                     val p = ui.progress?.takeIf { it.videoId == v.id }
                     val note = when {
+                        v.id in watchedEps -> "✓ Watched"
                         p == null -> null
                         p.finished -> "✓ Watched"
                         p.resumable -> "Resume · ${minutesLeft(p.remainingMs)}"
                         else -> null
                     }
-                    EpisodeRow(v, finding = ui.finding == v.id, note = ui.message?.takeIf { ui.messageFor == v.id } ?: note, problem = ui.messageFor == v.id && ui.message != null, onPlay = { vm.play(v, false) }, onChoose = { vm.play(v, true) })
+                    EpisodeRow(v, finding = ui.finding == v.id, note = ui.message?.takeIf { ui.messageFor == v.id } ?: note, problem = ui.messageFor == v.id && ui.message != null, onPlay = { vm.play(v, false) }, onMore = { episodeActions = v })
+                }
+            }
+
+            // Similar titles go last, under the episodes.
+            if (ui.moreLike.isNotEmpty()) item {
+                Column {
+                    Text("More like this", color = Vanta.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(ui.moreLike.size) { i ->
+                            val m = ui.moreLike[i]
+                            PosterCard(m, onClick = { vm.openSimilar(m, onOpenTitle) })
+                        }
+                    }
                 }
             }
         }
+    }
+
+    episodeActions?.let { v ->
+        EpisodeActionsDialog(
+            v,
+            watched = watchedEps.let { vm.isEpisodeWatched(v) },
+            seasonWatched = watchedEps.let { vm.isSeasonWatched(v.season) },
+            onWatched = { vm.setEpisodeWatched(v, it) },
+            onSeasonWatched = { vm.setSeasonWatched(v.season, it) },
+            onChooseStream = { episodeActions = null; vm.play(v, true) },
+            onDismiss = { episodeActions = null },
+        )
     }
 
     ui.choice?.let { c ->
@@ -221,9 +237,9 @@ fun DetailsScreen(
 }
 
 @Composable
-private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boolean = false, onPlay: () -> Unit, onChoose: () -> Unit) {
+private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boolean = false, onPlay: () -> Unit, onMore: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FocusCard(onClick = onPlay, modifier = Modifier.weight(1f)) {
+        FocusCard(onClick = onPlay, onLongClick = onMore, modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(width = 112.dp, height = 63.dp).clip(RoundedCornerShape(8.dp)).background(Vanta.Bg)) {
                     if (v.thumbnail != null) AsyncImage(model = v.thumbnail, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -245,9 +261,9 @@ private fun EpisodeRow(v: Video, finding: Boolean, note: String?, problem: Boole
                 }
             }
         }
-        FocusCard(onClick = onChoose, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
-            // Choose which stream to play.
-            Text("⋯", color = Vanta.Text, fontSize = 18.sp, modifier = Modifier.semantics { contentDescription = "Choose a stream" })
+        FocusCard(onClick = onMore, padding = PaddingValues(12.dp), contentAlignment = Alignment.Center) {
+            // Watched for this episode or its season, or choose a stream.
+            Text("⋯", color = Vanta.Text, fontSize = 18.sp, modifier = Modifier.semantics { contentDescription = "More for this episode" })
         }
     }
 }

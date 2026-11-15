@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.vantaview.app.ui
 
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -220,6 +223,7 @@ fun VantaTheme(appearance: com.vantaview.app.data.Appearance = com.vantaview.app
  * A clickable block that works with touch and with a TV remote: it shows the logo-gradient ring
  * when it has focus.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun FocusCard(
     onClick: () -> Unit,
@@ -228,16 +232,29 @@ fun FocusCard(
     shape: Shape = Vanta.Shape,
     padding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
     contentAlignment: Alignment = Alignment.CenterStart,
+    /** Press and hold (or the remote's Menu key) — e.g. a title's quick actions. */
+    onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .onFocusChanged { focused = it.isFocused }
+            .then(
+                if (onLongClick == null) Modifier
+                else Modifier.onPreviewKeyEvent { e ->
+                    val menu = e.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_MENU
+                    if (menu && e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) onLongClick()
+                    menu
+                }
+            )
             .clip(shape)
             .background(if (selected || focused) Vanta.SurfaceHigh else Vanta.Surface)
             .then(if (focused) Modifier.border(3.dp, Vanta.GradientBrush, shape) else Modifier)
-            .clickable(onClick = onClick)
+            .then(
+                if (onLongClick == null) Modifier.clickable(onClick = onClick)
+                else Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            )
             .padding(padding),
         contentAlignment = contentAlignment,
     ) { androidx.compose.runtime.CompositionLocalProvider(LocalCardFocused provides focused) { content() } }

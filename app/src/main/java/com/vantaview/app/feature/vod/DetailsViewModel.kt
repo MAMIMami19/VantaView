@@ -218,4 +218,27 @@ class DetailsViewModel @Inject constructor(
         library.setWatched(title(), on)
         _saved.value = library.inWatchlist(type, id) to library.isWatched(type, id)
     }
+
+    // ---- Watched episodes ----
+
+    private val _watchedEps = kotlinx.coroutines.flow.MutableStateFlow(library.watchedEpisodes(id))
+    /** Ids of this series' episodes marked as watched. */
+    val watchedEps: kotlinx.coroutines.flow.StateFlow<Set<String>> = _watchedEps
+
+    fun isEpisodeWatched(v: Video) = v.id in _watchedEps.value ||
+        _ui.value.progress?.let { it.videoId == v.id && it.finished } == true
+
+    fun seasonEpisodes(season: Int) = _ui.value.meta?.videos.orEmpty().filter { it.season == season }
+
+    fun isSeasonWatched(season: Int) = seasonEpisodes(season).let { eps -> eps.isNotEmpty() && eps.all(::isEpisodeWatched) }
+
+    fun setEpisodeWatched(v: Video, on: Boolean) {
+        library.setEpisodesWatched(id, listOf(v.id), on)
+        _watchedEps.value = library.watchedEpisodes(id)
+    }
+
+    fun setSeasonWatched(season: Int, on: Boolean) {
+        library.setEpisodesWatched(id, seasonEpisodes(season).map { it.id }, on)
+        _watchedEps.value = library.watchedEpisodes(id)
+    }
 }
