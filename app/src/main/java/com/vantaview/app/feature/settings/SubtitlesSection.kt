@@ -105,7 +105,7 @@ fun SubtitlesSection(s: PlaybackSettings) {
     choosing?.let { which ->
         AlertDialog(
             onDismissRequest = { choosing = null },
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text(if (which == "audio") "Audio language" else "Subtitle language", color = Vanta.Text) },
             text = {
                 Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {

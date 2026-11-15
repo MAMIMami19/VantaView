@@ -31,7 +31,7 @@ fun PinDialog(title: String, message: String, check: (String) -> Boolean, onOk: 
     fun submit() { if (check(pin)) onOk() else { wrong = true; pin = "" } }
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(title, color = Vanta.Text) },
         text = {
             Column {

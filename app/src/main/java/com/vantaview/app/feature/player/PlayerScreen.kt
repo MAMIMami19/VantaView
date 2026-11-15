@@ -436,7 +436,7 @@ private fun TrackPicker(vm: PlayerViewModel, type: Int, onClose: () -> Unit) {
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { first.requestFocus() } }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onClose,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(if (type == C.TRACK_TYPE_AUDIO) "Audio" else "Subtitles", color = Vanta.Text) },
         text = {
             Column(

@@ -120,7 +120,7 @@ fun HomeScreen(
     var now by remember { mutableStateOf(Date()) }
     LaunchedEffect(Unit) { while (true) { now = Date(); delay(15_000) } }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page)) {
         val wide = maxWidth >= 720.dp
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -205,7 +205,7 @@ fun HomeScreen(
     newSeason?.let { ns ->
         AlertDialog(
             onDismissRequest = vm::dismissNewSeason,
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = null,
             text = {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -552,7 +552,7 @@ private fun ForecastDialog(w: com.vantaview.app.data.weather.Weather, onClose: (
     val parse = SimpleDateFormat("yyyy-MM-dd", Locale.UK)
     AlertDialog(
         onDismissRequest = onClose,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(w.place ?: "Weather where you are", color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

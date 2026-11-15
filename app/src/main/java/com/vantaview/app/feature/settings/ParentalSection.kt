@@ -140,7 +140,7 @@ fun ParentalSection(onEditProfile: (Long) -> Unit, vm: ParentalViewModel = hiltV
     clear?.let { c ->
         AlertDialog(
             onDismissRequest = { clear = null },
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text("Clear ${c.title.lowercase()} history?", color = Vanta.Text) },
             text = { Text(c.detail + " This can't be undone.", color = Vanta.TextDim) },
             confirmButton = {

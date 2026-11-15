@@ -138,7 +138,7 @@ private fun StremioLoginDialog(state: RestoreUi.StremioLogin, onSignIn: (String,
     var password by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text("Import from Stremio", color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -170,7 +170,7 @@ private fun StremioLoginDialog(state: RestoreUi.StremioLogin, onSignIn: (String,
 private fun PickDialog(state: RestoreUi.Pick, onToggle: (String) -> Unit, onImport: () -> Unit, onCancel: () -> Unit) {
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(state.title, color = Vanta.Text) },
         text = {
             LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

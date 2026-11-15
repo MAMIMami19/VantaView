@@ -79,7 +79,7 @@ fun DebridContent(vm: DebridViewModel = hiltViewModel()) {
         is ConnectUi.EnterKey -> KeyDialog(c, onSave = { vm.saveKey(c.service, it) }, onCancel = vm::cancel)
         is ConnectUi.Code -> AlertDialog(
             onDismissRequest = vm::cancel,
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text("Connect ${c.service.label}", color = Vanta.Text) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -122,7 +122,7 @@ private fun KeyDialog(state: ConnectUi.EnterKey, onSave: (String) -> Unit, onCan
     var key by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text("${state.service.label} API key", color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

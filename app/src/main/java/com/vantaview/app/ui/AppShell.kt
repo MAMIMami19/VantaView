@@ -95,7 +95,11 @@ fun AppShell(
     // Kids profiles can't open Sources.
     val sections = Section.entries.filter { !(profile?.isKids == true && (it == Section.SOURCES || it == Section.SETTINGS)) }
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg).safeDrawingPadding()) {
+        LookBackground(Vanta.Look)
         val wide = maxWidth >= 720.dp
+        // Broadcast and Classic put the sections in a bar across the top on TVs and wide screens.
+        val topMenu = wide && current != null &&
+            (Vanta.Look == com.vantaview.app.data.Look.BROADCAST || Vanta.Look == com.vantaview.app.data.Look.CLASSIC)
         val drawer = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         val focusManager = LocalFocusManager.current
@@ -104,7 +108,7 @@ fun AppShell(
         // Settings › Appearance › Hide the sidebar.
         // TVs are 540 dp tall: a tighter sidebar so all nine sections and the profile fit.
         val shortRail = maxHeight < 640.dp
-        val autoHide = wide && current != null && current != Section.HOME && LocalAppearance.current.sidebarAutoHide
+        val autoHide = wide && !topMenu && current != null && current != Section.HOME && LocalAppearance.current.sidebarAutoHide
         var railShown by remember { mutableStateOf(true) }
         var railHasFocus by remember { mutableStateOf(false) }
         var focusRail by remember { mutableStateOf(false) }
@@ -121,7 +125,7 @@ fun AppShell(
             drawerState = drawer,
             gesturesEnabled = !wide && current != null,
             drawerContent = {
-                ModalDrawerSheet(drawerContainerColor = Vanta.Surface, modifier = Modifier.width(260.dp)) {
+                ModalDrawerSheet(drawerContainerColor = Vanta.Panel, modifier = Modifier.width(260.dp)) {
                     Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
                             VantaLogo(size = 40.dp)
@@ -141,7 +145,7 @@ fun AppShell(
             },
         ) {
             Row(Modifier.fillMaxSize()) {
-                if (wide && current != null) {
+                if (wide && current != null && !topMenu) {
                     AnimatedVisibility(visible = railShown, enter = expandHorizontally(), exit = shrinkHorizontally()) {
                         Column(
                             Modifier.width(172.dp).fillMaxHeight().background(Vanta.Surface)
@@ -167,6 +171,7 @@ fun AppShell(
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
+                    if (topMenu) TopMenu(sections, current, profile, onSelect, onProfiles)
                     if (!wide && current != null) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
@@ -207,6 +212,55 @@ fun AppShell(
         }
         // Back brings the hidden side bar back before leaving the page.
         BackHandler(enabled = autoHide && !railShown) { showRail() }
+    }
+}
+
+/** The sections in a bar across the top (Broadcast and Classic looks), with the clock and profile. */
+@Composable
+private fun TopMenu(
+    sections: List<Section>,
+    current: Section?,
+    profile: com.vantaview.app.data.db.ProfileEntity?,
+    onSelect: (Section) -> Unit,
+    onProfiles: () -> Unit,
+) {
+    var clock by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val f = java.text.SimpleDateFormat("h.mma", java.util.Locale.UK)
+        while (true) { clock = f.format(java.util.Date()).lowercase(); delay(15_000) }
+    }
+    Row(
+        Modifier.fillMaxWidth().background(Vanta.Panel.copy(alpha = 0.55f)).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        VantaLogo(size = 30.dp)
+        Spacer(Modifier.width(14.dp))
+        androidx.compose.foundation.lazy.LazyRow(
+            Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            items(sections.size) { i ->
+                val s = sections[i]
+                val on = s == current
+                FocusCard(
+                    onClick = { onSelect(s) }, selected = on, shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                    padding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(s.icon, contentDescription = null, tint = if (on) Vanta.Cyan else Vanta.TextDim, modifier = Modifier.width(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(s.label, color = if (on) Vanta.Cyan else Vanta.Text, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(clock, color = Vanta.Text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        if (profile != null) {
+            Spacer(Modifier.width(10.dp))
+            FocusCard(onClick = onProfiles, shape = androidx.compose.foundation.shape.CircleShape, padding = PaddingValues(3.dp)) {
+                AvatarCircle(profile.avatar, 28.dp)
+            }
+        }
     }
 }
 

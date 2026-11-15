@@ -119,7 +119,7 @@ fun LiveScreen(
     LaunchedEffect(notFound) { if (notFound != null) { delay(2_000); notFound = null } }
 
     BoxWithConstraints(
-        Modifier.fillMaxSize().background(Vanta.Bg).onKeyEvent { e ->
+        Modifier.fillMaxSize().background(Vanta.Page).onKeyEvent { e ->
             val d = digitKeys[e.key] ?: return@onKeyEvent false
             if (providers.isEmpty()) return@onKeyEvent false
             if (e.type == KeyEventType.KeyDown && typed.length < 5) typed += d
@@ -391,11 +391,13 @@ private fun ChannelItem(
                 tint = if (row.isFav) androidx.compose.ui.graphics.Color(0xFFFFEA00) else Vanta.TextDim.copy(alpha = 0.45f),
             )
         }
-        FocusCard(onClick = { onPlay(row.channel.id) }, modifier = Modifier.weight(1f)) {
+        com.vantaview.app.ui.FillCard(onClick = { onPlay(row.channel.id) }, modifier = Modifier.weight(1f)) { textColour, dimColour ->
+            // Looks with a fill colour (Broadcast, Classic) turn the focused row's text dark.
+            val filled = textColour != Vanta.Text
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (event) 0.65f else 1f)) {
                 Text(
                     row.channel.number.toString(),
-                    color = Vanta.TextDim, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1,
+                    color = dimColour, fontSize = 13.sp, modifier = Modifier.width(44.dp), maxLines = 1,
                 )
                 Box(
                     Modifier.size(width = 56.dp, height = 36.dp).clip(RoundedCornerShape(6.dp)).background(Vanta.Bg),
@@ -414,11 +416,11 @@ private fun ChannelItem(
                 Column {
                     Text(
                         ChannelNames.display(name),
-                        color = Vanta.Text, fontSize = 16.sp,
+                        color = textColour, fontSize = 16.sp,
                         maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis,
                     )
-                    if (event) Text("Event only · plays while an event is on", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 1)
-                    NowNextLine(row.channel, guideTick, nowNext)
+                    if (event) Text("Event only · plays while an event is on", color = dimColour, fontSize = 12.sp, maxLines = 1)
+                    NowNextLine(row.channel, guideTick, nowNext, if (filled) textColour else null, if (filled) dimColour else null)
                 }
             }
         }
@@ -468,7 +470,10 @@ private val clock = java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK)
 
 /** "Now: title" with a thin progress bar, then "Next: 20:00 title". Nothing when the channel has no guide. */
 @Composable
-internal fun NowNextLine(channel: ChannelEntity, tick: Int, nowNext: suspend (ChannelEntity) -> List<ProgrammeEntity>) {
+internal fun NowNextLine(
+    channel: ChannelEntity, tick: Int, nowNext: suspend (ChannelEntity) -> List<ProgrammeEntity>,
+    nowColour: androidx.compose.ui.graphics.Color? = null, nextColour: androidx.compose.ui.graphics.Color? = null,
+) {
     if (channel.epgChannelId == null) return
     val progs by produceState(initialValue = emptyList<ProgrammeEntity>(), channel.id, tick) {
         value = runCatching { nowNext(channel) }.getOrDefault(emptyList())
@@ -479,14 +484,14 @@ internal fun NowNextLine(channel: ChannelEntity, tick: Int, nowNext: suspend (Ch
     if (now == null && next == null) return
     Column(Modifier.padding(top = 3.dp)) {
         if (now != null) {
-            Text("Now: ${now.title}", color = Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("Now: ${now.title}", color = nowColour ?: Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val f = ((t - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
             Box(Modifier.padding(vertical = 3.dp).width(140.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Vanta.SurfaceHigh)) {
-                Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Vanta.Cyan))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(nowColour ?: Vanta.Cyan))
             }
         }
         if (next != null) {
-            Text("Next: ${clock.format(java.util.Date(next.start))} ${next.title}", color = Vanta.TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("Next: ${clock.format(java.util.Date(next.start))} ${next.title}", color = nextColour ?: Vanta.TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

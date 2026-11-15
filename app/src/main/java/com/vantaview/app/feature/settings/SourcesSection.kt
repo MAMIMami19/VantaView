@@ -189,7 +189,7 @@ fun SourcesSection(vm: SourcesStorageViewModel = hiltViewModel()) {
     confirmRemove?.let { p ->
         AlertDialog(
             onDismissRequest = { confirmRemove = null },
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text("Remove free channels?", color = Vanta.Text) },
             text = { Text("Free TV's channels, favourites and guide go from this profile. You can add them again any time.", color = Vanta.TextDim) },
             confirmButton = { GradientButton("Remove", onClick = { vm.removeFreeTv(p); confirmRemove = null }) },

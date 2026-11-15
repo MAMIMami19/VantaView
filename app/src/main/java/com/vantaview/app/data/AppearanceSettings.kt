@@ -5,6 +5,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,9 +21,22 @@ enum class AccentPreset(val label: String, val highlight: Long, val focus: Long)
     GOLD("Gold", 0xFFFFC81A, 0xFFD19A00),
 }
 
+/**
+ * A whole look for the app: colours, background, menu and the TV Guide's layout. VANTA is the
+ * original look, where the theme and accent colour below apply.
+ */
+enum class Look(val label: String, val description: String) {
+    VANTA("VantaView", "The original dark look, with your theme and accent colour"),
+    GLASS("Glass", "Deep blue glass, with the chosen programme shown big at the top of the guide"),
+    BROADCAST("Broadcast", "Bright blue, a menu across the top and a TV Guide like a set-top box"),
+    WAVE("Wave", "Flowing waves behind floating lists"),
+    CLASSIC("Classic", "Navy and royal blue with a yellow highlight and a menu across the top"),
+}
+
 enum class TextSize(val label: String, val scale: Float) { SMALL("Small", 0.9f), NORMAL("Normal", 1f), LARGE("Large", 1.15f) }
 
 data class Appearance(
+    val look: Look = Look.VANTA,
     val theme: ThemeMode = ThemeMode.DARK,
     val accent: AccentPreset? = AccentPreset.CYAN,
     /** Used when [accent] is null (a custom colour), as 0xAARRGGBB. */
@@ -32,31 +46,48 @@ data class Appearance(
     val loadingScreen: Boolean = true,
 )
 
-/** Settings › Appearance, shared by every profile on this device. */
+/**
+ * Settings › Appearance. Each profile has its own; a profile that never changed it uses the
+ * device's original settings.
+ */
 @Singleton
-class AppearanceSettings @Inject constructor(@ApplicationContext context: Context) {
+class AppearanceSettings @Inject constructor(
+    @ApplicationContext context: Context,
+    private val session: com.vantaview.app.data.profile.ProfileSession,
+    @com.vantaview.app.di.AppScope scope: kotlinx.coroutines.CoroutineScope,
+) {
     private val sp = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(read())
     val state: StateFlow<Appearance> = _state
 
+    init {
+        scope.launch { session.current.collect { _state.value = read() } }
+    }
+
+    /** This profile's value for [key], or the device-wide one from before appearances were per profile. */
+    private fun k(key: String) = "p${session.id}_$key".takeIf { sp.contains(it) } ?: key
+
     private fun read() = Appearance(
-        theme = runCatching { ThemeMode.valueOf(sp.getString("theme", null)!!) }.getOrDefault(ThemeMode.DARK),
-        accent = sp.getString("accent", AccentPreset.CYAN.name).let { n -> AccentPreset.entries.firstOrNull { it.name == n } },
-        custom = sp.getLong("custom", 0xFF00E5FF),
-        textSize = runCatching { TextSize.valueOf(sp.getString("text", null)!!) }.getOrDefault(TextSize.NORMAL),
-        sidebarAutoHide = sp.getBoolean("sidebar_autohide", true),
-        loadingScreen = sp.getBoolean("loading_screen", true),
+        look = runCatching { Look.valueOf(sp.getString(k("look"), null)!!) }.getOrDefault(Look.VANTA),
+        theme = runCatching { ThemeMode.valueOf(sp.getString(k("theme"), null)!!) }.getOrDefault(ThemeMode.DARK),
+        accent = sp.getString(k("accent"), AccentPreset.CYAN.name).let { n -> AccentPreset.entries.firstOrNull { it.name == n } },
+        custom = sp.getLong(k("custom"), 0xFF00E5FF),
+        textSize = runCatching { TextSize.valueOf(sp.getString(k("text"), null)!!) }.getOrDefault(TextSize.NORMAL),
+        sidebarAutoHide = sp.getBoolean(k("sidebar_autohide"), true),
+        loadingScreen = sp.getBoolean(k("loading_screen"), true),
     )
 
     fun update(change: (Appearance) -> Appearance) {
         val a = change(_state.value)
+        val p = "p${session.id}_"
         sp.edit()
-            .putString("theme", a.theme.name)
-            .putString("accent", a.accent?.name ?: "CUSTOM")
-            .putLong("custom", a.custom)
-            .putString("text", a.textSize.name)
-            .putBoolean("sidebar_autohide", a.sidebarAutoHide)
-            .putBoolean("loading_screen", a.loadingScreen)
+            .putString(p + "look", a.look.name)
+            .putString(p + "theme", a.theme.name)
+            .putString(p + "accent", a.accent?.name ?: "CUSTOM")
+            .putLong(p + "custom", a.custom)
+            .putString(p + "text", a.textSize.name)
+            .putBoolean(p + "sidebar_autohide", a.sidebarAutoHide)
+            .putBoolean(p + "loading_screen", a.loadingScreen)
             .apply()
         _state.value = a
     }

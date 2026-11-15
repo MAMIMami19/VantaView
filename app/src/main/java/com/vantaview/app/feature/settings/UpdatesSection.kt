@@ -118,7 +118,7 @@ fun UpdateNotice(info: UpdateInfo, m: UpdateManager, onSettings: () -> Unit) {
     val downloading = state as? UpdateState.Downloading
     AlertDialog(
         onDismissRequest = { if (downloading == null) m.later(info) },
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text("${info.name} is available", color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

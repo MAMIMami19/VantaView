@@ -94,7 +94,7 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveView
     val dayStart = remember(day) { XmltvTime.dayStart(day) }
     var picked by remember { mutableStateOf<Picked?>(null) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page)) {
         val wide = maxWidth >= 720.dp
         val density = LocalDensity.current
         val minutePx = with(density) { (if (wide) 5.dp else 4.dp).toPx() }
@@ -255,20 +255,52 @@ private fun DetailsPanel(
 ) {
     val p = picked ?: return
     val prog = p.programme
+    // Glass shows the programme big over the background; Broadcast adds the channel's logo.
+    val look = Vanta.Look
+    val glass = wide && look == com.vantaview.app.data.Look.GLASS
+    val broadcast = wide && look == com.vantaview.app.data.Look.BROADCAST
+    val open = glass || broadcast
     Column(
-        Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp)).background(Vanta.Surface).padding(12.dp)
+        if (open) Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp)
+        else Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp)).background(Vanta.Surface).padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (broadcast) {
+                Box(
+                    Modifier.size(width = 96.dp, height = 64.dp).clip(RoundedCornerShape(8.dp)).background(Vanta.SurfaceHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (p.channel.logo != null) AsyncImage(
+                        model = p.channel.logo, contentDescription = null, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(6.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+            }
             Column(Modifier.weight(1f)) {
-                Text(
+                if (!glass) Text(
                     if (prog != null) "${clock.format(Date(prog.start))} – ${clock.format(Date(prog.stop))} · ${ChannelNames.display(p.channel.name)}"
                     else ChannelNames.display(p.channel.name),
                     color = Vanta.Cyan, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    prog?.title ?: "No guide information", color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    prog?.title ?: "No guide information", color = Vanta.Text,
+                    fontSize = if (glass) 30.sp else if (broadcast) 21.sp else 18.sp, fontWeight = FontWeight.Bold,
+                    maxLines = if (glass) 1 else 2, overflow = TextOverflow.Ellipsis,
                 )
+                if (glass && prog != null) {
+                    val mins = ((prog.stop - prog.start) / 60_000L).toInt()
+                    val length = if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"
+                    val started = when {
+                        prog.start > now -> "Starts at ${clock.format(Date(prog.start))}"
+                        prog.stop <= now -> "Aired at ${clock.format(Date(prog.start))}"
+                        else -> "Started at ${clock.format(Date(prog.start))}"
+                    }
+                    Text(
+                        "$length · $started · ${ChannelNames.display(p.channel.name)}", color = Vanta.Text, fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             val live = prog == null || (prog.start <= now && prog.stop > now)
             if (prog != null && prog.start > now) {
@@ -291,7 +323,18 @@ private fun DetailsPanel(
         }
         val extra = listOfNotNull(prog?.category, prog?.description).joinToString(" · ")
         if (extra.isNotBlank()) {
-            Text(extra, color = Vanta.TextDim, fontSize = 13.sp, maxLines = if (wide) 3 else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                extra, color = if (open) Vanta.Text.copy(alpha = 0.9f) else Vanta.TextDim, fontSize = if (open) 15.sp else 13.sp,
+                maxLines = if (wide) 3 else 4, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp).then(if (open) Modifier.fillMaxWidth(0.7f) else Modifier),
+            )
+        }
+        if (glass && prog != null && prog.start <= now && prog.stop > now) {
+            // How far through the programme we are.
+            val done = ((now - prog.start).toFloat() / (prog.stop - prog.start)).coerceIn(0f, 1f)
+            Box(Modifier.padding(top = 10.dp).width(260.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Vanta.Text.copy(alpha = 0.25f))) {
+                Box(Modifier.fillMaxWidth(done).fillMaxHeight().background(Vanta.Text))
+            }
         }
         if (catchUpMessage != null) {
             Text(catchUpMessage, color = Vanta.Cyan, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
@@ -333,11 +376,11 @@ private fun GuideRow(
     }
     Row(Modifier.fillMaxWidth().height(rowH), verticalAlignment = Alignment.CenterVertically) {
         // Channel: tap to watch.
-        FocusCard(
+        com.vantaview.app.ui.FillCard(
             onClick = { onPlay(channel.id) },
             modifier = Modifier.width(chanW - 4.dp).fillMaxHeight(),
             padding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-        ) {
+        ) { textColour, dimColour ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(width = 40.dp, height = 28.dp).clip(RoundedCornerShape(5.dp)).background(Vanta.Bg), contentAlignment = Alignment.Center) {
                     if (channel.logo != null) AsyncImage(
@@ -347,9 +390,9 @@ private fun GuideRow(
                 }
                 Spacer(Modifier.width(6.dp))
                 Column {
-                    Text(channel.number.toString(), color = Vanta.TextDim, fontSize = 11.sp, maxLines = 1)
+                    Text(channel.number.toString(), color = dimColour, fontSize = 11.sp, maxLines = 1)
                     Text(
-                        ChannelNames.display(channel.name), color = Vanta.Text, fontSize = if (wide) 13.sp else 11.sp,
+                        ChannelNames.display(channel.name), color = textColour, fontSize = if (wide) 13.sp else 11.sp,
                         maxLines = if (wide) 1 else 2, overflow = TextOverflow.Ellipsis, lineHeight = 13.sp,
                     )
                 }
@@ -372,7 +415,7 @@ private fun GuideRow(
                 val isNow = p.start <= now && p.stop > now
                 val past = p.stop <= now
                 val sel = picked?.programme?.id == p.id
-                FocusCard(
+                com.vantaview.app.ui.FillCard(
                     // Choosing a programme plays its channel; the player shows what's on now.
                     onClick = { onPlay(channel.id) },
                     selected = sel || isNow,
@@ -382,14 +425,14 @@ private fun GuideRow(
                         .onFocusChanged { if (it.isFocused) { onPick(Picked(channel, p)); onFocusProgramme(p) } },
                     shape = RoundedCornerShape(8.dp),
                     padding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                ) {
+                ) { textColour, dimColour ->
                     Column {
                         Text(
-                            p.title, color = if (past) Vanta.TextDim else Vanta.Text, fontSize = 13.sp,
+                            p.title, color = if (past) dimColour else textColour, fontSize = 13.sp,
                             fontWeight = if (isNow) FontWeight.Bold else FontWeight.Normal,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
-                        Text(clock.format(Date(p.start)), color = Vanta.TextDim, fontSize = 11.sp, maxLines = 1)
+                        Text(clock.format(Date(p.start)), color = dimColour, fontSize = 11.sp, maxLines = 1)
                     }
                 }
             }

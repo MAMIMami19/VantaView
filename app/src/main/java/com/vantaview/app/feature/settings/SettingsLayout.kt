@@ -42,8 +42,8 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
         "buffer buffering controls hide mini player preview start last channel picture size fit fill zoom gestures swipe double tap",
     ),
     APPEARANCE(
-        "Appearance", "Theme, accent colour, text size, sidebar, loading screen and language",
-        "theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language",
+        "Appearance", "Look, theme, accent colour, text size, sidebar, loading screen and language",
+        "look style skin glass broadcast wave classic theme dark light black oled follow device accent colour color text size font sidebar hide loading screen splash ripple language",
     ),
     SUBTITLES("Subtitles and audio", "Audio and subtitle languages, when subtitles show, their size and colour", "subtitle subtitles captions cc audio language track size yellow box"),
     SOURCES("Sources and storage", "Refreshing playlists and the TV guide, free channels, and space used", "playlist refresh free tv channels countries storage space cache clear pictures guide epg update downloads"),
@@ -73,7 +73,7 @@ fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
     var current by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
     val found = SettingsSection.entries.filter { it.matches(query) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Bg).imePadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page).imePadding()) {
         if (maxWidth >= 720.dp) {
             val shown = current?.takeIf { it in found } ?: found.firstOrNull()
             Row(Modifier.fillMaxSize()) {

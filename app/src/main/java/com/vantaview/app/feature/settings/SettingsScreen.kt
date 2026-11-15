@@ -181,7 +181,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
         var pw by remember(p.info.createdAt) { mutableStateOf(vm.rememberedPassword.orEmpty()) }
         AlertDialog(
             onDismissRequest = vm::cancelRestore,
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text("Restore this backup?", color = Vanta.Text) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -219,7 +219,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
     ui.shareUrl?.let { url ->
         AlertDialog(
             onDismissRequest = vm::stopSharing,
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text("Scan with your phone", color = Vanta.Text) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -265,7 +265,7 @@ private fun PasswordDialog(
     val ok = matches && (pw.length >= 4 || (!auto && pw.isEmpty()))
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(if (auto) "Set a backup password" else "Back up now", color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

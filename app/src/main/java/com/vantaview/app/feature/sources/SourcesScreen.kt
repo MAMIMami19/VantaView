@@ -49,7 +49,7 @@ enum class SourcesTab(val label: String) { PLAYLISTS("Playlists"), ADDONS("Add-o
 @Composable
 fun SourcesScreen(startTab: SourcesTab) {
     var tab by rememberSaveable(startTab) { mutableStateOf(startTab) }
-    Box(Modifier.fillMaxSize().background(Vanta.Bg).imePadding(), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize().background(Vanta.Page).imePadding(), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier.widthIn(max = 760.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),

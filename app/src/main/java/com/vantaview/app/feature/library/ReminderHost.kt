@@ -35,7 +35,7 @@ fun ReminderHost(library: LibraryStore, onWatch: (Long) -> Unit) {
         val mins = ((r.start - System.currentTimeMillis()) / 60_000L).toInt()
         AlertDialog(
             onDismissRequest = { showing = null },
-            containerColor = Vanta.Surface,
+            containerColor = Vanta.Panel,
             title = { Text(r.title, color = Vanta.Text) },
             text = {
                 Text(

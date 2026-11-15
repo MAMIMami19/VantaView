@@ -46,7 +46,7 @@ fun CatalogScreen(
     val ui by vm.ui.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
 
-    Column(Modifier.fillMaxSize().background(Vanta.Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Column(Modifier.fillMaxSize().background(Vanta.Page).padding(horizontal = 16.dp, vertical = 12.dp)) {
         Text(title, color = Vanta.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
 

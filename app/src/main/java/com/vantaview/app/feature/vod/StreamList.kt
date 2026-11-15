@@ -52,7 +52,7 @@ fun StreamListDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(title, color = Vanta.Text) },
         text = {
             LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +49,21 @@ import java.util.Locale
 fun AppearanceSection(s: AppearanceSettings) {
     val a by s.state.collectAsState()
 
+    Section("Look") {
+        Text("Changes colours, the background, the menu and the TV Guide. Each profile has its own.", color = Vanta.TextDim, fontSize = 13.sp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            com.vantaview.app.data.Look.entries.forEach { l ->
+                LookTile(l, a.look == l) { s.update { it.copy(look = l) } }
+            }
+        }
+        Text(a.look.description + ".", color = Vanta.Text, fontSize = 14.sp)
+    }
+
+    if (a.look != com.vantaview.app.data.Look.VANTA) {
+        Section("Theme and accent colour") {
+            Text("The ${a.look.label} look has its own colours. Choose the VantaView look to pick a theme and accent colour.", color = Vanta.TextDim, fontSize = 13.sp)
+        }
+    } else {
     Section("Theme") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.entries.forEach { m ->
@@ -65,6 +84,7 @@ fun AppearanceSection(s: AppearanceSettings) {
             Swatch(Color(a.custom), "Custom", a.accent == null) { s.update { it.copy(accent = null) } }
         }
         if (a.accent == null) CustomColour(Color(a.custom)) { c -> s.update { it.copy(custom = c.toArgb().toLong() and 0xFFFFFFFFL) } }
+    }
     }
 
     Section("Text size") {
@@ -95,6 +115,42 @@ fun AppearanceSection(s: AppearanceSettings) {
             else "Your device is set to $device. VantaView will follow it once it's translated; until then it uses English.",
             color = Vanta.TextDim, fontSize = 13.sp,
         )
+    }
+}
+
+/** A small picture of a look: its background, menu and a guide with one highlighted row. */
+@Composable
+private fun LookTile(look: com.vantaview.app.data.Look, on: Boolean, onClick: () -> Unit) {
+    val p = com.vantaview.app.ui.lookPalette(look) ?: com.vantaview.app.ui.paletteFor(
+        ThemeMode.DARK, true, Color(AccentPreset.CYAN.highlight), Color(AccentPreset.CYAN.focus),
+    )
+    val top = look == com.vantaview.app.data.Look.BROADCAST || look == com.vantaview.app.data.Look.CLASSIC
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        FocusCard(onClick = onClick, selected = on, padding = androidx.compose.foundation.layout.PaddingValues(4.dp)) {
+            Box(
+                Modifier.size(width = 150.dp, height = 86.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).background(p.bg)
+                    .then(if (on) Modifier.border(2.dp, Vanta.Text, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)) else Modifier)
+            ) {
+                com.vantaview.app.ui.LookBackground(look, Modifier.matchParentSize())
+                Row(Modifier.matchParentSize()) {
+                    if (!top) Box(Modifier.width(26.dp).fillMaxHeight().background(p.surface))
+                    Column(Modifier.weight(1f).padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (top) Box(Modifier.fillMaxWidth().height(8.dp).background(p.surface, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)))
+                        // A big title on Glass, like the guide's top panel.
+                        Box(Modifier.width(if (look == com.vantaview.app.data.Look.GLASS) 80.dp else 50.dp).height(if (look == com.vantaview.app.data.Look.GLASS) 9.dp else 6.dp).background(p.text, androidx.compose.foundation.shape.RoundedCornerShape(3.dp)))
+                        listOf(false, true, false).forEach { hi ->
+                            val colour = if (hi) p.fill ?: p.surfaceHigh else p.surface
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Box(Modifier.width(26.dp).height(10.dp).background(colour, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+                                Box(Modifier.weight(1f).height(10.dp).background(colour, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
+                                    .then(if (hi && p.fill == null) Modifier.border(1.dp, p.accent, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) else Modifier))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Text(look.label, color = if (on) Vanta.Text else Vanta.TextDim, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
     }
 }
 

@@ -128,7 +128,7 @@ private fun Tour(onClose: () -> Unit) {
     val last = page == tourPages.lastIndex
     AlertDialog(
         onDismissRequest = onClose,
-        containerColor = Vanta.Surface,
+        containerColor = Vanta.Panel,
         title = { Text(title, color = Vanta.Text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
