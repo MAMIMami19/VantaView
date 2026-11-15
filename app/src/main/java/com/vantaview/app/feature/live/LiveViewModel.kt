@@ -38,6 +38,8 @@ import javax.inject.Inject
 sealed interface Filter {
     data object All : Filter
     data object Favourites : Filter
+    /** Radio stations (kept out of All and the categories). */
+    data object Radio : Filter
     data class Category(val remoteId: String) : Filter
 }
 
@@ -127,8 +129,10 @@ class LiveViewModel @Inject constructor(
                 parental.hiding -> cats.filter { !parental.isAdult(it) } // Settings › Parental control
                 else -> cats
             }
-            if (sc == null) kidsOk
-            else kidsOk
+            // Radio groups live under the Radio tab.
+            val tvOnly = kidsOk.filter { !Regex("(?i)\\bradio|rádio|радио").containsMatchIn(it.name) }
+            if (sc == null) tvOnly
+            else tvOnly
                 .filter { c -> pick == null || sc.inCategory(c.remoteId).any { it in pick } }
                 // Categories with this device's country first; otherwise keep the provider's order.
                 .sortedBy { if (device != null && device in sc.inCategory(it.remoteId)) 0 else 1 }
@@ -155,11 +159,12 @@ class LiveViewModel @Inject constructor(
                 val (id, f, q) = t
                 val fav = if (f is Filter.Favourites) 1 else 0
                 val cat = (f as? Filter.Category)?.remoteId
+                val radio = if (f is Filter.Radio) 1 else 0
                 when {
                     id == null -> flowOf(emptyList<ChannelRow>())
-                    pick == null || sc == null -> db.content().observeChannels(id, cat, q, fav)
+                    pick == null || sc == null -> db.content().observeChannels(id, cat, q, fav, radio)
                     // Only channels from the chosen countries.
-                    else -> db.content().observeChannelsIn(id, cat, pick.toList(), q, fav)
+                    else -> db.content().observeChannelsIn(id, cat, pick.toList(), q, fav, radio)
                 }
             }
             .let { rows -> combine(rows, sort, filter) { list, so, f -> so.apply(list, f is Filter.Favourites) } }
@@ -175,6 +180,11 @@ class LiveViewModel @Inject constructor(
                 }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Radio stations in the active playlist; Live TV shows a Radio tab when there are some. */
+    val radioCount: StateFlow<Int> = activeId
+        .flatMapLatest { id -> if (id == null) flowOf(0) else db.content().observeRadioCount(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val isKids: StateFlow<Boolean> = profile.map { it?.isKids == true }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)

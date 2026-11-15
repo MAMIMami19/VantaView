@@ -14,6 +14,7 @@ data class M3uEntry(
     /** Catch-up rule for [com.vantaview.app.data.repo.CatchUp] ("mode|template"), or null. */
     val catchup: String? = null,
     val catchupDays: Int = 0,
+    val radio: Boolean = false,
 )
 
 data class M3uResult(
@@ -144,6 +145,7 @@ object M3uParser {
                             attrs["catchup-source"] ?: listSource,
                             attrs["tvg-rec"],
                         ),
+                        radio = RadioDetect.isRadio(name, (attrs["group-title"] ?: extGroup), attrs["radio"].equals("true", true)),
                         catchupDays = (attrs["catchup-days"]?.toIntOrNull() ?: attrs["tvg-rec"]?.toIntOrNull() ?: listDays ?: 0),
                     ).let { e -> if (e.catchup != null && e.catchupDays <= 0) e.copy(catchupDays = 7) else e }
                 }

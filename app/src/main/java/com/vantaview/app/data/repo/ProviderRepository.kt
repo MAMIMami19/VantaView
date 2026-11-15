@@ -10,6 +10,7 @@ import com.vantaview.app.data.db.FavouriteEntity
 import com.vantaview.app.data.db.ProviderEntity
 import com.vantaview.app.data.db.VantaDb
 import com.vantaview.app.data.remote.M3uParser
+import com.vantaview.app.data.remote.RadioDetect
 import com.vantaview.app.data.remote.SmartAdd
 import com.vantaview.app.data.security.CredentialCrypto
 import com.vantaview.app.di.AppScope
@@ -287,6 +288,9 @@ class ProviderRepository @Inject constructor(
         val groups = LinkedHashMap<String, Int>()
         result.entries.forEach { e -> e.group?.let { g -> groups.getOrPut(g) { groups.size } } }
         val categories = groups.map { (name, pos) -> CategoryEntity(providerId = p.id, remoteId = name, name = name, position = pos) }
+        // Some lists give every channel the same number (often 1); then their order is used instead.
+        val given = result.entries.mapNotNull { it.number }
+        val useGiven = given.size > result.entries.size / 2 && given.toSet().size > given.size * 0.9
         val channels = result.entries.mapIndexed { i, e ->
             val stored = hideCredentials?.let { (u, pw) ->
                 "xtreamurl:" + e.url.replace("/$u/", "/$USER_TOKEN/").replace("/$pw/", "/$PASS_TOKEN/")
@@ -296,13 +300,14 @@ class ProviderRepository @Inject constructor(
                 remoteId = sha1(stored),
                 name = e.name,
                 sortKey = e.name.lowercase(),
-                number = e.number ?: (i + 1),
+                number = if (useGiven) e.number ?: (i + 1) else i + 1,
                 logo = e.logo,
                 categoryRemoteId = e.group,
                 streamUrl = stored,
                 epgChannelId = e.tvgId,
                 headersJson = if (e.headers.isEmpty()) null else JSONObject(e.headers as Map<*, *>).toString(),
                 archiveDays = if (e.catchup != null) e.catchupDays else 0,
+                isRadio = e.radio,
                 // An Xtream playlist download with catchup="xc" needs the server's time zone.
                 catchupSource = e.catchup?.let { if (it == "xc|") "xc|" + xtreamZone(p.id) else it },
             )
@@ -420,7 +425,9 @@ class ProviderRepository @Inject constructor(
                 val id = streamId(o)
                 if (!seen.add(id)) return@mapIndexedNotNull null
                 val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
+                val catName = categories.firstOrNull { it.remoteId == o.optString("category_id") }?.name
                 ChannelEntity(
+                    isRadio = RadioDetect.isRadio(name, catName, o.optString("stream_type").contains("radio", true)),
                     providerId = p.id,
                     remoteId = id,
                     name = name,
@@ -486,6 +493,7 @@ class ProviderRepository @Inject constructor(
             val name = o.optString("name").trim().ifBlank { "Channel ${i + 1}" }
             val genre = o.optString("tv_genre_id").ifBlank { null }
             ChannelEntity(
+                isRadio = RadioDetect.isRadio(name, genres.firstOrNull { it.id == genre }?.title, o.optString("radio") == "1" || o.optBoolean("radio", false)),
                 providerId = p.id,
                 remoteId = id,
                 name = name,

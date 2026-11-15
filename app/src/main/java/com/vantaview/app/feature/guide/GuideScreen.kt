@@ -155,7 +155,8 @@ fun GuideScreen(onPlay: (Long) -> Unit, onCatchUp: () -> Unit = {}, vm: LiveView
                 }
             }
             Spacer(Modifier.height(8.dp))
-            CategoryRow(categories, filter) { vm.filter.value = it }
+            val radioCount by vm.radioCount.collectAsStateWithLifecycle()
+            CategoryRow(categories, filter, radioCount > 0) { vm.filter.value = it }
             Spacer(Modifier.height(8.dp))
 
             // Details of the chosen programme.

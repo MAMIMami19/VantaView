@@ -68,6 +68,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** Fires when the menu's current page is chosen again, so the page can go back to its start. */
+object Reselect {
+    val events = kotlinx.coroutines.flow.MutableSharedFlow<Section>(extraBufferCapacity = 1)
+}
+
 enum class Section(val route: String, val label: String, val icon: ImageVector) {
     HOME("home", "Home", Icons.Filled.Home),
     SEARCH("search", "Search", Icons.Filled.Search),

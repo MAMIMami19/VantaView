@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AddonEntity::class, ProfileEntity::class, KidsCategoryEntity::class, ProgrammeEntity::class,
     ],
     // Version 3 (profiles) starts the test database afresh: playlists and add-ons are added again.
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class VantaDb : RoomDatabase() {
@@ -24,6 +24,15 @@ abstract class VantaDb : RoomDatabase() {
     abstract fun backup(): BackupDao
 
     companion object {
+        /** Version 8: radio stations are marked, for Live TV's Radio tab (set on the next refresh). */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `isRadio` INTEGER NOT NULL DEFAULT 0")
+                // Mark the obvious ones straight away; refreshing a playlist finds the rest.
+                db.execSQL("UPDATE `channel` SET `isRadio` = 1 WHERE `name` LIKE '%radio%' AND `name` NOT LIKE '%tv%' AND `name` NOT LIKE '%televi%'")
+            }
+        }
+
         /** Version 7: favourites order, M3U/Xtream catch-up rules, and a typed TV guide link per playlist. */
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {

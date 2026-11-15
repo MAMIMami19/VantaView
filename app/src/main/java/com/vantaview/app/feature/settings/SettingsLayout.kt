@@ -70,7 +70,11 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
 @Composable
 fun SettingsLayout(content: @Composable (SettingsSection) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    var current by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    // Not kept when you leave Settings: coming back from the menu always shows the list.
+    var current by androidx.compose.runtime.remember { mutableStateOf<SettingsSection?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        com.vantaview.app.ui.Reselect.events.collect { if (it == com.vantaview.app.ui.Section.SETTINGS) { current = null; query = "" } }
+    }
     val found = SettingsSection.entries.filter { it.matches(query) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Vanta.Page).imePadding()) {

@@ -98,6 +98,7 @@ fun LiveScreen(
     val query by vm.query.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
     val isKids by vm.isKids.collectAsStateWithLifecycle()
+    val radioCount by vm.radioCount.collectAsStateWithLifecycle()
     val countryLabel by vm.countryLabel.collectAsStateWithLifecycle()
     val guideVersion by vm.guideVersion.collectAsStateWithLifecycle()
     val state = active?.let { sync[it.id] }
@@ -191,6 +192,7 @@ fun LiveScreen(
                     ) {
                         item { FilterChip("All channels", filter == Filter.All, Modifier.fillMaxWidth()) { vm.filter.value = Filter.All } }
                         item { FilterChip("★ Favourites", filter == Filter.Favourites, Modifier.fillMaxWidth()) { vm.filter.value = Filter.Favourites } }
+                        if (radioCount > 0) item { FilterChip("📻 Radio", filter == Filter.Radio, Modifier.fillMaxWidth()) { vm.filter.value = Filter.Radio } }
                         items(categories, key = { it.id }) { c ->
                             FilterChip(c.name, filter == Filter.Category(c.remoteId), Modifier.fillMaxWidth()) {
                                 vm.filter.value = Filter.Category(c.remoteId)
@@ -200,7 +202,7 @@ fun LiveScreen(
                     ChannelList(channels, filter, query, wide = true, Modifier.weight(1f).fillMaxHeight(), onPlay, vm::toggleFavourite, guideTick, vm::nowNext)
                 }
             } else {
-                CategoryRow(categories, filter) { vm.filter.value = it }
+                CategoryRow(categories, filter, radioCount > 0) { vm.filter.value = it }
                 Spacer(Modifier.height(10.dp))
                 ChannelList(channels, filter, query, wide = false, Modifier.fillMaxSize(), onPlay, vm::toggleFavourite, guideTick, vm::nowNext)
             }
@@ -349,10 +351,11 @@ private fun EditFavouritesDialog(
 }
 
 @Composable
-internal fun CategoryRow(categories: List<CategoryEntity>, filter: Filter, onSelect: (Filter) -> Unit) {
+internal fun CategoryRow(categories: List<CategoryEntity>, filter: Filter, radio: Boolean = false, onSelect: (Filter) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { FilterChip("All", filter == Filter.All) { onSelect(Filter.All) } }
         item { FilterChip("★ Favourites", filter == Filter.Favourites) { onSelect(Filter.Favourites) } }
+        if (radio) item { FilterChip("📻 Radio", filter == Filter.Radio) { onSelect(Filter.Radio) } }
         items(categories, key = { it.id }) { c ->
             FilterChip(c.name, filter == Filter.Category(c.remoteId)) { onSelect(Filter.Category(c.remoteId)) }
         }

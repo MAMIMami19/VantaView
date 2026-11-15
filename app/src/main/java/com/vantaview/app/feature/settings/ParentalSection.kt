@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.vantaview.app.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -126,8 +128,8 @@ fun ParentalSection(onEditProfile: (Long) -> Unit, vm: ParentalViewModel = hiltV
 
     Section("Clear watch history") {
         Text("For this profile only.", color = Vanta.TextDim, fontSize = 14.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Clear.entries.forEach { c -> FocusCard(onClick = { clear = c; cleared = null }) { Text(c.title, color = Vanta.Text) } }
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Clear.entries.forEach { c -> FocusCard(onClick = { clear = c; cleared = null }) { Text(c.title, color = Vanta.Text, maxLines = 1, softWrap = false) } }
         }
         cleared?.let { Text(it, color = Vanta.Cyan, fontSize = 13.sp) }
     }

@@ -53,11 +53,12 @@ interface ContentDao {
           AND (:category IS NULL OR c.categoryRemoteId = :category)
           AND (:query = '' OR c.name LIKE '%' || :query || '%' OR CAST(c.number AS TEXT) = :query)
           AND (:favOnly = 0 OR f.remoteId IS NOT NULL)
+          AND (:favOnly = 1 OR :query != '' OR c.isRadio = :radio)
         ORDER BY c.number, c.sortKey
         LIMIT 3000
         """
     )
-    fun observeChannels(providerId: Long, category: String?, query: String, favOnly: Int): Flow<List<ChannelRow>>
+    fun observeChannels(providerId: Long, category: String?, query: String, favOnly: Int, radio: Int): Flow<List<ChannelRow>>
 
     /** Channels from the chosen countries, optionally in one category. */
     @Query(
@@ -70,11 +71,16 @@ interface ContentDao {
           AND c.country IN (:codes)
           AND (:query = '' OR c.name LIKE '%' || :query || '%' OR CAST(c.number AS TEXT) = :query)
           AND (:favOnly = 0 OR f.remoteId IS NOT NULL)
+          AND (:favOnly = 1 OR :query != '' OR c.isRadio = :radio)
         ORDER BY c.number, c.sortKey
         LIMIT 3000
         """
     )
-    fun observeChannelsIn(providerId: Long, category: String?, codes: List<String>, query: String, favOnly: Int): Flow<List<ChannelRow>>
+    fun observeChannelsIn(providerId: Long, category: String?, codes: List<String>, query: String, favOnly: Int, radio: Int): Flow<List<ChannelRow>>
+
+    /** How many radio stations a playlist has (Live TV shows a Radio tab when there are some). */
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :providerId AND isRadio = 1")
+    fun observeRadioCount(providerId: Long): Flow<Int>
 
     /** Just what's needed to work out channels' countries, with no limit. */
     @Query("SELECT id, categoryRemoteId, name, epgChannelId FROM channel WHERE providerId = :providerId")

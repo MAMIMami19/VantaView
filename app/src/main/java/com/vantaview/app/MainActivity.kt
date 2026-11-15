@@ -193,7 +193,8 @@ private fun AppNav(
     AppShell(
         current = section,
         profile = profile,
-        onSelect = { nav.goTo(it.route) },
+        // Choosing the page you're already on starts it over (Settings goes back to its list) instead of navigating.
+        onSelect = { if (it == section) com.vantaview.app.ui.Reselect.events.tryEmit(it) else nav.goTo(it.route) },
         onProfiles = { nav.navigate("profiles") },
     ) {
         NavHost(navController = nav, startDestination = startRoute) {

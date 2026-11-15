@@ -67,6 +67,8 @@ data class ChannelEntity(
      * ("default|<template>", "append|<template>", "shift", "flussonic"). Null = none.
      */
     val catchupSource: String? = null,
+    /** A radio station: shown under Live TV's Radio tab, not with the TV channels. */
+    val isRadio: Boolean = false,
 )
 
 @Entity(tableName = "favourite", primaryKeys = ["providerId", "remoteId"])
