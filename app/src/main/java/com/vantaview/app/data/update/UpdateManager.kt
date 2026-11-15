@@ -112,9 +112,9 @@ class UpdateManager @Inject constructor(
         return read("whats_new_$lang.md").takeIf { it.size == english.size } ?: english
     }
 
-    /** Checks once a day, when the app starts. */
-    fun checkIfDue() {
-        if (System.currentTimeMillis() - lastCheck < 24 * 3_600_000L) return
+    /** Checks every time the app starts (at most every 10 minutes, so quick restarts don't ask GitHub again). */
+    fun checkOnStart() {
+        if (System.currentTimeMillis() - lastCheck < 10 * 60_000L) return
         scope.launch {
             val found = check()
             if (found != null && sp.getString("later", null) != found.apkUrl + found.name) _notice.value = found

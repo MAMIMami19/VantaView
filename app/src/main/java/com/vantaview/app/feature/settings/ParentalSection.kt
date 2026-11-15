@@ -93,14 +93,14 @@ fun ParentalSection(onEditProfile: (Long) -> Unit, vm: ParentalViewModel = hiltV
     var cleared by remember { mutableStateOf<String?>(null) }
 
     when {
-        !hasPin -> Section("Parent PIN") {
+        !hasPin -> Section("Parent PIN", alwaysOpen = true) {
             Text(
                 "Set a 4-digit parent PIN first. It guards these settings, Kids profiles and changing profiles.",
                 color = Vanta.TextDim, fontSize = 14.sp,
             )
             NewPin("Set PIN") { vm.setPin(it); hasPin = true }
         }
-        !unlocked -> Section("Locked") {
+        !unlocked -> Section("Locked", alwaysOpen = true) {
             Text(
                 "Enter the parent PIN to change parental control. Adult categories then show, and Sources opens, until VantaView closes.",
                 color = Vanta.TextDim, fontSize = 14.sp,

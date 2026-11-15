@@ -103,8 +103,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Automatic backups after playlist or profile changes (when switched on in Settings).
         backups.startAutomatic()
-        // Settings › Updates: look for a new version once a day.
-        updates.checkIfDue()
+        // Settings › Updates: look for a new version every time VantaView starts (not on a screen turn).
+        if (savedInstanceState == null) updates.checkOnStart()
         intent?.getLongExtra(EXTRA_PLAY_CHANNEL, 0)?.takeIf { it > 0 }?.let { playRequest.value = it }
         // Reminder alarms don't survive a restart of the device, so set them again.
         reminderAlarms.rescheduleAll(library.allReminders())

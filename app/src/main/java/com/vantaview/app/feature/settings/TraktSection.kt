@@ -105,7 +105,7 @@ fun TraktSection(vm: TraktViewModel = hiltViewModel()) {
         }
         val l = link
         if (l == null) {
-            Section("Link Trakt") {
+            Section("Link Trakt", alwaysOpen = true) {
                 Text(
                     "Trakt keeps track of what you watch across apps. Link this profile to your Trakt account and VantaView " +
                         "keeps your Watchlist, what you've watched and Continue watching in step with it, and adds your " +

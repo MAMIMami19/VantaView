@@ -6,11 +6,11 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Setup and first launch
 
-- [x] Splash screen with logo and loading bar
+- [x] Splash screen with logo, loading bar, and version and build number
 - [x] Terms: Agree or Disagree only (Disagree closes the app)
 - [x] First launch order: Terms, Create profile, Add Playlist (Smart Add or Free TV), Films and series add-ons, Home (the last two can be skipped)
 - [x] Skip Choose profile when there's only one profile
-- [x] Update notice on launch
+- [x] Update notice on launch (checks every time the app starts)
 
 ## Profiles
 
@@ -118,7 +118,7 @@ This file is ticked off in the same commit that finishes a feature.
 
 ## Settings
 
-- [x] Two panes on TV, list on phone, search settings
+- [x] Two panes on TV, list on phone, search settings; each page's sections are drop-downs, one open at a time
 - [x] Playback: buffer, trailers, reminders, controls, mini player, gestures
 - [x] Appearance: Dark/Light/Follow device, accent colour, language
 - [x] Subtitles and audio
@@ -126,7 +126,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Local backup and restore
 - [x] Parental control and clear history, plus a shortcut to add, change or remove this profile's PIN
 - [x] Check for updates (downloads the APK and opens the installer)
-- [x] Speed test
+- [x] Speed test: download, upload, ping and jitter on a live dial (Cloudflare), or a download from your own playlist
 - [x] App tour and support
 - [x] Ambient mode (screensaver on menus)
 - [x] Terms, Credits, About

@@ -1,8 +1,8 @@
+- Ayarlar sayfaları daha düzenli: her bölüm artık açılır bir menü ve birini açınca diğerleri kapanır. Açılış ekranı sürümü ve derleme numarasını gösterir; VantaView her açılışta güncellemeleri kontrol eder.
+- Ayarlar › Kaynaklar'da gerçek bir hız testi: ping, indirme ve yükleme canlı bir göstergede, bağlantının neyi oynatabileceğiyle birlikte.
 - Telefondan oynatma listesi ekle: Kaynaklar'da veya kurulum sırasında QR kodu göster'i seç, telefonla tara ve orada sağlayıcı mesajını, M3U bağlantısını veya dosyasını ya da Xtream Codes'u yapıştır. Ev Wi-Fi'n üzerinden doğrudan TV'ye gider.
 - Pencere içinde pencere artık Ayarlar › Oynatma'dan kapatılabiliyor; böylece Ana ekran oynatıcıyı küçük bir pencereye küçültmüyor.
 - Catch-up artık, listende geçmiş programları saklayan kanallar varsa Ana Sayfa'da Canlı TV ve TV Rehberi'nin yanında kendi kutucuğuna sahip. Catch-up düğmesi TV Rehberi'nden kaldırıldı.
 - M3U liste bağlantıları artık şifrelenmiş olarak saklanıyor ve içlerindeki giriş bilgileri kaydedilen tüm kanal ve film adreslerinde gizleniyor. Mevcut listeler güncellemeden sonra bir kez şifrelenip yeniden yüklenir.
 - M3U listendeki ya da Xtream Codes girişindeki filmler ve diziler artık Filmler ve Diziler'de, TMDB'den afiş ve ayrıntılarla görünüyor. Aynı içeriği bir eklentiden açtığında "Listenden" olarak da çıkarlar. Getirmek için listeyi bir kez yenile; eklentin olmasa da görünürler.
 - Bir torrent ya da debrid yayını hazırlanırken ilerlemesi 5 saniye görünür, sonra gizlenir. Tekrar görmek için ekrana dokun.
-- Torrent sonuçları artık debrid hesabı olmadan oynuyor. Hesabın varsa önce yine debrid kullanılır. Oynarken bir torrent başkalarıyla paylaşır; kapattığında durur ve dosyayı siler. Ayarlar › Oynatma'dan kapatabilirsin.
-- VantaView artık İspanyolca, Fransızca, Almanca, İtalyanca, Portekizce, Felemenkçe, Lehçe ve Türkçe konuşuyor. Cihazının dilini izler ya da Ayarlar › Görünüm'den her profil için bir dil seç. Film ve dizi ayrıntıları da o dilde gelir.

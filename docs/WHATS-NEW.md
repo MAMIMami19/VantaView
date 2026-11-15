@@ -1,8 +1,8 @@
+- Settings pages are tidier: each section is now a drop-down, and opening one closes the others. The start-up screen shows the version and build number, and VantaView checks for updates every time it starts.
+- A proper speed test in Settings › Sources: ping, download and upload on a live dial, with what your connection can stream.
 - Add a playlist from your phone: on Sources or during setup, choose Show QR code, scan it with your phone and paste your provider's message, an M3U link or file, or Xtream Codes there. It goes straight to the TV over your home Wi-Fi.
 - Picture-in-picture can now be turned off in Settings › Playback, so pressing Home no longer shrinks the player into a small window.
 - Catch-up now has its own tile on Home, next to Live TV and the TV Guide, when your playlist has channels that keep past programmes. The Catch-up button has moved off the TV Guide.
 - M3U playlist links are now stored encrypted, and the login inside them is hidden in every saved channel and film address. Existing playlists are encrypted and reloaded once after updating.
 - Films and series in your M3U playlist or Xtream Codes login now show on Movies and TV Series, with posters and details from TMDB. They also appear as "From your playlist" when you open the same title from an add-on. Refresh the playlist once to bring them in; they also show when you have no add-ons.
 - While a torrent or debrid stream gets ready, its progress shows for 5 seconds and then hides. Tap the screen to see it again.
-- Torrent results now play without a debrid account. Debrid is still used first when you have one. While a torrent plays it shares with others, and it stops and deletes the file when you close it. You can turn this off in Settings › Playback.
-- VantaView now speaks Spanish, French, German, Italian, Portuguese, Dutch, Polish and Turkish. It follows your device, or pick a language for each profile in Settings › Appearance. Film and series details come in that language too.

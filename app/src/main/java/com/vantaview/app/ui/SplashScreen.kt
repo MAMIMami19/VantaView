@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -50,6 +51,11 @@ fun SplashScreen(leaving: Boolean = false) {
                 LoadingBar()
                 Text("Loading…", color = Vanta.TextDim, fontSize = 13.sp)
             }
+            Text(
+                tr("v{0} · build {1}", com.vantaview.app.BuildConfig.VERSION_NAME, com.vantaview.app.BuildConfig.VERSION_CODE),
+                color = Vanta.TextDim.copy(alpha = 0.8f), fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+            )
         }
     }
 }

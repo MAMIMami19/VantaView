@@ -36,6 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -146,7 +148,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
         ui.message?.let { Text(it, color = if (ui.isError) Vanta.Error else Vanta.Cyan) }
     }
 
-    SettingsLayout { section ->
+    SettingsLayout { section -> androidx.compose.runtime.key(section) { SectionGroup {
         when (section) {
             SettingsSection.WEATHER -> WeatherSection(vm)
             SettingsSection.TRAKT -> TraktSection()
@@ -160,7 +162,7 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
             SettingsSection.SUBTITLES -> { SubtitlesSection(vm.playback); AiSubtitlesSection(vm.aiSubs) }
             else -> ComingSoon(section)
         }
-    }
+    } } }
 
     ask?.let { purpose ->
         PasswordDialog(
@@ -238,14 +240,62 @@ fun SettingsScreen(onEditProfile: (Long) -> Unit = {}, vm: SettingsViewModel = h
     }
 }
 
+/** The sections of one settings page: which one is open (one at a time), and how many can open and close. */
+internal class SectionGroupState {
+    var open by mutableStateOf<String?>(null)
+    val titles = androidx.compose.runtime.mutableStateListOf<String>()
+}
+
+internal val LocalSections = androidx.compose.runtime.staticCompositionLocalOf<SectionGroupState?> { null }
+
+/** A settings page whose sections are drop-downs: all closed to start, and opening one closes the others. */
 @Composable
-internal fun Section(title: String, content: @Composable () -> Unit) {
+internal fun SectionGroup(content: @Composable () -> Unit) {
+    val state = remember { SectionGroupState() }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSections provides state, content = content)
+}
+
+/**
+ * A card of settings. On a settings page it's a drop-down that opens when its title is pressed; a page with only
+ * one, and [alwaysOpen] ones (something waiting for the viewer, like a PIN or an update), are always open.
+ */
+@Composable
+internal fun Section(title: String, alwaysOpen: Boolean = false, content: @Composable () -> Unit) {
+    val group = LocalSections.current?.takeIf { !alwaysOpen }
+    if (group != null) androidx.compose.runtime.DisposableEffect(group, title) {
+        group.titles += title
+        onDispose { group.titles -= title; if (group.open == title) group.open = null }
+    }
+    val fixed = group == null || group.titles.size == 1
+    val expanded = fixed || group?.open == title
     Column(
-        Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(16.dp),
+        Modifier.fillMaxWidth().background(Vanta.Surface, RoundedCornerShape(14.dp)).padding(if (fixed) 16.dp else 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        content()
+        if (fixed) {
+            Text(title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        } else {
+            FocusCard(
+                onClick = { group!!.open = if (group.open == title) null else title },
+                selected = expanded,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, color = Vanta.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown, contentDescription = null,
+                        tint = if (expanded) Vanta.Cyan else Vanta.TextDim,
+                        modifier = Modifier.rotate(if (expanded) 0f else -90f),
+                    )
+                }
+            }
+        }
+        androidx.compose.animation.AnimatedVisibility(expanded) {
+            Column(
+                Modifier.padding(horizontal = if (fixed) 0.dp else 8.dp).padding(bottom = if (fixed) 0.dp else 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) { content() }
+        }
     }
 }
 

@@ -47,7 +47,7 @@ fun UpdatesSection(m: UpdateManager) {
         Text("VantaView ${BuildConfig.VERSION_NAME}", color = Vanta.Text, fontSize = 16.sp)
         Text("Build ${BuildConfig.VERSION_CODE}", color = Vanta.TextDim, fontSize = 13.sp)
         Text(
-            "VantaView checks for a new version once a day when it starts.",
+            "VantaView checks for a new version every time it starts.",
             color = Vanta.TextDim, fontSize = 13.sp,
         )
         when (val s = state) {
@@ -64,7 +64,7 @@ fun UpdatesSection(m: UpdateManager) {
     (state as? UpdateState.Available)?.info?.let { UpdateCard(it, null, m) }
     (state as? UpdateState.Downloading)?.let { UpdateCard(it.info, it.percent, m) }
     (state as? UpdateState.NeedsPermission)?.let { s ->
-        Section("Allow VantaView to install updates") {
+        Section("Allow VantaView to install updates", alwaysOpen = true) {
             var noPage by remember { mutableStateOf(false) }
             Text(
                 if (m.isFireTv || noPage)
@@ -110,7 +110,7 @@ fun UpdatesSection(m: UpdateManager) {
 
 @Composable
 private fun UpdateCard(info: UpdateInfo, percent: Int?, m: UpdateManager) {
-    Section("${info.name} is available") {
+    Section("${info.name} is available", alwaysOpen = true) {
         if (info.size > 0) Text("%.1f MB".format(Locale.UK, info.size / 1_048_576.0), color = Vanta.TextDim, fontSize = 13.sp)
         if (info.notes.isNotBlank()) {
             Text("What's new", color = Vanta.Text, fontWeight = FontWeight.Bold)
