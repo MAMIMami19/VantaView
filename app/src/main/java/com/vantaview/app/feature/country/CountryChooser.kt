@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.vantaview.app.feature.country
 
 import androidx.compose.foundation.background
@@ -199,10 +201,13 @@ private fun CountryChooser(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Buttons wrap onto a second line on narrow screens rather than squeezing their words.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             GradientButton(if (p.firstTime) "Save choices" else "Save", onClick = onSave, enabled = p.selected.isNotEmpty())
-            FocusCard(onClick = onShowAll) { Text("Show all countries", color = Vanta.Text) }
-            if (!p.firstTime) FocusCard(onClick = onCancel) { Text("Cancel", color = Vanta.TextDim) }
+            FocusCard(onClick = onShowAll, contentAlignment = Alignment.Center) { Text("Show all countries", color = Vanta.Text, maxLines = 1, softWrap = false) }
+            if (!p.firstTime) FocusCard(onClick = onCancel, contentAlignment = Alignment.Center) { Text("Cancel", color = Vanta.TextDim, maxLines = 1, softWrap = false) }
         }
     }
 }

@@ -66,13 +66,15 @@ fun PlaybackSection(s: PlaybackSettings) {
     Text("Changes apply the next time a video starts.", color = Vanta.TextDim, fontSize = 13.sp)
 }
 
+/** Choice chips that keep their words whole: they wrap onto a second line instead of squeezing. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun <T> Choices(options: List<T>, chosen: T, label: (T) -> String, onPick: (T) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { o ->
-            FocusCard(onClick = { onPick(o) }, selected = o == chosen, modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            FocusCard(onClick = { onPick(o) }, selected = o == chosen, contentAlignment = Alignment.Center) {
                 Text(
-                    label(o), color = if (o == chosen) Vanta.Cyan else Vanta.Text,
+                    label(o), color = if (o == chosen) Vanta.Cyan else Vanta.Text, maxLines = 1, softWrap = false,
                     fontWeight = if (o == chosen) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp,
                 )
             }
