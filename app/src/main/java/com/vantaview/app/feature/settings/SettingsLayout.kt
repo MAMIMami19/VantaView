@@ -56,6 +56,10 @@ enum class SettingsSection(val title: String, val summary: String, val keywords:
         "Trakt", "Link Trakt to sync your Watchlist, what you've watched, Continue watching, recommendations and lists",
         "trakt sync watchlist history watched scrobble continue watching recommendations lists account link sign in",
     ),
+    TMDB(
+        "TMDB", "Your own TMDB API key for film and series details in your language",
+        "tmdb api key details descriptions posters cast trailer language",
+    ),
     BACKUP("Backup and restore", "Back up to a file or your phone, restore, and automatic backups", "backup restore export import password qr phone automatic folder"),
     PARENTAL(
         "Parental control", "Hide adult categories, lock Sources, your profile PIN and clearing watch history",

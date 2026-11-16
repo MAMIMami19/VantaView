@@ -1,3 +1,4 @@
+- Je kunt nu je eigen TMDB API-sleutel invoeren in Instellingen › TMDB: details, beschrijvingen en trailers van films en series komen dan van TMDB in jouw taal, in plaats van de alleen-Engelse details van Cinemeta. De sleutel wordt versleuteld op het apparaat opgeslagen.
 - Grote Xtream-afspeellijsten laden nu betrouwbaar: als de volledige film- of serielijst te traag is, wordt deze per categorie geladen — en de afspeellijstkaart vertelt je als er iets niet kon worden geladen.
 - AI-ondertitels hebben nu een Arabische modus: in Instellingen › Ondertiteling en audio ondertitelen Arabische ondertitels Arabische zenders direct en vertalen ze buitenlandse zenders op het apparaat naar het Arabisch. Het Arabische model (ongeveer 30 MB) wordt één keer gedownload.
 - VantaView spreekt nu Arabisch, met een lay-out van rechts naar links. Het volgt je apparaat, of kies per profiel Arabisch bij Instellingen › Weergave. Film- en seriedetails komen ook in het Arabisch.

@@ -1,3 +1,4 @@
+- Agora você pode inserir sua própria chave de API do TMDB em Configurações › TMDB: detalhes, descrições e trailers de filmes e séries virão do TMDB no seu idioma, em vez dos detalhes apenas em inglês do Cinemeta. A chave é armazenada criptografada no dispositivo.
 - As grandes playlists Xtream agora carregam de forma confiável: quando a lista completa de filmes ou séries é lenta demais, ela carrega categoria por categoria — e o cartão da playlist avisa se algo não pôde ser carregado.
 - As legendas por IA agora têm um modo árabe: em Configurações › Legendas e áudio, as legendas árabes legendam diretamente os canais árabes e traduzem os canais estrangeiros para o árabe no dispositivo. O modelo árabe (cerca de 30 MB) é baixado uma vez.
 - O VantaView agora fala árabe, com um layout da direita para a esquerda. Ele segue o idioma do aparelho, ou escolha-o para cada perfil em Configurações › Aparência. Os detalhes de filmes e séries também vêm em árabe.

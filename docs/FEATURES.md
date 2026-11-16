@@ -83,7 +83,7 @@ This file is ticked off in the same commit that finishes a feature.
 - [x] Sort, Genre, Year and Source filters
 - [x] Posters-only grid (Stremio style)
 - [x] Info on focus on TV
-- [x] TMDB artwork and details (Bearer token)
+- [x] TMDB artwork and details (Bearer token, or your own API key in Settings › TMDB — stored encrypted, checked before it is saved)
 
 ## Details pages
 

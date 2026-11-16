@@ -116,11 +116,20 @@ val BROWSE_TILES: List<BrowseTile> = listOf(
     country("us", "United States", R.drawable.browse_flag_us),
 )
 
+/** A TMDB API key (32 letters and digits) is sent as ?api_key=...; the long read access token goes in a Bearer header. */
+internal fun isShortKey(token: String) = token.length == 32 && token.all { it.isLetterOrDigit() }
+
 /** Films and series for the tiles: TMDB when the app has a key, Cinemeta otherwise. */
 @Singleton
-class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
-    private val token = BuildConfig.TMDB_ACCESS_TOKEN
+class BrowseRepository @Inject constructor(
+    private val http: OkHttpClient,
+    private val keyStore: TmdbKeyStore,
+) {
+    /** The user's own key when they entered one in Settings › TMDB, else the key this build was made with. */
+    private val token: String get() = keyStore.current?.takeIf { it.isNotBlank() } ?: BuildConfig.TMDB_ACCESS_TOKEN
     val hasTmdb: Boolean get() = token.isNotBlank()
+    /** True when this build was made with a TMDB key (so details work even without a user key). */
+    val hasBuildKey: Boolean get() = BuildConfig.TMDB_ACCESS_TOKEN.isNotBlank()
     private val cache = ConcurrentHashMap<String, Pair<Long, JSONObject>>()
     private val keywordIds = ConcurrentHashMap<String, String>()
 
@@ -139,23 +148,30 @@ class BrowseRepository @Inject constructor(private val http: OkHttpClient) {
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    private suspend fun tmdb(path: String): JSONObject? = withContext(Dispatchers.IO) {
+    /** Checks a TMDB key the user typed, without saving it: true when TMDB answers. */
+    suspend fun testKey(key: String): Boolean {
+        if (key.isBlank()) return false
+        return tmdb("configuration", tokenOverride = key.trim()) != null
+    }
+
+    private suspend fun tmdb(path: String, tokenOverride: String? = null): JSONObject? = withContext(Dispatchers.IO) {
         // Details, titles and descriptions in the app's language where TMDB has them (English otherwise);
         // trailers in that language or English.
         val lang = com.vantaview.app.ui.I18n.tmdbLanguage
         val url = "https://api.themoviedb.org/3/$path" + (lang?.let { l ->
             (if ('?' in path) "&" else "?") + "language=$l&include_video_language=${l.take(2)},en,null"
         } ?: "")
-        cache[url]?.let { (at, j) -> if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext j }
+        if (tokenOverride == null) cache[url]?.let { (at, j) -> if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext j }
         runCatching {
             // Works with either TMDB credential: the long API Read Access Token (sent as a Bearer
             // header) or the short 32-character API key (sent as ?api_key=).
-            val shortKey = token.length == 32 && token.all { it.isLetterOrDigit() }
+            val t = tokenOverride ?: token
+            val shortKey = isShortKey(t)
             val b = Request.Builder().header("Accept", "application/json")
-            if (shortKey) b.url(url + (if ('?' in url) "&" else "?") + "api_key=$token") else b.url(url).header("Authorization", "Bearer $token")
+            if (shortKey) b.url(url + (if ('?' in url) "&" else "?") + "api_key=$t") else b.url(url).header("Authorization", "Bearer $t")
             val r = b.build()
             http.newCall(r).execute().use { res -> if (res.isSuccessful) JSONObject(res.body!!.string()) else null }
-        }.getOrNull()?.also { cache[url] = System.currentTimeMillis() to it }
+        }.getOrNull()?.also { if (tokenOverride == null) cache[url] = System.currentTimeMillis() to it }
     }
 
     private suspend fun keyword(name: String): String? {

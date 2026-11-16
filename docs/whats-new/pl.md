@@ -1,3 +1,4 @@
+- Możesz teraz wprowadzić własny klucz API TMDB w Ustawieniach › TMDB: szczegóły, opisy i zwiastuny filmów i seriali będą pochodzić z TMDB w Twoim języku, zamiast wyłącznie angielskich szczegółów z Cinemeta. Klucz jest przechowywany zaszyfrowany na urządzeniu.
 - Duże playlisty Xtream ładują się teraz niezawodnie: gdy pełna lista filmów lub seriali ładuje się zbyt wolno, jest ładowana kategoria po kategorii, a karta playlisty informuje, jeśli czegoś nie udało się załadować.
 - Napisy AI mają teraz tryb arabski: w Ustawienia › Napisy i dźwięk napisy arabskie wyświetlają napisy kanałów arabskich bezpośrednio, a kanały zagraniczne tłumaczą na arabski na urządzeniu. Model arabski (około 30 MB) jest pobierany raz.
 - VantaView mówi teraz po arabsku, z układem od prawej do lewej. Używa języka urządzenia albo wybierz arabski dla każdego profilu w Ustawienia › Wygląd. Szczegóły filmów i seriali też są po arabsku.

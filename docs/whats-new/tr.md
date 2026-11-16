@@ -1,3 +1,4 @@
+- Artık kendi TMDB API anahtarınızı Ayarlar › TMDB bölümünden girebilirsiniz: film ve dizi detayları, açıklamaları ve fragmanları artık yalnızca İngilizce olan Cinemeta yerine TMDB'den, kendi dilinizde gelir. Anahtar cihazda şifreli olarak saklanır.
 - Büyük Xtream oynatma listeleri artık güvenilir şekilde yükleniyor: film veya dizi listesinin tamamı çok yavaşsa kategori kategori yükleniyor ve oynatma listesi kartı bir şey yüklenemediyse size söylüyor.
 - Yapay zekâ altyazılarının artık bir Arapça modu var: Ayarlar › Altyazı ve ses bölümünde Arapça altyazılar Arapça kanalları doğrudan altyazılarken yabancı kanalları cihazda Arapçaya çevirir. Arapça model (yaklaşık 30 MB) bir kez indirilir.
 - VantaView artık Arapça konuşuyor ve sağdan sola bir düzene sahip. Cihazının dilini izler ya da Ayarlar › Görünüm'den her profil için Arapçayı seç. Film ve dizi ayrıntıları da Arapça gelir.
